@@ -1,0 +1,602 @@
+# Luxury Real Estate Platform – Complete Product & Design Specification
+
+## Project Vision
+
+Build a modern, premium real-estate platform that combines elegant luxury aesthetics, subtle cinematic storytelling, and lightweight 3D experiences.
+
+The website should feel sophisticated, trustworthy, and high-end without looking overloaded with animations or heavy visual effects.
+
+The goal is to create a platform that looks suitable for a luxury real-estate developer, property consultancy, or premium residential project.
+
+The experience should prioritize usability, performance, responsiveness, and business functionality over excessive visual effects.
+
+Design philosophy:
+
+* 70% Modern Luxury UI
+* 20% Cinematic Motion
+* 10% Lightweight 3D Experience
+
+The website should feel premium, modern, professional, and visually impressive while maintaining excellent performance.
+
+---
+
+# Technical Stack
+
+Frontend:
+
+* Next.js 15 (App Router)
+* TypeScript
+* Tailwind CSS
+* Framer Motion
+
+3D:
+
+* React Three Fiber
+* Drei
+* Three.js
+
+Backend:
+
+* Next.js Server Actions
+* Next.js API Routes
+
+Authentication:
+
+* NextAuth
+* JWT Authentication
+* Google OAuth Login
+
+Database:
+
+* PostgreSQL
+* Prisma ORM
+
+Storage:
+
+* Cloudinary
+
+Deployment:
+
+* Vercel
+* Supabase PostgreSQL
+
+---
+
+# Global Design Language
+
+## Theme
+
+Luxury Modern Minimalism
+
+The design should resemble a blend of:
+
+* Premium real-estate brands
+* Architectural visualization studios
+* Modern SaaS interfaces
+* Luxury hospitality websites
+
+Avoid:
+
+* Excessive cyberpunk effects
+* Overly flashy gradients
+* Cartoon-style illustrations
+* Heavy animations
+* Complex gaming interfaces
+
+---
+
+# Color Palette
+
+Primary Background:
+#0A0A0A
+
+Secondary Surface:
+#161616
+
+Card Surface:
+#1E1E1E
+
+Primary Accent:
+#D4AF37
+
+Secondary Accent:
+#F5D67B
+
+Primary Text:
+#FFFFFF
+
+Secondary Text:
+#B8B8B8
+
+Borders:
+rgba(255,255,255,0.08)
+
+Glass Surface:
+rgba(255,255,255,0.04)
+
+---
+
+# Typography
+
+Headings:
+Large, elegant, luxury-inspired typography
+
+Body:
+Clean modern sans-serif
+
+Characteristics:
+
+* Strong hierarchy
+* High readability
+* Spacious layouts
+* Generous white space
+
+---
+
+# Navigation Bar
+
+Sticky navbar.
+
+Transparent initially.
+
+Transforms into glassmorphism navbar on scroll.
+
+Navigation Links:
+
+* Home
+* Properties
+* About
+* Amenities
+* Testimonials
+* Contact
+
+Right Side:
+
+* Login
+* Register
+* Book Appointment
+
+Features:
+
+* Smooth hover animations
+* Mobile responsive hamburger menu
+* Active section indicators
+
+---
+
+# Landing Page Structure
+
+## Section 1 – Hero
+
+Full viewport hero section.
+
+Background:
+
+A lightweight 3D luxury building model rendered using React Three Fiber.
+
+Requirements:
+
+* Slow auto-rotation
+* Ambient lighting
+* Soft shadows
+* Lightweight optimization
+* Smooth performance
+
+No aggressive camera movement.
+
+Hero Content:
+
+Headline:
+"Find Your Dream Property"
+
+Subheadline:
+"Luxury Living. Exceptional Investment."
+
+Buttons:
+
+Primary:
+Explore Properties
+
+Secondary:
+Book Appointment
+
+Additional Elements:
+
+* Floating premium statistics
+* Total Projects
+* Happy Clients
+* Years of Experience
+
+Hero Animations:
+
+* Fade-in entrance
+* Smooth text reveal
+* Gentle parallax
+* Subtle camera movement
+
+The hero should feel cinematic but not distracting.
+
+---
+
+## Section 2 – Featured Properties
+
+Grid-based layout.
+
+Display:
+
+* Property Image
+* Property Name
+* Location
+* Price
+* Bedrooms
+* Area
+
+Card Features:
+
+* Hover elevation
+* Smooth transitions
+* Quick View button
+* Save Property button
+
+Responsive layout.
+
+---
+
+## Section 3 – Interactive Property Showcase
+
+This is the primary 3D showcase section.
+
+Features:
+
+* Interactive 3D building
+* Rotate building
+* Zoom controls
+* Floor selection
+
+When a floor is selected:
+
+Display:
+
+* Floor plan
+* Apartment information
+* Pricing
+* Availability
+
+Animations should remain smooth and lightweight.
+
+---
+
+## Section 4 – Amenities
+
+Luxury amenities section.
+
+Display cards for:
+
+* Swimming Pool
+* Fitness Center
+* Clubhouse
+* Children's Play Area
+* Landscaped Garden
+* Parking
+* Security
+
+Use icons and elegant micro-interactions.
+
+No heavy 3D required.
+
+---
+
+## Section 5 – About Company
+
+Company story section.
+
+Include:
+
+* Mission
+* Vision
+* Values
+
+Animated statistics:
+
+* Projects Delivered
+* Years Experience
+* Clients Served
+* Awards Won
+
+Timeline-based storytelling.
+
+---
+
+## Section 6 – Testimonials
+
+Modern testimonial carousel.
+
+Features:
+
+* Client photo
+* Client name
+* Review
+* Rating
+
+Glassmorphism cards.
+
+Smooth slide animations.
+
+---
+
+## Section 7 – Book Appointment
+
+Premium appointment booking section.
+
+Fields:
+
+* Full Name
+* Email
+* Phone Number
+* Property Selection
+* Preferred Date
+* Preferred Time
+* Message
+
+Features:
+
+* Date picker
+* Time slot picker
+* Validation
+* Success confirmation
+
+---
+
+## Section 8 – Contact
+
+Include:
+
+* Office address
+* Phone
+* Email
+* Interactive map
+* Business hours
+
+Modern card-based layout.
+
+---
+
+# Authentication Pages
+
+## Login Page
+
+Split-screen layout.
+
+Left Side:
+
+Luxury property image.
+
+Subtle overlay.
+
+Right Side:
+
+Login Form.
+
+Fields:
+
+* Email
+* Password
+
+Features:
+
+* Show Password
+* Remember Me
+* Forgot Password
+
+Buttons:
+
+* Login
+* Continue with Google
+
+Additional Link:
+
+Create Account
+
+---
+
+## Registration Page
+
+Fields:
+
+* Full Name
+* Email
+* Phone Number
+* Password
+* Confirm Password
+
+Optional:
+
+Interested Property Type
+
+Options:
+
+* Apartment
+* Villa
+* Commercial
+* Plot
+
+Features:
+
+* Password strength indicator
+* Validation
+* Google Signup
+
+---
+
+# User Dashboard
+
+After authentication.
+
+## Dashboard Home
+
+Display:
+
+* Upcoming Appointments
+* Saved Properties
+* Recent Views
+* Profile Overview
+
+---
+
+## Saved Properties
+
+Wishlist functionality.
+
+Users can:
+
+* Save property
+* Remove property
+* Compare properties
+
+---
+
+## Appointment Management
+
+Display:
+
+* Property Name
+* Date
+* Time
+* Status
+
+Status Types:
+
+* Pending
+* Confirmed
+* Completed
+* Cancelled
+
+---
+
+## User Profile
+
+Allow editing:
+
+* Name
+* Phone
+* Email
+* Password
+
+---
+
+# Admin Panel
+
+Separate admin dashboard.
+
+Admin Features:
+
+## Dashboard
+
+Display:
+
+* Total Properties
+* Total Users
+* Total Appointments
+* Total Leads
+
+---
+
+## Property Management
+
+CRUD Operations:
+
+* Add Property
+* Edit Property
+* Delete Property
+* Upload Images
+* Upload Floor Plans
+
+---
+
+## Appointment Management
+
+Admin can:
+
+* View appointments
+* Approve appointments
+* Reject appointments
+* Reschedule appointments
+
+---
+
+## User Management
+
+View all registered users.
+
+Manage accounts.
+
+---
+
+# Performance Requirements
+
+Lighthouse Score Target:
+
+90+
+
+Core Web Vitals optimized.
+
+3D model optimization:
+
+* GLB format
+* Draco compression
+* Lazy loading
+
+Use code splitting.
+
+Image optimization.
+
+Skeleton loaders.
+
+---
+
+# Animations
+
+Use Framer Motion.
+
+Animation Style:
+
+* Elegant
+* Smooth
+* Professional
+
+Use:
+
+* Fade-ins
+* Slide reveals
+* Hover interactions
+* Scroll-triggered animations
+
+Avoid:
+
+* Excessive bouncing
+* Flashy effects
+* Overly complex transitions
+
+---
+
+# Responsive Design
+
+Must be fully responsive.
+
+Breakpoints:
+
+* Mobile
+* Tablet
+* Laptop
+* Desktop
+* Large Screens
+
+Mobile-first implementation.
+
+---
+
+# Final Goal
+
+Create a luxury real-estate platform that balances modern UI, cinematic presentation, business functionality, and lightweight 3D interactions.
+
+The website should feel premium, trustworthy, visually impressive, responsive, scalable, and production-ready while maintaining excellent performance and usability.

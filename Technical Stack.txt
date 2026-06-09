@@ -1,0 +1,71 @@
+# Technical Stack
+
+Frontend:
+
+* Next.js 15 (App Router)
+* TypeScript
+* Tailwind CSS
+* Framer Motion
+
+3D:
+
+* React Three Fiber
+* Drei
+* Three.js
+
+Backend:
+
+* Next.js Server Actions
+* Next.js API Routes
+
+Authentication:
+
+* NextAuth
+* JWT Authentication
+* Google OAuth Login
+
+Database:
+
+* PostgreSQL
+* Prisma ORM
+
+Storage:
+
+* Cloudinary
+
+Deployment:
+
+* Vercel
+* Supabase PostgreSQL
+
+---
+
+# Color Palette
+
+Primary Background:
+#0A0A0A
+
+Secondary Surface:
+#161616
+
+Card Surface:
+#1E1E1E
+
+Primary Accent:
+#D4AF37
+
+Secondary Accent:
+#F5D67B
+
+Primary Text:
+#FFFFFF
+
+Secondary Text:
+#B8B8B8
+
+Borders:
+rgba(255,255,255,0.08)
+
+Glass Surface:
+rgba(255,255,255,0.04)
+

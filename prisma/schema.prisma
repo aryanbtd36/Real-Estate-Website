@@ -1,0 +1,86 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String          @id @default(uuid())
+  name            String?
+  email           String          @unique
+  phone           String?
+  password        String
+  role            String          @default("USER") // "USER", "ADMIN"
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  appointments    Appointment[]
+  savedProperties SavedProperty[]
+}
+
+model Property {
+  id           String          @id @default(uuid())
+  name         String
+  location     String
+  price        Float
+  bedrooms     Int
+  area         Float // in sq ft
+  floor        Int
+  availability String          @default("AVAILABLE") // "AVAILABLE", "SOLD", "RESERVED"
+  images       String // comma-separated image URLs or local fallback paths
+  floorPlan    String? // image URL
+  type         String          @default("Apartment") // Apartment, Villa, Penthouse, Duplex, Lot
+  views        Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  appointments Appointment[]
+  savedBy      SavedProperty[]
+}
+
+model SavedProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model Appointment {
+  id              String   @id @default(uuid())
+  userId          String
+  propertyId      String
+  name            String
+  email           String
+  phone           String
+  date            String // "YYYY-MM-DD"
+  time            String // "HH:MM"
+  message         String?
+  specialRequests String?
+  status          String   @default("PENDING") // "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "RESCHEDULED"
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model AvailableSlot {
+  id        String   @id @default(uuid())
+  date      String   // YYYY-MM-DD
+  time      String   // HH:MM / AM-PM
+  isBooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    String   @default("PENDING") // "PENDING", "CONTACTED"
+  createdAt DateTime @default(now())
+}
