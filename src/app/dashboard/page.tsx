@@ -117,14 +117,19 @@ export default function DashboardPage() {
       const propRes = await fetch('/api/properties');
       if (propRes.ok) {
         const propData = await propRes.json();
-        setAllProperties(propData);
+        if (Array.isArray(propData)) {
+          setAllProperties(propData);
 
-        // Load recently viewed from client-side localStorage
-        const viewedIds = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
-        const matching = viewedIds
-          .map((id: string) => propData.find((p: any) => p.id === id))
-          .filter(Boolean);
-        setRecentlyViewed(matching);
+          // Load recently viewed from client-side localStorage
+          const viewedIds = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
+          const matching = viewedIds
+            .map((id: string) => propData.find((p: any) => p.id === id))
+            .filter(Boolean);
+          setRecentlyViewed(matching);
+        } else {
+          setAllProperties([]);
+          setRecentlyViewed([]);
+        }
       }
     } catch (err) {
       console.error(err);

@@ -93,7 +93,7 @@ export default function AdminPage() {
       const propRes = await fetch('/api/properties');
       if (propRes.ok) {
         const propData = await propRes.json();
-        setProperties(propData);
+        setProperties(Array.isArray(propData) ? propData : []);
       }
 
       const appRes = await fetch('/api/admin/appointments');

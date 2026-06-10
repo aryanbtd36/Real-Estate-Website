@@ -249,18 +249,20 @@ export default function Home() {
     { name: 'Private Gardens', desc: 'Lush landscaped walking spaces', icon: Compass },
     { name: 'Helipad Access', desc: 'Priority sky transport links', icon: ArrowUpRight }
   ];
-
   // Fetch properties and wishlist on mount
   useEffect(() => {
     async function fetchData() {
       try {
         const res = await fetch('/api/properties');
         const data = await res.json();
-        setProperties(data);
-
-        // Pre-fill first property in reservation form
-        if (data.length > 0) {
-          setFormData(prev => ({ ...prev, propertyId: data[0].id }));
+        if (Array.isArray(data)) {
+          setProperties(data);
+          // Pre-fill first property in reservation form
+          if (data.length > 0) {
+            setFormData(prev => ({ ...prev, propertyId: data[0].id }));
+          }
+        } else {
+          setProperties([]);
         }
 
         if (session) {
@@ -281,7 +283,7 @@ export default function Home() {
 
   // Update selected apartment details when floor changes
   useEffect(() => {
-    const floorProperties = properties.filter(p => p.floor === activeFloor);
+    const floorProperties = Array.isArray(properties) ? properties.filter(p => p.floor === activeFloor) : [];
     if (floorProperties.length > 0) {
       setSelectedApartment(floorProperties[0]);
     } else {
@@ -638,7 +640,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {properties.filter(property => {
+              {(Array.isArray(properties) ? properties : []).filter(property => {
                 if (filterLocation && property.location !== filterLocation) return false;
                 if (filterType && property.type !== filterType) return false;
                 if (filterBudget && property.price > parseInt(filterBudget)) return false;
