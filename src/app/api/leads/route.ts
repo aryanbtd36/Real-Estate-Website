@@ -3,12 +3,22 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
+import { verifyTurnstile } from '@/lib/turnstile';
 
 // Submit inquiry (public)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, phone, message } = body;
+    const { name, email, phone, message, turnstileToken } = body;
+
+    // 1. Enforce global Turnstile validation rule
+    const isTurnstileValid = await verifyTurnstile(turnstileToken);
+    if (!isTurnstileValid) {
+      return NextResponse.json(
+        { error: 'Turnstile verification failed. Please try again.' },
+        { status: 403 }
+      );
+    }
 
     if (!name || !email || !message) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

@@ -14,6 +14,8 @@ interface EmailParams {
   icsLink?: string;
   contactInfo?: string;
   message?: string;
+  actionLink?: string;
+  actionText?: string;
 }
 
 // Generates Google Calendar link
@@ -116,6 +118,21 @@ export function generateICSString(id: string, propertyName: string, location: st
   }
 }
 
+function writeLocalPreview(to: string, html: string) {
+  try {
+    const dir = path.join(process.cwd(), 'sent_emails');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const filename = `email-${Date.now()}-${to.replace(/[@.]/g, '_')}.html`;
+    const filePath = path.join(dir, filename);
+    fs.writeFileSync(filePath, html, 'utf8');
+    console.log(`[PREVIEW SAVED] Local email preview written to: file:///${filePath.replace(/\\/g, '/')}`);
+  } catch (err) {
+    console.error('Failed to write local email preview file:', err);
+  }
+}
+
 export async function sendEmail(params: EmailParams) {
   const {
     to,
@@ -129,7 +146,9 @@ export async function sendEmail(params: EmailParams) {
     calendarLink,
     icsLink,
     contactInfo = '+1 (555) AURA-LXS (014-9821)',
-    message
+    message,
+    actionLink,
+    actionText
   } = params;
 
   // Render Premium Luxury Branded HTML Template
@@ -307,6 +326,12 @@ export async function sendEmail(params: EmailParams) {
       </div>
       ` : ''}
 
+      ${actionLink ? `
+      <div style="text-align: center; margin: 35px 0 15px 0;">
+        <a href="${actionLink}" class="btn-gold" style="display: inline-block;">${actionText || 'Click Here'}</a>
+      </div>
+      ` : ''}
+
       ${(calendarLink || icsLink) ? `
       <div style="text-align: center; margin: 35px 0 15px 0;">
         ${calendarLink ? `<a href="${calendarLink}" target="_blank" class="btn-gold" style="margin: 0 10px; display: inline-block;">Add to Google Calendar</a>` : ''}
@@ -316,42 +341,53 @@ export async function sendEmail(params: EmailParams) {
     </div>
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} AURA Luxury Real Estate. All rights reserved.</p>
-      <p>This is a simulated luxury notification system. Local preview files written to the server workspace.</p>
+      <p>This is a secure communication from AURA Real Estate concierge.</p>
     </div>
   </div>
 </body>
 </html>
   `;
 
-  // 1. Log to console
-  console.log('========================================================================');
-  console.log(`[SIMULATED EMAIL DISPATCH]`);
-  console.log(`To: ${to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Title: ${title}`);
-  if (propertyName) {
-    console.log(`Details: ${propertyName} | ${location} | ${date} @ ${time}`);
-    console.log(`Status: ${status}`);
-  }
-  if (calendarLink) {
-    console.log(`Calendar Link: ${calendarLink}`);
-  }
-  if (icsLink) {
-    console.log(`ICS Link: ${icsLink}`);
-  }
-  console.log('========================================================================');
+  const isProduction = process.env.NODE_ENV === 'production';
+  const apiKey = process.env.RESEND_API_KEY;
 
-  // 2. Write to local preview file
-  try {
-    const dir = path.join(process.cwd(), 'sent_emails');
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+  if (apiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          from: 'AURA Luxury Real Estate <onboarding@resend.dev>',
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Resend endpoint returned status ${res.status}: ${errText}`);
+      }
+
+      console.log(`[EMAIL DISPATCH SUCCESS] Sent via Resend to ${to}: ${subject}`);
+    } catch (err) {
+      console.error('[EMAIL DISPATCH ERROR] Failed to send via Resend:', err);
+      if (isProduction) {
+        throw new Error(`Critical email dispatch failed in production: ${err instanceof Error ? err.message : String(err)}`);
+      } else {
+        console.log('[EMAIL DISPATCH FALLBACK] Writing local preview file in dev mode...');
+        writeLocalPreview(to, html);
+      }
     }
-    const filename = `email-${Date.now()}-${to.replace(/[@.]/g, '_')}.html`;
-    const filePath = path.join(dir, filename);
-    fs.writeFileSync(filePath, html, 'utf8');
-    console.log(`[PREVIEW SAVED] Local email preview written to: file:///${filePath.replace(/\\/g, '/')}`);
-  } catch (err) {
-    console.error('Failed to write local email preview file:', err);
+  } else {
+    if (isProduction) {
+      throw new Error('Critical email dispatch failed in production: RESEND_API_KEY is not configured.');
+    }
+    console.warn('[EMAIL WARNING] RESEND_API_KEY is not defined. Saving local preview file...');
+    writeLocalPreview(to, html);
   }
 }
+

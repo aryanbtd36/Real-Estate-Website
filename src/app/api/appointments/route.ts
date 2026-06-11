@@ -3,12 +3,23 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
+import { verifyTurnstile } from '@/lib/turnstile';
+import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     const body = await req.json();
-    const { name, email, phone, propertyId, date, time, message, specialRequests } = body;
+    const { name, email, phone, propertyId, date, time, message, specialRequests, turnstileToken } = body;
+
+    // 1. Enforce global Turnstile validation rule
+    const isTurnstileValid = await verifyTurnstile(turnstileToken);
+    if (!isTurnstileValid) {
+      return NextResponse.json(
+        { error: 'Turnstile verification failed. Please try again.' },
+        { status: 403 }
+      );
+    }
 
     if (!name || !email || !phone || !propertyId || !date || !time) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -20,12 +31,13 @@ export async function POST(req: Request) {
       // Find or create a user for guest booking
       let guestUser = await db.user.findUnique({ where: { email } });
       if (!guestUser) {
+        const hashedGuestPassword = await bcrypt.hash('guestpassword123', 10);
         guestUser = await db.user.create({
           data: {
             name,
             email,
             phone,
-            password: 'guestpassword123',
+            password: hashedGuestPassword,
             role: 'USER',
           },
         });

@@ -22,6 +22,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Turnstile } from '@/components/turnstile';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -42,7 +43,6 @@ export default function DashboardPage() {
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Profile Form State
   const [profileForm, setProfileForm] = useState({
     name: '',
     email: '',
@@ -53,6 +53,13 @@ export default function DashboardPage() {
   const [profileSuccess, setProfileSuccess] = useState('');
   const [profileError, setProfileError] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // Turnstile state for verification resend
+  const [resendTurnstileToken, setResendTurnstileToken] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
+  const [resendError, setResendError] = useState('');
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   // Helper to construct Add to Google Calendar URLs client-side
   const getGoogleCalendarLink = (propertyName: string, location: string, dateStr: string, timeStr: string) => {
@@ -92,12 +99,14 @@ export default function DashboardPage() {
     }
   };
 
-  // Redirect if unauthenticated
+  // Redirect if unauthenticated or if user is ADMIN
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
+    } else if (status === 'authenticated' && session?.user && (session.user as any).role === 'ADMIN') {
+      router.push('/admin');
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   // Fetch data
   const fetchData = async () => {
@@ -199,6 +208,40 @@ export default function DashboardPage() {
       setProfileError('Network error. Please try again.');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!resendTurnstileToken) {
+      setResendError('Please complete Turnstile bot protection check.');
+      return;
+    }
+
+    setResendLoading(true);
+    setResendSuccess('');
+    setResendError('');
+
+    try {
+      const res = await fetch('/api/auth/verify-email/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turnstileToken: resendTurnstileToken }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResendSuccess('A verification email has been dispatched. Please check your inbox.');
+        setResendTurnstileToken('');
+      } else {
+        setResendError(data.error || 'Failed to resend verification email.');
+        setTurnstileKey(prev => prev + 1);
+        setResendTurnstileToken('');
+      }
+    } catch (err) {
+      setResendError('Network error. Please try again.');
+      setTurnstileKey(prev => prev + 1);
+      setResendTurnstileToken('');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -642,6 +685,60 @@ export default function DashboardPage() {
                 <h1 className="text-3xl font-light tracking-tight">Profile Settings</h1>
                 <p className="text-xs text-white/50 mt-1">Manage credentials and contact information.</p>
               </div>
+
+              {!(session?.user as any)?.emailVerified && (
+                <div className="bg-[#161616] border border-[#D4AF37]/20 p-6 rounded-xl max-w-xl shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 bg-gradient-to-b from-[#D4AF37] to-[#F5D67B] h-full" />
+                  <div className="flex items-start gap-4">
+                    <div className="p-2.5 bg-[#D4AF37]/10 rounded-lg border border-[#D4AF37]/20 text-[#F5D67B]">
+                      <Mail size={20} />
+                    </div>
+                    <div className="space-y-4 flex-1">
+                      <div>
+                        <h3 className="text-sm font-semibold tracking-wider text-[#F5D67B] uppercase">Email Verification Required</h3>
+                        <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                          Your email address <span className="text-white font-medium">{session?.user?.email}</span> has not been verified. Please verify your email to ensure account security and access all features.
+                        </p>
+                      </div>
+
+                      {resendSuccess && (
+                        <div className="p-3.5 bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded flex items-center gap-2">
+                          <CheckCircle size={14} className="shrink-0" />
+                          <span>{resendSuccess}</span>
+                        </div>
+                      )}
+
+                      {resendError && (
+                        <div className="p-3.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg">
+                          {resendError}
+                        </div>
+                      )}
+
+                      {!resendSuccess && (
+                        <div className="space-y-3 pt-2">
+                          <div className="bg-black/20 p-2 rounded border border-white/5 inline-block">
+                            <Turnstile
+                              key={turnstileKey}
+                              onVerify={setResendTurnstileToken}
+                              onError={() => setResendTurnstileToken('')}
+                              onExpire={() => setResendTurnstileToken('')}
+                            />
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={handleResendVerification}
+                            disabled={resendLoading || !resendTurnstileToken}
+                            className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-[#D4AF37]/10 to-[#F5D67B]/10 hover:from-[#D4AF37]/20 hover:to-[#F5D67B]/20 border border-[#D4AF37]/30 text-[#F5D67B] text-[10px] uppercase tracking-widest font-semibold rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {resendLoading ? 'Sending link...' : 'Resend Verification Email'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-[#161616] border border-white/5 p-8 rounded-xl max-w-xl shadow-2xl">
                 <form onSubmit={handleProfileUpdate} className="space-y-6">

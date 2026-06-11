@@ -12,13 +12,27 @@ model User {
   name            String?
   email           String          @unique
   phone           String?
-  password        String
+  password        String?
   role            String          @default("USER") // "USER", "ADMIN"
+  emailVerified   DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   appointments    Appointment[]
   savedProperties SavedProperty[]
+  authTokens      AuthToken[]
 }
+
+model AuthToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  type      String   // "VERIFY_EMAIL", "RESET_PASSWORD"
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 
 model Property {
   id           String          @id @default(uuid())

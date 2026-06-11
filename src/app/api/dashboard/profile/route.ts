@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
+import bcrypt from 'bcryptjs';
 
 export async function PUT(req: Request) {
   try {
@@ -33,7 +34,7 @@ export async function PUT(req: Request) {
 
     const updateData: any = { name, phone, email };
     if (password) {
-      updateData.password = password; // updated plain text as per seed simplicity
+      updateData.password = await bcrypt.hash(password, 10);
     }
 
     const updatedUser = await db.user.update({

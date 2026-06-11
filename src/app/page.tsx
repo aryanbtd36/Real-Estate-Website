@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { ShowcaseCanvas } from '@/components/building3d';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Turnstile } from '@/components/turnstile';
 import {
   Sparkles,
   BedDouble,
@@ -105,6 +106,10 @@ export default function Home() {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Turnstile token states
+  const [leadTurnstileToken, setLeadTurnstileToken] = useState('');
+  const [bookingTurnstileToken, setBookingTurnstileToken] = useState('');
+
   // Search submission scrolls to property grid and applies filters
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,6 +190,12 @@ export default function Home() {
     e.preventDefault();
     setLeadError('');
     setLeadSubmitted(false);
+
+    if (!leadTurnstileToken) {
+      setLeadError('Please complete Turnstile bot verification check.');
+      return;
+    }
+
     setLeadLoading(true);
 
     if (!leadData.name || !leadData.email || !leadData.message) {
@@ -197,11 +208,12 @@ export default function Home() {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(leadData)
+        body: JSON.stringify({ ...leadData, turnstileToken: leadTurnstileToken })
       });
       if (res.ok) {
         setLeadSubmitted(true);
         setLeadData({ name: '', email: '', phone: '', message: '' });
+        setLeadTurnstileToken('');
       } else {
         const errData = await res.json();
         setLeadError(errData.error || 'Failed to submit inquiry.');
@@ -337,11 +349,16 @@ export default function Home() {
       return;
     }
 
+    if (!bookingTurnstileToken) {
+      setFormError('Please complete Turnstile bot verification check.');
+      return;
+    }
+
     try {
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, turnstileToken: bookingTurnstileToken })
       });
       if (res.ok) {
         setFormSubmitted(true);
@@ -352,6 +369,7 @@ export default function Home() {
           phone: '',
           message: ''
         }));
+        setBookingTurnstileToken('');
       } else {
         const errData = await res.json();
         setFormError(errData.error || 'Failed to submit appointment request.');
@@ -1196,6 +1214,11 @@ export default function Home() {
                     />
                   </div>
 
+                  {/* Turnstile Widget */}
+                  <div className="py-2">
+                    <Turnstile onVerify={setBookingTurnstileToken} onError={() => setBookingTurnstileToken('')} onExpire={() => setBookingTurnstileToken('')} />
+                  </div>
+
                   <button
                     type="submit"
                     className="w-full py-4 bg-gradient-to-r from-[#D4AF37] to-[#F5D67B] text-black font-semibold uppercase tracking-widest rounded hover:opacity-95 shadow-lg transition-all"
@@ -1374,6 +1397,11 @@ export default function Home() {
                     placeholder="I am interested in private estates..."
                   />
                 </div>
+                {/* Turnstile Widget */}
+                <div className="py-1">
+                  <Turnstile onVerify={setLeadTurnstileToken} onError={() => setLeadTurnstileToken('')} onExpire={() => setLeadTurnstileToken('')} />
+                </div>
+
                 <button
                   type="submit"
                   disabled={leadLoading}

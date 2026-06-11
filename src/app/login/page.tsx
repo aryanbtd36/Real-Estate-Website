@@ -6,18 +6,26 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Turnstile } from '@/components/turnstile';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!turnstileToken) {
+      setError('Please complete the Turnstile bot verification check.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -25,10 +33,16 @@ export default function LoginPage() {
         redirect: false,
         email,
         password,
+        turnstileToken,
       });
 
       if (res?.error) {
-        setError('Invalid email or password. Try admin@luxury.com / adminpassword123.');
+        if (res.error === 'OAuthUserNoPassword') {
+          // Redirect OAuth-only accounts to Reset Password to configure a password first
+          router.push(`/forgot-password?error=oauth-credentials-login&email=${encodeURIComponent(email)}`);
+        } else {
+          setError('Invalid email or password.');
+        }
       } else {
         // Fetch session to determine role-based redirect
         const sessionRes = await fetch('/api/auth/session');
@@ -48,33 +62,9 @@ export default function LoginPage() {
     }
   };
 
-  // Simulated Google Sign-In (Instantly signs in with dummy user credentials for simulation)
-  const handleGoogleSignInMock = async () => {
+  const handleGoogleSignIn = () => {
     setError('');
-    setLoading(true);
-    
-    // Simulate by auto-filling demo credentials
-    setEmail('john@example.com');
-    setPassword('userpassword123');
-    
-    try {
-      const res = await signIn('credentials', {
-        redirect: false,
-        email: 'john@example.com',
-        password: 'userpassword123',
-      });
-      
-      if (res?.error) {
-        setError('Google authentication failed.');
-      } else {
-        router.push('/dashboard');
-        router.refresh();
-      }
-    } catch (err) {
-      setError('An error occurred during Google Auth simulation.');
-    } finally {
-      setLoading(false);
-    }
+    signIn('google', { callbackUrl: '/dashboard' });
   };
 
   return (
@@ -150,7 +140,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="text-[10px] uppercase tracking-widest text-white/40 block">Password</label>
-                <a href="#" className="text-[10px] text-[#D4AF37] hover:underline">Forgot password?</a>
+                <Link href="/forgot-password" className="text-[10px] text-[#D4AF37] hover:underline">Forgot password?</Link>
               </div>
               <div className="relative">
                 <input
@@ -172,13 +162,20 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="remember"
-                className="w-4 h-4 accent-[#D4AF37] bg-[#161616] border-white/10 rounded"
-              />
-              <label htmlFor="remember" className="text-xs text-white/50 cursor-pointer">Remember this session</label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  className="w-4 h-4 accent-[#D4AF37] bg-[#161616] border-white/10 rounded"
+                />
+                <label htmlFor="remember" className="text-xs text-white/50 cursor-pointer">Remember this session</label>
+              </div>
+            </div>
+
+            {/* Turnstile Widget */}
+            <div className="py-2">
+              <Turnstile onVerify={setTurnstileToken} onError={() => setTurnstileToken('')} onExpire={() => setTurnstileToken('')} />
             </div>
 
             <button
@@ -199,7 +196,7 @@ export default function LoginPage() {
           </div>
 
           <button
-            onClick={handleGoogleSignInMock}
+            onClick={handleGoogleSignIn}
             className="w-full py-3.5 bg-[#161616] hover:bg-white/5 border border-white/10 rounded text-xs tracking-wider font-semibold text-white/95 transition-all duration-300 flex items-center justify-center gap-2"
           >
             {/* Google G logo SVG */}
@@ -219,17 +216,7 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* Quick tip for testing */}
-          <div className="p-4 bg-[#161616] border border-[#D4AF37]/25 rounded flex items-start gap-3">
-            <ShieldCheck className="text-[#D4AF37] shrink-0 mt-0.5" size={18} />
-            <div>
-              <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold block">Testing Access</span>
-              <p className="text-[11px] text-white/50 leading-relaxed mt-1">
-                Admin: <code className="text-[#F5D67B]">admin@luxury.com</code> / <code className="text-[#F5D67B]">adminpassword123</code><br />
-                User: <code className="text-[#F5D67B]">john@example.com</code> / <code className="text-[#F5D67B]">userpassword123</code>
-              </p>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>

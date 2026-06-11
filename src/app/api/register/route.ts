@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
+import { verifyTurnstile } from '@/lib/turnstile';
+import { TokenService } from '@/lib/token';
+import { resolveUserRole } from '@/lib/role';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, phone, password } = body;
+    const { name, email, phone, password, turnstileToken } = body;
+
+    // 1. Enforce global Turnstile validation rule
+    const isTurnstileValid = await verifyTurnstile(turnstileToken);
+    if (!isTurnstileValid) {
+      return NextResponse.json(
+        { error: 'Turnstile verification failed. Please try again.' },
+        { status: 403 }
+      );
+    }
 
     if (!email || !password || !name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -19,26 +32,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
     }
 
+    // 2. Hash password using production-grade security
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const initialRole = resolveUserRole(email, 'USER');
+
     const newUser = await db.user.create({
       data: {
         name,
         email,
         phone,
-        password, // stored plain text for simplicity as per seed config
-        role: 'USER',
+        password: hashedPassword,
+        role: initialRole,
       },
     });
 
-    // Send welcome email (non-blocking)
+    // 3. Generate verification token (OTP-ready token service)
+    let verifyLink = '';
+    try {
+      const verifyToken = await TokenService.createToken(newUser.id, 'VERIFY_EMAIL', 24 * 60); // 24 hours
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      verifyLink = `${baseUrl}/api/auth/verify-email?token=${verifyToken.token}`;
+    } catch (tokenErr) {
+      console.error('Failed to generate email verification token:', tokenErr);
+    }
+
+    // 4. Send welcome email (non-blocking)
     try {
       await sendEmail({
         to: newUser.email,
         subject: 'Welcome to AURA Luxury Real Estate',
         title: 'Welcome to the World of AURA',
-        message: `Dear ${newUser.name},\n\nWe are delighted to welcome you to AURA Luxury Real Estate. Your account has been successfully created. We look forward to matching you with the world's most exceptional residences.\n\nUse your dashboard to track your private property visits, save properties of interest, and compare penthouses and estates.`,
+        message: `Dear ${newUser.name},\n\nWe are delighted to welcome you to AURA Luxury Real Estate. Your client account has been successfully registered.\n\nTo complete your profile activation and verify your identity, please click the button below to confirm your email.`,
+        actionLink: verifyLink || undefined,
+        actionText: 'Confirm Email Address',
       });
     } catch (mailErr) {
-      console.error('Failed to dispatch registration email:', mailErr);
+      console.error('Failed to dispatch registration welcome email:', mailErr);
     }
 
     return NextResponse.json({ success: true, userId: newUser.id });
