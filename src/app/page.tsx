@@ -6,6 +6,8 @@ import { ShowcaseCanvas } from '@/components/building3d';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Turnstile } from '@/components/turnstile';
 import {
+  Image as ImageIcon,
+  Map as MapIcon,
   Sparkles,
   BedDouble,
   Maximize2,
@@ -29,6 +31,9 @@ import {
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const PropertyViewMap = dynamic(() => import('@/components/property-view-map'), { ssr: false });
 
 interface Property {
   id: string;
@@ -36,6 +41,7 @@ interface Property {
   location: string;
   price: number;
   bedrooms: number;
+  bathrooms?: number;
   area: number;
   floor: number;
   availability: string;
@@ -43,6 +49,23 @@ interface Property {
   floorPlan: string | null;
   type: string;
   views: number;
+  description?: string;
+  state?: string;
+  city?: string;
+  address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  boundary?: string | null;
+  amenities?: string[];
+  featured?: boolean;
+  imagesRelation?: Array<{
+    id: string;
+    propertyId: string;
+    publicId: string;
+    url: string;
+    order: number;
+    isCover: boolean;
+  }>;
 }
 
 export default function Home() {
@@ -1441,11 +1464,11 @@ export default function Home() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-[#161616] border border-white/10 max-w-2xl w-full rounded-xl p-8 relative space-y-6 shadow-2xl"
+              className="bg-[#161616] border border-white/10 max-w-2xl w-full rounded-xl p-8 relative space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <button
                 onClick={() => setQuickViewProperty(null)}
-                className="absolute top-6 right-6 text-white/60 hover:text-white"
+                className="absolute top-6 right-6 text-white/60 hover:text-white text-xs uppercase tracking-widest"
               >
                 Close
               </button>
@@ -1467,35 +1490,115 @@ export default function Home() {
                 </span>
               </div>
 
-              <div className="h-60 bg-gradient-to-br from-[#1E1E1E] to-[#0A0A0A] rounded-lg border border-white/5 flex items-center justify-center relative overflow-hidden">
-                <svg className="w-16 h-16 text-[#D4AF37]/10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                  <rect x="4" y="2" width="16" height="20" rx="2" />
-                  <line x1="9" y1="6" x2="15" y2="6" />
-                  <line x1="9" y1="10" x2="15" y2="10" />
-                  <line x1="9" y1="14" x2="15" y2="14" />
-                </svg>
+              {/* Image Gallery */}
+              <div className="space-y-2">
+                <div className="h-64 bg-white/5 rounded-lg overflow-hidden relative border border-white/5">
+                  {quickViewProperty.imagesRelation && quickViewProperty.imagesRelation.length > 0 ? (
+                    <img
+                      src={quickViewProperty.imagesRelation.find((img: any) => img.isCover)?.url || quickViewProperty.imagesRelation[0].url}
+                      alt={quickViewProperty.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : quickViewProperty.images ? (
+                    <img
+                      src={quickViewProperty.images.split(',')[0]}
+                      alt={quickViewProperty.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/20">
+                      <ImageIcon size={32} />
+                    </div>
+                  )}
+                </div>
+                
+                {quickViewProperty.imagesRelation && quickViewProperty.imagesRelation.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+                    {quickViewProperty.imagesRelation.map((img: any) => (
+                      <div key={img.id} className="w-14 h-14 bg-white/5 rounded border border-white/10 overflow-hidden shrink-0">
+                        <img src={img.url} alt="Thumbnail" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-3 gap-6 py-6 border-y border-white/5 text-center">
+              {/* Detailed Specs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-y border-white/5 text-center text-xs">
                 <div>
-                  <span className="text-[10px] uppercase tracking-widest text-white/40 block">Price</span>
-                  <span className="text-lg font-semibold text-[#D4AF37] mt-1 block">
-                    ${(quickViewProperty.price / 1000000).toFixed(1)}M
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block">Price</span>
+                  <span className="text-sm font-semibold text-[#D4AF37] mt-1 block">
+                    ${(quickViewProperty.price / 1000000).toFixed(2)}M
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase tracking-widest text-white/40 block">Bedrooms</span>
-                  <span className="text-lg text-white font-semibold mt-1 block">
-                    {quickViewProperty.bedrooms} Rooms
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block">Specs</span>
+                  <span className="text-sm text-white font-semibold mt-1 block">
+                    {quickViewProperty.bedrooms} Bed / {quickViewProperty.bathrooms || 1} Bath
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase tracking-widest text-white/40 block">Area</span>
-                  <span className="text-lg text-white font-semibold mt-1 block">
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block">Area</span>
+                  <span className="text-sm text-white font-semibold mt-1 block">
                     {quickViewProperty.area.toLocaleString()} Sq Ft
                   </span>
                 </div>
+                <div>
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block">Floor level</span>
+                  <span className="text-sm text-white font-semibold mt-1 block">
+                    Floor {quickViewProperty.floor}
+                  </span>
+                </div>
               </div>
+
+              {/* Description */}
+              {quickViewProperty.description && (
+                <div className="space-y-1.5">
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block font-semibold">Description</span>
+                  <p className="text-xs text-white/70 leading-relaxed font-light">
+                    {quickViewProperty.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Amenities */}
+              {quickViewProperty.amenities && quickViewProperty.amenities.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block font-semibold">Amenities</span>
+                  <div className="flex flex-wrap gap-2">
+                    {quickViewProperty.amenities.map((amenity) => (
+                      <span
+                        key={amenity}
+                        className="px-2.5 py-1 bg-white/5 border border-white/5 text-white/80 text-[10px] rounded"
+                      >
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Map View */}
+              {quickViewProperty.latitude && quickViewProperty.longitude && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 block font-semibold flex items-center gap-1">
+                      <MapIcon size={10} />
+                      <span>Property Location Marker</span>
+                    </span>
+                    <span className="text-[9px] text-white/30 font-mono">
+                      GPS: {quickViewProperty.latitude.toFixed(4)}, {quickViewProperty.longitude.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="h-[200px] rounded-lg overflow-hidden border border-white/5 relative z-10">
+                    <PropertyViewMap
+                      latitude={quickViewProperty.latitude}
+                      longitude={quickViewProperty.longitude}
+                      boundary={quickViewProperty.boundary || null}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-4">
                 <button

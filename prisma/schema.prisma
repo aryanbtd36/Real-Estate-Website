@@ -35,22 +35,48 @@ model AuthToken {
 
 
 model Property {
-  id           String          @id @default(uuid())
-  name         String
-  location     String
-  price        Float
-  bedrooms     Int
-  area         Float // in sq ft
-  floor        Int
-  availability String          @default("AVAILABLE") // "AVAILABLE", "SOLD", "RESERVED"
-  images       String // comma-separated image URLs or local fallback paths
-  floorPlan    String? // image URL
-  type         String          @default("Apartment") // Apartment, Villa, Penthouse, Duplex, Lot
-  views        Int             @default(0)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  appointments Appointment[]
-  savedBy      SavedProperty[]
+  id             String          @id @default(uuid())
+  name           String          // Treated as Title
+  description    String          @default("")
+  type           String          @default("Apartment") // Apartment, Villa, Penthouse, Duplex, Lot
+  category       String          @default("Buy") // Buy, Rent
+  price          Float
+  bedrooms       Int
+  bathrooms      Int             @default(1)
+  area           Float           // in sq ft
+  floor          Int
+  availability   String          @default("AVAILABLE") // "AVAILABLE", "SOLD", "RESERVED"
+  images         String          @default("") // Comma-separated list for backwards compatibility
+  floorPlan      String?         // image URL
+  views          Int             @default(0)
+  location       String          @default("") // Kept for backwards compatibility
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  appointments   Appointment[]
+  savedBy        SavedProperty[]
+
+  // New fields for Section 2A
+  state          String          @default("")
+  city           String          @default("")
+  address        String          @default("")
+  latitude       Float?
+  longitude      Float?
+  boundary       String?         // Stringified JSON representing polygon coordinates
+  amenities      String[]        // Scalar string list for PostgreSQL
+  featured       Boolean         @default(false)
+  imagesRelation PropertyImage[]
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  propertyId String
+  publicId   String   // Cloudinary Public ID
+  url        String   // Image URL
+  order      Int      @default(0) // Display Order
+  isCover    Boolean  @default(false) // Cover Image Flag
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
 model SavedProperty {

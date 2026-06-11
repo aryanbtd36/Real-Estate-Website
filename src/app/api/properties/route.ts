@@ -17,12 +17,14 @@ export async function GET(request: NextRequest) {
       }
       const property = await db.property.findUnique({
         where: { id },
+        include: { imagesRelation: true }
       });
       return NextResponse.json(property);
     }
 
     const properties = await db.property.findMany({
       orderBy: { price: 'desc' },
+      include: { imagesRelation: true }
     });
     return NextResponse.json(properties);
   } catch (error) {

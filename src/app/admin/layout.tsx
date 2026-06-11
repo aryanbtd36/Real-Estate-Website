@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { RoleService } from '@/lib/role';
 import { redirect } from 'next/navigation';
 
+import { AdminSidebar } from '@/components/admin-sidebar';
+
 export default async function AdminLayout({
   children,
 }: {
@@ -23,5 +25,12 @@ export default async function AdminLayout({
     redirect('/'); // Redirect non-admins to main home page
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col md:flex-row">
+      <AdminSidebar />
+      <main className="flex-1 p-6 sm:p-12 overflow-y-auto max-h-screen">
+        {children}
+      </main>
+    </div>
+  );
 }
