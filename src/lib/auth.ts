@@ -7,6 +7,8 @@ import { RoleService, resolveUserRole } from './role';
 import { verifyTurnstile } from './turnstile';
 
 export const authOptions: NextAuthOptions = {
+  // @ts-expect-error - Vercel compatibility
+  trustHost: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',

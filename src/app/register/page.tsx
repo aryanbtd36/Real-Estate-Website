@@ -288,6 +288,7 @@ export default function RegisterPage() {
           </div>
 
           <button
+            type="button"
             onClick={handleGoogleSignUp}
             className="w-full py-3.5 bg-[#161616] hover:bg-white/5 border border-white/10 rounded text-xs tracking-wider font-semibold text-white/95 transition-all duration-300 flex items-center justify-center gap-2"
           >
