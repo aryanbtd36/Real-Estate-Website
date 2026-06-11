@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface TurnstileProps {
   onVerify: (token: string) => void;
@@ -10,87 +10,76 @@ interface TurnstileProps {
 
 declare global {
   interface Window {
-    onloadTurnstileCallback?: () => void;
-    turnstile?: {
-      render: (
-        container: string | HTMLElement,
-        options: {
-          sitekey: string;
-          callback: (token: string) => void;
-          'expired-callback'?: () => void;
-          'error-callback'?: () => void;
-          theme?: 'light' | 'dark' | 'auto';
-        }
-      ) => string;
-      reset: (widgetId: string) => void;
-      remove: (widgetId: string) => void;
-    };
+    turnstile?: any;
   }
 }
 
 export function Turnstile({ onVerify, onExpire, onError }: TurnstileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    // Check if script is already added
-    let script = document.querySelector('script[src*="turnstile"]') as HTMLScriptElement;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
-    const initializeTurnstile = () => {
-      if (!window.turnstile || !containerRef.current) return;
+    const siteKey =
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ||
+      '0x4AAAAAADiOhwvRNdQFTEoP';
 
-      const siteKey =
-        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAADiOhwvRNdQFTEoP';
+    const loadScript = () => {
+      return new Promise<void>((resolve) => {
+        if (window.turnstile) return resolve();
 
-      try {
-        if (widgetIdRef.current) {
-          window.turnstile.remove(widgetIdRef.current);
+        const existing = document.querySelector(
+          'script[src*="turnstile"]'
+        ) as HTMLScriptElement | null;
+
+        if (existing) {
+          existing.onload = () => resolve();
+          return;
         }
 
-        widgetIdRef.current = window.turnstile.render(containerRef.current, {
-          sitekey: siteKey,
-          callback: onVerify,
-          'expired-callback': onExpire,
-          'error-callback': onError,
-          theme: 'dark',
-        });
-      } catch (err) {
-        console.error('Turnstile render error:', err);
-      }
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+
+        document.head.appendChild(script);
+      });
     };
 
-    if (!script) {
-      script = document.createElement('script');
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback';
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
+    const init = async () => {
+      await loadScript();
 
-      window.onloadTurnstileCallback = () => {
-        initializeTurnstile();
-      };
-    } else {
-      if (window.turnstile) {
-        initializeTurnstile();
-      } else {
-        const oldOnload = window.onloadTurnstileCallback;
-        window.onloadTurnstileCallback = () => {
-          if (oldOnload) oldOnload();
-          initializeTurnstile();
-        };
+      if (!window.turnstile || !containerRef.current) return;
+
+      if (widgetIdRef.current) {
+        try {
+          window.turnstile.remove(widgetIdRef.current);
+        } catch { }
       }
-    }
+
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: siteKey,
+        callback: onVerify,
+        'expired-callback': onExpire,
+        'error-callback': onError,
+        theme: 'dark',
+      });
+    };
+
+    init();
 
     return () => {
       if (widgetIdRef.current && window.turnstile) {
         try {
           window.turnstile.remove(widgetIdRef.current);
-        } catch (e) {
-          // Ignore unmount cleanup errors
-        }
+        } catch { }
       }
     };
-  }, [onVerify, onExpire, onError]);
+  }, []); // 🔥 IMPORTANT: EMPTY DEPENDENCY ARRAY
 
   return <div ref={containerRef} className="my-2" />;
 }
