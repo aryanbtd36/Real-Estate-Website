@@ -7,19 +7,69 @@ generator client {
   engineType = "library"
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ActivityAction {
+  LOGIN
+  LOGOUT
+  PROPERTY_VIEW
+  PROPERTY_SAVE
+  PROPERTY_UNSAVE
+  PROPERTY_CREATE
+  PROPERTY_UPDATE
+  PROPERTY_DELETE
+  INQUIRY_CREATE
+  INQUIRY_UPDATE
+  INQUIRY_DELETE
+  APPOINTMENT_CREATE
+  APPOINTMENT_UPDATE
+  APPOINTMENT_DELETE
+  USER_SUSPEND
+  USER_RESTORE
+  ROLE_PROMOTE
+  ROLE_REVOKE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  EMAIL_VERIFIED
+  SYSTEM_EVENT
+}
+
+enum NotificationType {
+  INQUIRY
+  APPOINTMENT
+  PROPERTY
+  SECURITY
+  USER_ACTION
+  SYSTEM
+}
+
 model User {
-  id              String          @id @default(uuid())
-  name            String?
-  email           String          @unique
-  phone           String?
-  password        String?
-  role            String          @default("USER") // "USER", "ADMIN"
-  emailVerified   DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  appointments    Appointment[]
-  savedProperties SavedProperty[]
-  authTokens      AuthToken[]
+  id                String          @id @default(uuid())
+  name              String?
+  email             String          @unique
+  phone             String?
+  password          String?
+  role              String          @default("USER") // "USER", "ADMIN"
+  emailVerified     DateTime?
+  status            UserStatus      @default(ACTIVE)
+  lastLogin         DateTime?
+  lastActivity      DateTime?
+  deletedAt         DateTime?       // Prepared for soft delete
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  appointments      Appointment[]
+  savedProperties   SavedProperty[]
+  authTokens        AuthToken[]
+  
+  // Relations for Actor/Target Activity Logging
+  actedActivities   ActivityLog[]   @relation("ActorRelation")
+  targetActivities  ActivityLog[]   @relation("TargetRelation")
+  
+  notifications     Notification[]
+  propertyViews     PropertyView[]
 }
 
 model AuthToken {
@@ -32,7 +82,6 @@ model AuthToken {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
 
 model Property {
   id             String          @id @default(uuid())
@@ -65,6 +114,7 @@ model Property {
   amenities      String[]        // Scalar string list for PostgreSQL
   featured       Boolean         @default(false)
   imagesRelation PropertyImage[]
+  propertyViews  PropertyView[]
 }
 
 model PropertyImage {
@@ -123,4 +173,50 @@ model Lead {
   message   String
   status    String   @default("PENDING") // "PENDING", "CONTACTED"
   createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id            String         @id @default(uuid())
+  actorId       String?
+  actor         User?          @relation("ActorRelation", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUserId  String?
+  targetUser    User?          @relation("TargetRelation", fields: [targetUserId], references: [id], onDelete: SetNull)
+  action        ActivityAction
+  description   String
+  details       Json?
+  createdAt     DateTime       @default(now())
+
+  @@index([actorId])
+  @@index([targetUserId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String
+  title       String
+  message     String
+  type        NotificationType
+  read        Boolean          @default(false)
+  link        String?
+  createdAt   DateTime         @default(now())
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model PropertyView {
+  id          String   @id @default(uuid())
+  userId      String?
+  propertyId  String
+  viewedAt    DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([userId])
+  @@index([viewedAt])
 }

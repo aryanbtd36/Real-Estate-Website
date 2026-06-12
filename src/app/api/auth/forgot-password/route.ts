@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { TokenService } from '@/lib/token';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function POST(req: Request) {
   try {
@@ -27,12 +28,18 @@ export async function POST(req: Request) {
       where: { email },
     });
 
-    if (user) {
+    if (user && user.deletedAt === null) {
       // 3. Generate password reset token (expires in 60 minutes)
       const token = await TokenService.createToken(user.id, 'RESET_PASSWORD', 60);
       
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
       const resetLink = `${baseUrl}/reset-password?token=${token.token}`;
+
+      // Emit decoupled event
+      eventEmitter.emit(EVENTS.PASSWORD_RESET_REQUESTED, {
+        userId: user.id,
+        email: user.email,
+      });
 
       // 4. Send reset email
       try {
@@ -46,7 +53,6 @@ export async function POST(req: Request) {
         });
       } catch (mailErr) {
         console.error('Failed to dispatch password reset email:', mailErr);
-        // Do not throw in dev if mailing fails, but in production this will fail-hard inside mail.ts
       }
     }
 

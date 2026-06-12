@@ -21,9 +21,11 @@ export function AdminSidebar() {
 
   const navigationItems = [
     { href: '/admin', name: 'Dashboard stats', icon: LayoutDashboard, exact: true },
+    { href: '/admin/users', name: 'Client CRM', icon: UsersIcon, exact: false },
     { href: '/admin/properties', name: 'Manage residences', icon: Building, exact: false },
     { href: '/admin/appointments', name: 'Visits manager', icon: Calendar, exact: false },
     { href: '/admin/inquiries', name: 'Concierge leads', icon: Mail, exact: false },
+    { href: '/admin/audit-logs', name: 'Audit logs', icon: Clock, exact: false },
   ];
 
   const isActive = (item: typeof navigationItems[0]) => {

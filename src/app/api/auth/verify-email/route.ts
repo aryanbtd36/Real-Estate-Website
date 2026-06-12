@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { TokenService } from '@/lib/token';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -15,8 +16,8 @@ export async function GET(req: NextRequest) {
     // 1. Verify verification token
     const user = await TokenService.validateAndUseToken(token, 'VERIFY_EMAIL');
     
-    if (!user) {
-      console.warn(`[SECURITY MONITOR] Email verification failed: invalid or expired token "${token}"`);
+    if (!user || user.deletedAt !== null) {
+      console.warn(`[SECURITY MONITOR] Email verification failed: invalid, expired, or deleted account token "${token}"`);
       return NextResponse.redirect(`${baseUrl}/login?verify-error=true`);
     }
 
@@ -24,6 +25,12 @@ export async function GET(req: NextRequest) {
     await db.user.update({
       where: { id: user.id },
       data: { emailVerified: new Date() },
+    });
+
+    // Emit decoupled event
+    eventEmitter.emit(EVENTS.EMAIL_VERIFIED, {
+      userId: user.id,
+      email: user.email,
     });
 
     console.log(`[SECURITY MONITOR] Email verified successfully for user: ${user.email}`);

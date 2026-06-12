@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function GET() {
   try {
@@ -61,7 +62,20 @@ export async function PUT(req: Request) {
       include: { property: true, user: true },
     });
 
-    // Import mail helpers
+    // Logging & Notification (Decoupled events emit)
+    const adminId = (session?.user as any)?.id;
+    eventEmitter.emit(EVENTS.APPOINTMENT_UPDATED, {
+      actorId: adminId,
+      targetUserId: updated.userId,
+      appointmentId: id,
+      propertyName: updated.property.name,
+      clientName: updated.name,
+      status,
+      date: updated.date,
+      time: updated.time,
+    });
+
+    // Import mail helpers (kept inline for dynamic/non-blocking resolve)
     const { sendEmail, generateGoogleCalendarLink } = await import('@/lib/mail');
 
     // Send status update emails

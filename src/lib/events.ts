@@ -1,0 +1,342 @@
+import { EventEmitter } from 'events';
+import { db } from './db';
+import { ActivityService } from './activity';
+import { NotificationService } from './notification';
+import { ActivityAction, NotificationType } from '@prisma/client';
+
+export const eventEmitter = new EventEmitter();
+
+// Centralized Event Constants
+export const EVENTS = {
+  LOGIN_SUCCESS: 'LOGIN_SUCCESS',
+  PROPERTY_VIEWED: 'PROPERTY_VIEWED',
+  PROPERTY_SAVED: 'PROPERTY_SAVED',
+  PROPERTY_UNSAVED: 'PROPERTY_UNSAVED',
+  INQUIRY_CREATED: 'INQUIRY_CREATED',
+  INQUIRY_UPDATED: 'INQUIRY_UPDATED',
+  INQUIRY_DELETED: 'INQUIRY_DELETED',
+  APPOINTMENT_CREATED: 'APPOINTMENT_CREATED',
+  APPOINTMENT_UPDATED: 'APPOINTMENT_UPDATED',
+  USER_SUSPENDED: 'USER_SUSPENDED',
+  USER_RESTORED: 'USER_RESTORED',
+  ROLE_PROMOTED: 'ROLE_PROMOTED',
+  ROLE_REVOKED: 'ROLE_REVOKED',
+  PASSWORD_RESET_REQUESTED: 'PASSWORD_RESET_REQUESTED',
+  PASSWORD_RESET_COMPLETED: 'PASSWORD_RESET_COMPLETED',
+  EMAIL_VERIFIED: 'EMAIL_VERIFIED',
+  SYSTEM_EVENT: 'SYSTEM_EVENT',
+};
+
+// --- Decoupled Side Effect Event Listeners ---
+
+// Helper to wrap listener execution in try-catch to keep APIs resilient
+function safeListener(handler: (...args: any[]) => Promise<any>) {
+  return async (...args: any[]) => {
+    try {
+      await handler(...args);
+    } catch (err) {
+      console.error('[Event System] Error in listener execution:', err);
+    }
+  };
+}
+
+// 1. Login Success Listener
+eventEmitter.on(
+  EVENTS.LOGIN_SUCCESS,
+  safeListener(async ({ userId, provider }: { userId: string; provider?: string }) => {
+    await db.user.update({
+      where: { id: userId },
+      data: { lastLogin: new Date() },
+    });
+
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.LOGIN,
+      description: `User logged in successfully via ${provider || 'credentials'}`,
+      details: { provider },
+    });
+  })
+);
+
+// 2. Property Viewed Listener
+eventEmitter.on(
+  EVENTS.PROPERTY_VIEWED,
+  safeListener(async ({ userId, propertyId, propertyName }: { userId?: string | null; propertyId: string; propertyName: string }) => {
+    // Write view record to PropertyView table (Analytics)
+    await db.propertyView.create({
+      data: {
+        propertyId,
+        userId: userId || null,
+      },
+    });
+
+    // Write audit log if user is logged in
+    if (userId) {
+      await ActivityService.log({
+        actorId: userId,
+        action: ActivityAction.PROPERTY_VIEW,
+        description: `Viewed property "${propertyName}"`,
+        details: { propertyId, propertyName },
+      });
+    }
+  })
+);
+
+// 3. Property Saved Listener
+eventEmitter.on(
+  EVENTS.PROPERTY_SAVED,
+  safeListener(async ({ userId, propertyId, propertyName }: { userId: string; propertyId: string; propertyName: string }) => {
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.PROPERTY_SAVE,
+      description: `Saved property "${propertyName}"`,
+      details: { propertyId, propertyName },
+    });
+  })
+);
+
+// 4. Property Unsaved Listener
+eventEmitter.on(
+  EVENTS.PROPERTY_UNSAVED,
+  safeListener(async ({ userId, propertyId, propertyName }: { userId: string; propertyId: string; propertyName: string }) => {
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.PROPERTY_UNSAVE,
+      description: `Unsaved property "${propertyName}"`,
+      details: { propertyId, propertyName },
+    });
+  })
+);
+
+// 5. Inquiry Created Listener
+eventEmitter.on(
+  EVENTS.INQUIRY_CREATED,
+  safeListener(async ({ userId, leadId, name, email, message }: { userId?: string | null; leadId: string; name: string; email: string; message: string }) => {
+    // Log activity
+    await ActivityService.log({
+      actorId: userId || null,
+      action: ActivityAction.INQUIRY_CREATE,
+      description: `Inquiry submitted by ${name} (${email})`,
+      details: { leadId, name, email, messageSnippet: message.substring(0, 100) },
+    });
+
+    // Notify administrators (bulk optimization used inside notifyAdmins)
+    await NotificationService.notifyAdmins({
+      title: 'New Concierge Inquiry',
+      message: `Inquiry from ${name}: "${message.substring(0, 60)}${message.length > 60 ? '...' : ''}"`,
+      type: NotificationType.INQUIRY,
+      link: '/admin/inquiries',
+    });
+  })
+);
+
+// 6. Inquiry Updated Listener
+eventEmitter.on(
+  EVENTS.INQUIRY_UPDATED,
+  safeListener(async ({ actorId, leadId, name, email, previousStatus, newStatus }: { actorId: string; leadId: string; name: string; email: string; previousStatus: string; newStatus: string }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.INQUIRY_UPDATE,
+      description: `Inquiry status updated to ${newStatus} for ${name}`,
+      details: { leadId, previousStatus, newStatus },
+    });
+
+    // Notify user if email is registered
+    const user = await db.user.findUnique({ where: { email } });
+    if (user) {
+      await NotificationService.create({
+        userId: user.id,
+        title: 'Inquiry Status Updated',
+        message: `Your concierge inquiry status has been updated to "${newStatus}".`,
+        type: NotificationType.INQUIRY,
+      });
+    }
+  })
+);
+
+// 7. Inquiry Deleted Listener
+eventEmitter.on(
+  EVENTS.INQUIRY_DELETED,
+  safeListener(async ({ actorId, leadId, name, email }: { actorId: string; leadId: string; name: string; email: string }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.INQUIRY_DELETE,
+      description: `Deleted inquiry from ${name} (${email})`,
+      details: { leadId, name, email },
+    });
+  })
+);
+
+// 8. Appointment Created Listener
+eventEmitter.on(
+  EVENTS.APPOINTMENT_CREATED,
+  safeListener(async ({ userId, appointmentId, propertyId, propertyName, name, date, time }: { userId: string; appointmentId: string; propertyId: string; propertyName: string; name: string; date: string; time: string }) => {
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.APPOINTMENT_CREATE,
+      description: `Scheduled viewing for property "${propertyName}" on ${date} at ${time}`,
+      details: { appointmentId, propertyId, date, time },
+    });
+
+    await NotificationService.notifyAdmins({
+      title: 'New Property Visit Scheduled',
+      message: `${name} scheduled viewing of "${propertyName}" on ${date} at ${time}.`,
+      type: NotificationType.APPOINTMENT,
+      link: '/admin/appointments',
+    });
+  })
+);
+
+// 9. Appointment Updated Listener
+eventEmitter.on(
+  EVENTS.APPOINTMENT_UPDATED,
+  safeListener(async ({ actorId, targetUserId, appointmentId, propertyName, clientName, status, date, time }: { actorId: string; targetUserId: string; appointmentId: string; propertyName: string; clientName: string; status: string; date: string; time: string }) => {
+    await ActivityService.log({
+      actorId,
+      targetUserId,
+      action: ActivityAction.APPOINTMENT_UPDATE,
+      description: `Updated appointment status to ${status} for ${clientName} (Property: ${propertyName})`,
+      details: { appointmentId, status, date, time },
+    });
+
+    // Notify client user
+    let notifyMessage = '';
+    if (status === 'APPROVED' || status === 'CONFIRMED') {
+      notifyMessage = `Your private viewing of "${propertyName}" is confirmed for ${date} at ${time}.`;
+    } else if (status === 'REJECTED' || status === 'CANCELLED') {
+      notifyMessage = `Your private viewing request for "${propertyName}" has been declined or cancelled.`;
+    } else if (status === 'RESCHEDULED') {
+      notifyMessage = `Your private viewing of "${propertyName}" has been rescheduled to ${date} at ${time}.`;
+    }
+
+    if (notifyMessage) {
+      await NotificationService.create({
+        userId: targetUserId,
+        title: `Property Viewing Update: ${status}`,
+        message: notifyMessage,
+        type: NotificationType.APPOINTMENT,
+        link: '/dashboard',
+      });
+    }
+  })
+);
+
+// 10. User Suspended Listener
+eventEmitter.on(
+  EVENTS.USER_SUSPENDED,
+  safeListener(async ({ actorId, targetUserId, targetEmail }: { actorId: string; targetUserId: string; targetEmail: string }) => {
+    await ActivityService.log({
+      actorId,
+      targetUserId,
+      action: ActivityAction.USER_SUSPEND,
+      description: `Suspended user ${targetEmail}`,
+      details: { targetEmail },
+    });
+
+    await NotificationService.create({
+      userId: targetUserId,
+      title: 'Security Alert: Account Suspended',
+      message: 'Your AURA client account has been suspended by an administrator. Please contact concierge relations.',
+      type: NotificationType.SECURITY,
+    });
+  })
+);
+
+// 11. User Restored Listener
+eventEmitter.on(
+  EVENTS.USER_RESTORED,
+  safeListener(async ({ actorId, targetUserId, targetEmail }: { actorId: string; targetUserId: string; targetEmail: string }) => {
+    await ActivityService.log({
+      actorId,
+      targetUserId,
+      action: ActivityAction.USER_RESTORE,
+      description: `Restored user ${targetEmail}`,
+      details: { targetEmail },
+    });
+
+    await NotificationService.create({
+      userId: targetUserId,
+      title: 'Account Access Restored',
+      message: 'Your AURA client account has been successfully restored. You now have full platform privileges.',
+      type: NotificationType.SECURITY,
+    });
+  })
+);
+
+// 12. Role Promoted Listener
+eventEmitter.on(
+  EVENTS.ROLE_PROMOTED,
+  safeListener(async ({ actorId, targetUserId, targetEmail, previousRole }: { actorId: string; targetUserId: string; targetEmail: string; previousRole: string }) => {
+    await ActivityService.log({
+      actorId,
+      targetUserId,
+      action: ActivityAction.ROLE_PROMOTE,
+      description: `Promoted user ${targetEmail} to Admin`,
+      details: { previousRole, newRole: 'ADMIN' },
+    });
+
+    await NotificationService.create({
+      userId: targetUserId,
+      title: 'Role Update: Promoted to Admin',
+      message: 'You have been promoted to the system Administrator group. Please sign out and sign back in to apply privileges.',
+      type: NotificationType.SECURITY,
+    });
+  })
+);
+
+// 13. Role Revoked Listener
+eventEmitter.on(
+  EVENTS.ROLE_REVOKED,
+  safeListener(async ({ actorId, targetUserId, targetEmail, previousRole }: { actorId: string; targetUserId: string; targetEmail: string; previousRole: string }) => {
+    await ActivityService.log({
+      actorId,
+      targetUserId,
+      action: ActivityAction.ROLE_REVOKE,
+      description: `Revoked Admin role from ${targetEmail}`,
+      details: { previousRole, newRole: 'USER' },
+    });
+
+    await NotificationService.create({
+      userId: targetUserId,
+      title: 'Role Update: Privileges Revoked',
+      message: 'Your system administrator privileges have been revoked by an administrator.',
+      type: NotificationType.SECURITY,
+    });
+  })
+);
+
+// 14. Password Reset Requested Listener
+eventEmitter.on(
+  EVENTS.PASSWORD_RESET_REQUESTED,
+  safeListener(async ({ userId, email }: { userId: string; email: string }) => {
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.PASSWORD_RESET_REQUEST,
+      description: `Requested password reset link for user: ${email}`,
+    });
+  })
+);
+
+// 15. Password Reset Completed Listener
+eventEmitter.on(
+  EVENTS.PASSWORD_RESET_COMPLETED,
+  safeListener(async ({ userId, email }: { userId: string; email: string }) => {
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.PASSWORD_RESET_COMPLETE,
+      description: `Successfully reset password for user: ${email}`,
+    });
+  })
+);
+
+// 16. Email Verified Listener
+eventEmitter.on(
+  EVENTS.EMAIL_VERIFIED,
+  safeListener(async ({ userId, email }: { userId: string; email: string }) => {
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.EMAIL_VERIFIED,
+      description: `Email verified successfully for user: ${email}`,
+    });
+  })
+);

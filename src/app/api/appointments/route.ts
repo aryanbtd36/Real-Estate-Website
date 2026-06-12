@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
 import { verifyTurnstile } from '@/lib/turnstile';
 import bcrypt from 'bcryptjs';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function POST(req: Request) {
   try {
@@ -63,6 +64,17 @@ export async function POST(req: Request) {
         specialRequests,
         status: 'PENDING',
       },
+    });
+
+    // Logging & Admin Notification (Decoupled side effects)
+    eventEmitter.emit(EVENTS.APPOINTMENT_CREATED, {
+      userId,
+      appointmentId: appointment.id,
+      propertyId,
+      propertyName: property?.name || 'Residence',
+      name,
+      date,
+      time,
     });
 
     // Mark corresponding slot as booked if configured

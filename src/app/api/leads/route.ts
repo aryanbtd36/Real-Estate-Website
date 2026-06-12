@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 // Submit inquiry (public)
 export async function POST(req: Request) {
@@ -32,6 +33,18 @@ export async function POST(req: Request) {
         message,
         status: 'PENDING'
       }
+    });
+
+    // Logging & Notification (Decoupled side effects)
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    
+    eventEmitter.emit(EVENTS.INQUIRY_CREATED, {
+      userId,
+      leadId: lead.id,
+      name,
+      email,
+      message,
     });
 
     // Send a luxury themed thank you email to the user (non-blocking)
@@ -91,9 +104,25 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Missing lead ID or status' }, { status: 400 });
     }
 
+    const lead = await db.lead.findUnique({ where: { id } });
+    if (!lead) {
+      return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 });
+    }
+
     const updated = await db.lead.update({
       where: { id },
       data: { status }
+    });
+
+    // Logging & Notification (Decoupled side effects)
+    const actorId = (session?.user as any)?.id;
+    eventEmitter.emit(EVENTS.INQUIRY_UPDATED, {
+      actorId,
+      leadId: id,
+      name: updated.name,
+      email: updated.email,
+      previousStatus: lead.status,
+      newStatus: status,
     });
 
     return NextResponse.json({ success: true, lead: updated });
@@ -120,8 +149,22 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Missing lead ID' }, { status: 400 });
     }
 
+    const lead = await db.lead.findUnique({ where: { id } });
+    if (!lead) {
+      return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 });
+    }
+
     await db.lead.delete({
       where: { id }
+    });
+
+    // Logging (Decoupled side effects)
+    const actorId = (session?.user as any)?.id;
+    eventEmitter.emit(EVENTS.INQUIRY_DELETED, {
+      actorId,
+      leadId: id,
+      name: lead.name,
+      email: lead.email,
     });
 
     return NextResponse.json({ success: true });

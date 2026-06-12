@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,8 +16,20 @@ export async function GET(request: NextRequest) {
           where: { id },
           data: { views: { increment: 1 } },
         });
+
+        // Emit view event to decouple side-effects
+        const session = await getServerSession(authOptions);
+        const userId = (session?.user as any)?.id;
+
+        eventEmitter.emit(EVENTS.PROPERTY_VIEWED, {
+          userId,
+          propertyId: id,
+          propertyName: updated.name,
+        });
+
         return NextResponse.json(updated);
       }
+      
       const property = await db.property.findUnique({
         where: { id },
         include: { imagesRelation: true }

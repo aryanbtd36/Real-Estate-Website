@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { TokenService } from '@/lib/token';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function POST(req: Request) {
   try {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
 
     // 2. Validate reset token via token service (expiration, used flag, and token type checked)
     const user = await TokenService.validateAndUseToken(token, 'RESET_PASSWORD');
-    if (!user) {
+    if (!user || user.deletedAt !== null) {
       return NextResponse.json(
         { error: 'Invalid or expired password reset link.' },
         { status: 400 }
@@ -39,6 +40,12 @@ export async function POST(req: Request) {
     await db.user.update({
       where: { id: user.id },
       data: { password: hashedPassword },
+    });
+
+    // Emit decoupled event
+    eventEmitter.emit(EVENTS.PASSWORD_RESET_COMPLETED, {
+      userId: user.id,
+      email: user.email,
     });
 
     // 5. Send password changed confirmation email

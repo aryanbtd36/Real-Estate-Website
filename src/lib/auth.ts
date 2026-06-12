@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { db } from './db';
 import { RoleService, resolveUserRole } from './role';
 import { verifyTurnstile } from './turnstile';
+import { eventEmitter, EVENTS } from './events';
 
 export const authOptions: NextAuthOptions = {
   // @ts-expect-error - Vercel compatibility
@@ -39,6 +40,11 @@ export const authOptions: NextAuthOptions = {
 
         if (!user) {
           return null;
+        }
+
+        // Block soft-deleted users
+        if (user.deletedAt) {
+          throw new Error('UserAccountDeleted');
         }
 
         // 3. Google OAuth Transition Check
@@ -109,6 +115,12 @@ export const authOptions: NextAuthOptions = {
             where: { email },
           });
 
+          // Block soft-deleted users
+          if (dbUser?.deletedAt) {
+            console.warn(`[SECURITY MONITOR] Blocked Google sign-in for soft-deleted account: ${email}`);
+            return false;
+          }
+
           if (!dbUser) {
             // User creation: resolve role using resolveUserRole helper
             const initialRole = resolveUserRole(email, 'USER');
@@ -160,6 +172,18 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).emailVerified = token.emailVerified;
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user, account }) {
+      try {
+        eventEmitter.emit(EVENTS.LOGIN_SUCCESS, {
+          userId: user.id,
+          provider: account?.provider || 'credentials',
+        });
+      } catch (err) {
+        console.error('Failed to log signin event:', err);
+      }
     },
   },
   pages: {

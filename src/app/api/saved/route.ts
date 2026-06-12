@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function GET() {
   try {
@@ -45,12 +46,26 @@ export async function POST(req: Request) {
       },
     });
 
+    const property = await db.property.findUnique({
+      where: { id: propertyId },
+      select: { name: true }
+    });
+    const propertyName = property?.name || 'Property';
+
     if (existing) {
       await db.savedProperty.delete({
         where: {
           id: existing.id,
         },
       });
+      
+      // Emit event
+      eventEmitter.emit(EVENTS.PROPERTY_UNSAVED, {
+        userId,
+        propertyId,
+        propertyName,
+      });
+
       return NextResponse.json({ saved: false });
     } else {
       await db.savedProperty.create({
@@ -59,6 +74,14 @@ export async function POST(req: Request) {
           propertyId,
         },
       });
+
+      // Emit event
+      eventEmitter.emit(EVENTS.PROPERTY_SAVED, {
+        userId,
+        propertyId,
+        propertyName,
+      });
+
       return NextResponse.json({ saved: true });
     }
   } catch (error) {
