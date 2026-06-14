@@ -25,6 +25,9 @@ export const EVENTS = {
   PASSWORD_RESET_COMPLETED: 'PASSWORD_RESET_COMPLETED',
   EMAIL_VERIFIED: 'EMAIL_VERIFIED',
   SYSTEM_EVENT: 'SYSTEM_EVENT',
+  PROPERTY_PUBLISHED: 'PROPERTY_PUBLISHED',
+  PROPERTY_ARCHIVED: 'PROPERTY_ARCHIVED',
+  PROPERTY_RESTORED: 'PROPERTY_RESTORED',
 };
 
 // --- Decoupled Side Effect Event Listeners ---
@@ -337,6 +340,66 @@ eventEmitter.on(
       actorId: userId,
       action: ActivityAction.EMAIL_VERIFIED,
       description: `Email verified successfully for user: ${email}`,
+    });
+  })
+);
+
+// 17. Property Published Listener
+eventEmitter.on(
+  EVENTS.PROPERTY_PUBLISHED,
+  safeListener(async ({ actorId, propertyId, propertyName }: { actorId: string; propertyId: string; propertyName: string }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.PROPERTY_PUBLISH,
+      description: `Property "${propertyName}" was published successfully`,
+      details: { propertyId, propertyName },
+    });
+
+    await NotificationService.notifyAdmins({
+      title: 'Property Published',
+      message: `Property "${propertyName}" has been published and is now live.`,
+      type: NotificationType.PROPERTY,
+      link: '/admin/properties',
+    });
+  })
+);
+
+// 18. Property Archived Listener
+eventEmitter.on(
+  EVENTS.PROPERTY_ARCHIVED,
+  safeListener(async ({ actorId, propertyId, propertyName }: { actorId: string; propertyId: string; propertyName: string }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.PROPERTY_ARCHIVE,
+      description: `Property "${propertyName}" was archived`,
+      details: { propertyId, propertyName },
+    });
+
+    await NotificationService.notifyAdmins({
+      title: 'Property Archived',
+      message: `Property "${propertyName}" was archived by an administrator.`,
+      type: NotificationType.PROPERTY,
+      link: '/admin/properties',
+    });
+  })
+);
+
+// 19. Property Restored Listener
+eventEmitter.on(
+  EVENTS.PROPERTY_RESTORED,
+  safeListener(async ({ actorId, propertyId, propertyName }: { actorId: string; propertyId: string; propertyName: string }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.PROPERTY_RESTORE,
+      description: `Property "${propertyName}" was restored from archive`,
+      details: { propertyId, propertyName },
+    });
+
+    await NotificationService.notifyAdmins({
+      title: 'Property Restored',
+      message: `Property "${propertyName}" was restored from archives to draft.`,
+      type: NotificationType.PROPERTY,
+      link: '/admin/properties',
     });
   })
 );

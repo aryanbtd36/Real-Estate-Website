@@ -21,6 +21,9 @@ enum ActivityAction {
   PROPERTY_CREATE
   PROPERTY_UPDATE
   PROPERTY_DELETE
+  PROPERTY_PUBLISH
+  PROPERTY_ARCHIVE
+  PROPERTY_RESTORE
   INQUIRY_CREATE
   INQUIRY_UPDATE
   INQUIRY_DELETE
@@ -70,6 +73,7 @@ model User {
   
   notifications     Notification[]
   propertyViews     PropertyView[]
+  priceHistoryChanges PropertyPriceHistory[] @relation("PriceChangedBy")
 }
 
 model AuthToken {
@@ -115,6 +119,14 @@ model Property {
   featured       Boolean         @default(false)
   imagesRelation PropertyImage[]
   propertyViews  PropertyView[]
+
+  // Fields for Wave 1
+  status         PropertyStatus  @default(DRAFT)
+  videoUrl       String?
+  brochureUrl    String?
+  virtualTourUrl String?
+  boundaryZones  Json?
+  priceHistories PropertyPriceHistory[]
 }
 
 model PropertyImage {
@@ -219,4 +231,24 @@ model PropertyView {
   @@index([propertyId])
   @@index([userId])
   @@index([viewedAt])
+}
+
+enum PropertyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model PropertyPriceHistory {
+  id          String   @id @default(uuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  oldPrice    Float
+  newPrice    Float
+  changedById String?
+  changedBy   User?    @relation("PriceChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([propertyId])
+  @@index([createdAt])
 }

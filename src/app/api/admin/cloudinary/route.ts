@@ -26,14 +26,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    // Validate file type (Images, Videos, PDF Brochure)
+    const isValidImage = file.type.startsWith('image/');
+    const isValidVideo = file.type.startsWith('video/');
+    const isValidPDF = file.type === 'application/pdf';
+
+    if (!isValidImage && !isValidVideo && !isValidPDF) {
+      return NextResponse.json({ 
+        error: 'Invalid file format. Only images, videos (MP4/WEBM/MOV), and PDF brochures are supported.' 
+      }, { status: 400 });
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Cloudinary using upload_stream
+    // Upload to Cloudinary using upload_stream with auto resource type detection
     const uploadResult = await new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'aura_estates',
+          resource_type: 'auto',
         },
         (error, result) => {
           if (error) reject(error);
@@ -49,7 +61,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Cloudinary upload error:', error);
-    return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
   }
 }
 

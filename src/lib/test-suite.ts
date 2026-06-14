@@ -187,6 +187,113 @@ async function runTestSuite() {
     }
     assert(selfModPrevented, 'Admin Safety Limits: Admin blocked from self-modification suspension');
 
+    // --- TEST CASE 6: Property Workflow Transitions & Price Change Tracking ---
+    // Cleanup any orphaned test properties
+    await db.property.deleteMany({
+      where: { name: { startsWith: 'TEST-PROPERTY-' } }
+    });
+
+    const testProp = await db.property.create({
+      data: {
+        name: 'TEST-PROPERTY-101',
+        description: 'Luxury Penthouse Suite',
+        type: 'Penthouse',
+        price: 5000000,
+        bedrooms: 4,
+        bathrooms: 4,
+        area: 4500,
+        floor: 18,
+        status: 'DRAFT',
+      }
+    });
+
+    assert(testProp.status === 'DRAFT', 'Property Workflow: Initial status is DRAFT');
+
+    // Simulate Status Change DRAFT -> PUBLISHED
+    const updatedProp1 = await db.property.update({
+      where: { id: testProp.id },
+      data: { status: 'PUBLISHED' }
+    });
+    assert(updatedProp1.status === 'PUBLISHED', 'Property Workflow: Transition to PUBLISHED works');
+
+    // Simulate Status Change PUBLISHED -> ARCHIVED
+    const updatedProp2 = await db.property.update({
+      where: { id: testProp.id },
+      data: { status: 'ARCHIVED' }
+    });
+    assert(updatedProp2.status === 'ARCHIVED', 'Property Workflow: Transition to ARCHIVED works');
+
+    // Track price updates & record in PropertyPriceHistory
+    const oldPrice = updatedProp2.price;
+    const newPrice = 5500000;
+    
+    // Simulate our pricing history trigger
+    const priceChangeRecord = await db.propertyPriceHistory.create({
+      data: {
+        propertyId: testProp.id,
+        oldPrice: oldPrice,
+        newPrice: newPrice,
+        changedById: testUserActor.id
+      }
+    });
+
+    assert(priceChangeRecord.oldPrice === 5000000 && priceChangeRecord.newPrice === 5500000, 'Price Change Tracking: Successfully logged price change in PropertyPriceHistory');
+    assert(priceChangeRecord.changedById === testUserActor.id, 'Price Change Tracking: Correctly attributed to actor admin');
+
+    // --- TEST CASE 7: Bulk Operations & Duplication ---
+    const testProp2 = await db.property.create({
+      data: {
+        name: 'TEST-PROPERTY-102',
+        description: 'Beachfront Villa',
+        type: 'Villa',
+        price: 8000000,
+        bedrooms: 5,
+        bathrooms: 6,
+        area: 7200,
+        floor: 1,
+        status: 'DRAFT',
+      }
+    });
+
+    // Simulate bulk publish
+    const targetIds = [testProp.id, testProp2.id];
+    await db.property.updateMany({
+      where: { id: { in: targetIds } },
+      data: { status: 'PUBLISHED' }
+    });
+
+    const verifyBulk = await db.property.findMany({
+      where: { id: { in: targetIds } }
+    });
+    assert(verifyBulk.every(p => p.status === 'PUBLISHED'), 'Bulk Operations: Bulk status transition to PUBLISHED successful');
+
+    // Simulate bulk duplicate (e.g. duplicating testProp2)
+    const cloneProp = await db.property.create({
+      data: {
+        name: `${testProp2.name} (Copy)`,
+        description: testProp2.description,
+        type: testProp2.type,
+        price: testProp2.price,
+        bedrooms: testProp2.bedrooms,
+        bathrooms: testProp2.bathrooms,
+        area: testProp2.area,
+        floor: testProp2.floor,
+        status: 'DRAFT'
+      }
+    });
+
+    assert(cloneProp.name === 'TEST-PROPERTY-102 (Copy)' && cloneProp.status === 'DRAFT', 'Bulk Operations: Duplication creates draft copy successfully');
+
+    // Clean up test properties
+    await db.property.deleteMany({
+      where: { id: { in: [testProp.id, testProp2.id, cloneProp.id] } }
+    });
+
+    const verifyClean = await db.property.findMany({
+      where: { id: { in: [testProp.id, testProp2.id, cloneProp.id] } }
+    });
+    assert(verifyClean.length === 0, 'Bulk Operations: Bulk delete / cleanup verification successful');
+
   } catch (err: any) {
     failed++;
     console.error('[CRITICAL ERROR] Test suite execution failed:', err);

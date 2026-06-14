@@ -2,23 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import {
   Building,
   Plus,
   Search,
-  Filter,
   Trash2,
   Edit,
-  Check,
-  X,
   Sparkles,
-  DollarSign,
   Upload,
   ChevronUp,
   ChevronDown,
   Image as ImageIcon,
   MapPin,
-  Map as MapIcon
+  FileText,
+  Clock,
+  CheckCircle,
+  Copy,
+  History,
+  Video,
+  FileCheck,
+  Globe,
+  Settings,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -35,6 +41,10 @@ export default function AdminPropertiesPage() {
   const [propertyTypeFilter, setPropertyTypeFilter] = useState('ALL');
   const [availabilityFilter, setAvailabilityFilter] = useState('ALL');
   const [featuredFilter, setFeaturedFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Form State
   const [showForm, setShowForm] = useState(false);
@@ -58,7 +68,14 @@ export default function AdminPropertiesPage() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [boundary, setBoundary] = useState<string | null>(null);
+  const [boundaryZones, setBoundaryZones] = useState<string | null>(null);
   const [featured, setFeatured] = useState(false);
+  
+  // New fields for Wave 1
+  const [status, setStatus] = useState('DRAFT');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [brochureUrl, setBrochureUrl] = useState('');
+  const [virtualTourUrl, setVirtualTourUrl] = useState('');
 
   // Amenities checklist
   const availableAmenities = ['Parking', 'Swimming Pool', 'Security', 'Power Backup', 'Garden', 'Gym', 'Wine Cellar', 'Spa', 'Private Dock'];
@@ -103,7 +120,12 @@ export default function AdminPropertiesPage() {
     setLatitude(null);
     setLongitude(null);
     setBoundary(null);
+    setBoundaryZones(null);
     setFeatured(false);
+    setStatus('DRAFT');
+    setVideoUrl('');
+    setBrochureUrl('');
+    setVirtualTourUrl('');
     setSelectedAmenities([]);
     setImagesList([]);
     setShowForm(true);
@@ -127,7 +149,12 @@ export default function AdminPropertiesPage() {
     setLatitude(prop.latitude);
     setLongitude(prop.longitude);
     setBoundary(prop.boundary);
+    setBoundaryZones(prop.boundaryZones ? JSON.stringify(prop.boundaryZones) : null);
     setFeatured(prop.featured || false);
+    setStatus(prop.status || 'DRAFT');
+    setVideoUrl(prop.videoUrl || '');
+    setBrochureUrl(prop.brochureUrl || '');
+    setVirtualTourUrl(prop.virtualTourUrl || '');
     setSelectedAmenities(prop.amenities || []);
 
     // Load related images
@@ -174,7 +201,7 @@ export default function AdminPropertiesPage() {
                 publicId: data.publicId,
                 url: data.url,
                 order: nextOrder,
-                isCover: isFirst, // First image uploaded is set as cover by default
+                isCover: isFirst,
               },
             ];
           });
@@ -187,17 +214,46 @@ export default function AdminPropertiesPage() {
     setUploadLoading(false);
   };
 
+  // Media (Video / Brochure) upload handler
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'video' | 'brochure') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/admin/cloudinary', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (target === 'video') setVideoUrl(data.url);
+        if (target === 'brochure') setBrochureUrl(data.url);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to upload media.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Upload failed.');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
   // Delete image
   const handleDeleteImage = async (index: number, publicId: string) => {
     try {
-      // Clean from Cloudinary
       await fetch(`/api/admin/cloudinary?publicId=${encodeURIComponent(publicId)}`, {
         method: 'DELETE',
       });
 
       setImagesList((prev) => {
         const next = prev.filter((_, i) => i !== index);
-        // Recalculate order and covers
         return next.map((img, idx) => ({
           ...img,
           order: idx,
@@ -219,8 +275,6 @@ export default function AdminPropertiesPage() {
       const temp = updated[index];
       updated[index] = updated[nextIndex];
       updated[nextIndex] = temp;
-
-      // Reset orders
       return updated.map((img, idx) => ({ ...img, order: idx }));
     });
   };
@@ -260,9 +314,14 @@ export default function AdminPropertiesPage() {
       latitude,
       longitude,
       boundary,
+      boundaryZones: boundaryZones ? JSON.parse(boundaryZones) : null,
       amenities: selectedAmenities,
       featured,
       imagesList,
+      status,
+      videoUrl,
+      brochureUrl,
+      virtualTourUrl
     };
 
     try {
@@ -308,12 +367,11 @@ export default function AdminPropertiesPage() {
     }
   };
 
-  // Toggle quick parameters (sold/featured)
+  // Toggle quick parameters
   const handleQuickUpdate = async (id: string, updates: any) => {
     const property = properties.find(p => p.id === id);
     if (!property) return;
 
-    // Build complete body mimicking PUT API requirements
     const payload = {
       ...property,
       ...updates,
@@ -334,6 +392,76 @@ export default function AdminPropertiesPage() {
     }
   };
 
+  // Duplicate Action
+  const handleDuplicate = async (id: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/properties/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'duplicate', ids: [id] })
+      });
+      if (res.ok) {
+        fetchProperties();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to duplicate property.');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Bulk Operations
+  const handleBulkAction = async (action: 'publish' | 'archive' | 'feature' | 'unfeature' | 'delete') => {
+    if (selectedIds.length === 0) return;
+    if (action === 'delete' && !confirm(`Are you sure you want to delete the ${selectedIds.length} selected properties?`)) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/properties/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ids: selectedIds })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Bulk operation completed.\nSuccessfully modified: ${data.successCount}\nFailures: ${data.failedCount}`);
+        setSelectedIds([]);
+        fetchProperties();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Bulk operation failed.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network failure processing bulk operation.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Checkbox Selection Helpers
+  const handleSelectToggle = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllToggle = (filteredList: any[]) => {
+    const allFilteredIds = filteredList.map(p => p.id);
+    const areAllSelected = allFilteredIds.every(id => selectedIds.includes(id));
+
+    if (areAllSelected) {
+      setSelectedIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...allFilteredIds])]);
+    }
+  };
+
   // Filter listings
   const filteredProperties = properties.filter((prop) => {
     const matchesSearch = prop.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -341,8 +469,9 @@ export default function AdminPropertiesPage() {
     const matchesType = propertyTypeFilter === 'ALL' || prop.type === propertyTypeFilter;
     const matchesAvailability = availabilityFilter === 'ALL' || prop.availability === availabilityFilter;
     const matchesFeatured = featuredFilter === 'ALL' || (featuredFilter === 'FEATURED' ? prop.featured : !prop.featured);
+    const matchesStatus = statusFilter === 'ALL' || prop.status === statusFilter;
 
-    return matchesSearch && matchesCity && matchesType && matchesAvailability && matchesFeatured;
+    return matchesSearch && matchesCity && matchesType && matchesAvailability && matchesFeatured && matchesStatus;
   });
 
   if (loading) {
@@ -359,7 +488,7 @@ export default function AdminPropertiesPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold">Properties Management</span>
           <h1 className="text-3xl font-light tracking-tight mt-1">Manage Residences</h1>
@@ -404,8 +533,8 @@ export default function AdminPropertiesPage() {
               {/* Basic Info */}
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37] border-l-2 border-[#D4AF37] pl-2">Basic Information</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2 md:col-span-3">
                     <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Title / Name</label>
                     <input
                       type="text"
@@ -416,32 +545,45 @@ export default function AdminPropertiesPage() {
                       placeholder="The Amberwood Estate"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Type</label>
-                      <select
-                        value={type}
-                        onChange={(e) => setType(e.target.value)}
-                        className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
-                      >
-                        <option value="Apartment">Apartment</option>
-                        <option value="Villa">Villa</option>
-                        <option value="Penthouse">Penthouse</option>
-                        <option value="Duplex">Duplex</option>
-                        <option value="Lot">Estate Lot</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-widest text-white/40 block">Category</label>
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
-                      >
-                        <option value="Buy">For Sale</option>
-                        <option value="Rent">For Lease</option>
-                      </select>
-                    </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Type</label>
+                    <select
+                      value={type}
+                      onChange={(e) => setType(e.target.value)}
+                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="Apartment">Apartment</option>
+                      <option value="Villa">Villa</option>
+                      <option value="Penthouse">Penthouse</option>
+                      <option value="Duplex">Duplex</option>
+                      <option value="Lot">Estate Lot</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Category</label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="Buy">For Sale</option>
+                      <option value="Rent">For Lease</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Listing Status</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="w-full bg-[#0A0A0A] border border-[#D4AF37]/30 p-3 rounded-lg text-[#F5D67B] text-sm outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="DRAFT">Draft Mode</option>
+                      <option value="PUBLISHED">Published / Active</option>
+                      <option value="ARCHIVED">Archived / Hidden</option>
+                    </select>
                   </div>
                 </div>
 
@@ -452,7 +594,7 @@ export default function AdminPropertiesPage() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     className="w-full bg-[#0A0A0A] border border-white/10 p-3.5 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37] transition-colors resize-none leading-relaxed"
-                    placeholder="Provide a luxurious and detailed description outlining the residential spaces, layouts, architectural heritage, or panoramic vistas..."
+                    placeholder="Provide a luxurious description outlining layouts, finishes, architectural heritage..."
                   />
                 </div>
 
@@ -532,6 +674,80 @@ export default function AdminPropertiesPage() {
                 </div>
               </div>
 
+              {/* Media Enhancements */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37] border-l-2 border-[#D4AF37] pl-2">Media Enhancements</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-[#0A0A0A] border border-white/5 rounded-xl">
+                  
+                  {/* Video URL & Upload */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Showcase Video</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        className="flex-1 bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none"
+                        placeholder="Video stream URL (or upload below)"
+                      />
+                      <div className="relative shrink-0">
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={(e) => handleMediaUpload(e, 'video')}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploadLoading}
+                        />
+                        <button type="button" className="px-3 py-2.5 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white rounded text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                          <Video size={14} className="text-[#D4AF37]" />
+                          <span>Upload</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Brochure URL & Upload */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Brochure PDF</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={brochureUrl}
+                        onChange={(e) => setBrochureUrl(e.target.value)}
+                        className="flex-1 bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none"
+                        placeholder="Brochure PDF URL (or upload below)"
+                      />
+                      <div className="relative shrink-0">
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={(e) => handleMediaUpload(e, 'brochure')}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploadLoading}
+                        />
+                        <button type="button" className="px-3 py-2.5 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white rounded text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                          <FileCheck size={14} className="text-[#D4AF37]" />
+                          <span>Upload</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Virtual Tour URL */}
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">3D Virtual Tour Embed URL</label>
+                    <input
+                      type="text"
+                      value={virtualTourUrl}
+                      onChange={(e) => setVirtualTourUrl(e.target.value)}
+                      className="w-full bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                      placeholder="e.g. Matterport or 3D viewer frame address"
+                    />
+                  </div>
+
+                </div>
+              </div>
+
               {/* Amenities */}
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37] border-l-2 border-[#D4AF37] pl-2">Amenities</h4>
@@ -599,42 +815,19 @@ export default function AdminPropertiesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Latitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={latitude || ''}
-                      onChange={(e) => setLatitude(e.target.value ? parseFloat(e.target.value) : null)}
-                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
-                      placeholder="34.0736"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Longitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={longitude || ''}
-                      onChange={(e) => setLongitude(e.target.value ? parseFloat(e.target.value) : null)}
-                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
-                      placeholder="-118.4004"
-                    />
-                  </div>
-                </div>
-
                 {/* Leaflet Editor Component */}
                 <div className="pt-2">
                   <PropertyEditMap
                     latitude={latitude}
                     longitude={longitude}
                     boundary={boundary}
+                    boundaryZones={boundaryZones}
                     onChangeLocation={(lat, lng) => {
                       setLatitude(parseFloat(lat.toFixed(6)));
                       setLongitude(parseFloat(lng.toFixed(6)));
                     }}
                     onChangeBoundary={setBoundary}
+                    onChangeBoundaryZones={setBoundaryZones}
                   />
                 </div>
               </div>
@@ -746,7 +939,7 @@ export default function AdminPropertiesPage() {
           >
             {/* Search Filters */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#161616] p-4 rounded-xl border border-white/5 items-center">
-              <div className="relative md:col-span-4">
+              <div className="relative md:col-span-3">
                 <input
                   type="text"
                   placeholder="Search by title..."
@@ -757,7 +950,7 @@ export default function AdminPropertiesPage() {
                 <Search className="absolute left-3 top-3 text-white/40" size={14} />
               </div>
 
-              <div className="relative md:col-span-3">
+              <div className="relative md:col-span-2">
                 <input
                   type="text"
                   placeholder="Search by city..."
@@ -768,7 +961,7 @@ export default function AdminPropertiesPage() {
                 <MapPin className="absolute left-3 top-3 text-white/40" size={14} />
               </div>
 
-              <div className="grid grid-cols-3 gap-2 md:col-span-5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:col-span-7">
                 <select
                   value={propertyTypeFilter}
                   onChange={(e) => setPropertyTypeFilter(e.target.value)}
@@ -787,7 +980,7 @@ export default function AdminPropertiesPage() {
                   onChange={(e) => setAvailabilityFilter(e.target.value)}
                   className="bg-[#0A0A0A] border border-white/10 p-2.5 rounded-lg text-white text-[11px] outline-none cursor-pointer appearance-none text-center"
                 >
-                  <option value="ALL">All Status</option>
+                  <option value="ALL">All Avail.</option>
                   <option value="AVAILABLE">Available</option>
                   <option value="SOLD">Sold</option>
                 </select>
@@ -801,8 +994,73 @@ export default function AdminPropertiesPage() {
                   <option value="FEATURED">Featured</option>
                   <option value="REGULAR">Regular</option>
                 </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-[#0A0A0A] border border-white/10 p-2.5 rounded-lg text-white text-[11px] outline-none cursor-pointer appearance-none text-center"
+                >
+                  <option value="ALL">All Status</option>
+                  <option value="DRAFT">Drafts</option>
+                  <option value="PUBLISHED">Published</option>
+                  <option value="ARCHIVED">Archived</option>
+                </select>
               </div>
             </div>
+
+            {/* Bulk Action Toolbar */}
+            {selectedIds.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#1e170c] border border-[#d4af37]/30 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl"
+              >
+                <div className="flex items-center gap-2">
+                  <Settings className="text-[#D4AF37]" size={16} />
+                  <span className="text-xs text-[#F5D67B]">
+                    <strong>{selectedIds.length}</strong> listings selected
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <button
+                    onClick={() => handleBulkAction('publish')}
+                    className="px-3 py-1.5 bg-[#D4AF37]/10 hover:bg-[#D4AF37] border border-[#D4AF37]/30 text-[#F5D67B] hover:text-black text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
+                  >
+                    Bulk Publish
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('archive')}
+                    className="px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500 border border-yellow-500/30 text-yellow-400 hover:text-black text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
+                  >
+                    Bulk Archive
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('feature')}
+                    className="px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500 border border-cyan-500/30 text-cyan-400 hover:text-black text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
+                  >
+                    Bulk Feature
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('unfeature')}
+                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
+                  >
+                    Bulk Unfeature
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('delete')}
+                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 border border-red-500/30 text-red-400 hover:text-black text-[10px] font-bold uppercase tracking-wider rounded transition-colors"
+                  >
+                    Bulk Delete
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="px-2 py-1.5 text-white/45 hover:text-white text-[10px] uppercase font-bold"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             {/* List Table */}
             {filteredProperties.length === 0 ? (
@@ -815,17 +1073,34 @@ export default function AdminPropertiesPage() {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-[#1E1E1E] text-white/60 text-xs uppercase tracking-wider border-b border-white/5">
                       <tr>
+                        <th className="p-4 sm:p-6 w-12 text-center">
+                          <input
+                            type="checkbox"
+                            checked={filteredProperties.length > 0 && filteredProperties.every(p => selectedIds.includes(p.id))}
+                            onChange={() => handleSelectAllToggle(filteredProperties)}
+                            className="w-4 h-4 accent-[#D4AF37] cursor-pointer rounded"
+                          />
+                        </th>
                         <th className="p-4 sm:p-6">Residence</th>
                         <th className="p-4 sm:p-6">Type / Price</th>
-                        <th className="p-4 sm:p-6">Specifications</th>
+                        <th className="p-4 sm:p-6">Specs</th>
                         <th className="p-4 sm:p-6">Featured</th>
-                        <th className="p-4 sm:p-6">Status</th>
+                        <th className="p-4 sm:p-6">Avail.</th>
+                        <th className="p-4 sm:p-6">Workflow</th>
                         <th className="p-4 sm:p-6 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {filteredProperties.map((prop) => (
                         <tr key={prop.id} className="hover:bg-white/5 transition-colors">
+                          <td className="p-4 sm:p-6 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(prop.id)}
+                              onChange={() => handleSelectToggle(prop.id)}
+                              className="w-4 h-4 accent-[#D4AF37] cursor-pointer rounded"
+                            />
+                          </td>
                           <td className="p-4 sm:p-6">
                             <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-white/5 border border-white/5 rounded-lg overflow-hidden shrink-0 relative">
@@ -873,21 +1148,46 @@ export default function AdminPropertiesPage() {
                               {prop.availability}
                             </button>
                           </td>
+                          <td className="p-4 sm:p-6">
+                            <span className={`px-2 py-1 border text-[9px] uppercase font-bold rounded ${
+                              prop.status === 'PUBLISHED'
+                                ? 'border-green-500/20 bg-green-500/10 text-green-400'
+                                : prop.status === 'ARCHIVED'
+                                ? 'border-red-500/20 bg-red-500/10 text-red-400'
+                                : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-400'
+                            }`}>
+                              {prop.status || 'DRAFT'}
+                            </span>
+                          </td>
                           <td className="p-4 sm:p-6 text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => handleDuplicate(prop.id)}
+                                className="p-1.5 border border-white/5 hover:border-cyan-500/30 text-white/40 hover:text-cyan-400 rounded"
+                                title="Duplicate Residence"
+                              >
+                                <Copy size={13} />
+                              </button>
+                              <Link
+                                href={`/admin/properties/${prop.id}/history`}
+                                className="p-1.5 border border-white/5 hover:border-[#D4AF37]/30 text-white/40 hover:text-[#D4AF37] rounded"
+                                title="View Timeline History"
+                              >
+                                <History size={13} />
+                              </Link>
                               <button
                                 onClick={() => handleOpenEdit(prop)}
                                 className="p-1.5 border border-white/5 hover:border-[#D4AF37]/30 text-white/40 hover:text-[#D4AF37] rounded"
-                                title="Edit Residence"
+                                title="Edit Details"
                               >
-                                <Edit size={14} />
+                                <Edit size={13} />
                               </button>
                               <button
                                 onClick={() => handleDeleteProperty(prop.id)}
                                 className="p-1.5 border border-white/5 hover:border-red-500/20 text-white/40 hover:text-red-400 rounded"
-                                title="Delete Residence"
+                                title="Delete Listing"
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={13} />
                               </button>
                             </div>
                           </td>

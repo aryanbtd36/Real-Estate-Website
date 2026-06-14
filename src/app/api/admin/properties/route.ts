@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { v2 as cloudinary } from 'cloudinary';
+import { eventEmitter, EVENTS } from '@/lib/events';
+import { ActivityService } from '@/lib/activity';
+import { ActivityAction } from '@prisma/client';
 
 // Configure Cloudinary for deletion
 cloudinary.config({
@@ -40,7 +43,12 @@ export async function POST(req: Request) {
       boundary,
       amenities,
       featured,
-      imagesList // Array of { publicId, url, order, isCover }
+      imagesList, // Array of { publicId, url, order, isCover }
+      status,
+      videoUrl,
+      brochureUrl,
+      virtualTourUrl,
+      boundaryZones
     } = body;
 
     if (!name || !price || !area || !bedrooms) {
@@ -73,6 +81,11 @@ export async function POST(req: Request) {
         amenities: Array.isArray(amenities) ? amenities : [],
         featured: Boolean(featured),
         images: joinedImages,
+        status: status || 'DRAFT',
+        videoUrl: videoUrl || null,
+        brochureUrl: brochureUrl || null,
+        virtualTourUrl: virtualTourUrl || null,
+        boundaryZones: boundaryZones || null,
         imagesRelation: {
           create: Array.isArray(imagesList) ? imagesList.map((img: any) => ({
             publicId: img.publicId,
@@ -86,6 +99,25 @@ export async function POST(req: Request) {
         imagesRelation: true
       }
     });
+
+    const actorId = (session?.user as any)?.id;
+
+    // Log property creation
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.PROPERTY_CREATE,
+      description: `Created property "${property.name}"`,
+      details: { propertyId: property.id, propertyName: property.name }
+    });
+
+    // Trigger publish event if created as published
+    if (property.status === 'PUBLISHED') {
+      eventEmitter.emit(EVENTS.PROPERTY_PUBLISHED, {
+        actorId,
+        propertyId: property.id,
+        propertyName: property.name
+      });
+    }
 
     return NextResponse.json({ success: true, property });
   } catch (error) {
@@ -124,11 +156,41 @@ export async function PUT(req: Request) {
       boundary,
       amenities,
       featured,
-      imagesList
+      imagesList,
+      status,
+      videoUrl,
+      brochureUrl,
+      virtualTourUrl,
+      boundaryZones
     } = body;
 
     if (!id || !name || !price || !area || !bedrooms) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
+    }
+
+    // Retrieve the existing property state
+    const oldProperty = await db.property.findUnique({
+      where: { id },
+      select: { price: true, status: true, name: true }
+    });
+
+    if (!oldProperty) {
+      return NextResponse.json({ error: 'Property not found' }, { status: 404 });
+    }
+
+    const actorId = (session?.user as any)?.id;
+    const newPriceVal = parseFloat(price);
+
+    // Track price changes
+    if (oldProperty.price !== newPriceVal) {
+      await db.propertyPriceHistory.create({
+        data: {
+          propertyId: id,
+          oldPrice: oldProperty.price,
+          newPrice: newPriceVal,
+          changedById: actorId,
+        }
+      });
     }
 
     // 1. Delete all existing related images in Prisma first
@@ -148,7 +210,7 @@ export async function PUT(req: Request) {
         description: description || '',
         type: type || 'Apartment',
         category: category || 'Buy',
-        price: parseFloat(price),
+        price: newPriceVal,
         bedrooms: parseInt(bedrooms),
         bathrooms: parseInt(bathrooms || 1),
         area: parseFloat(area),
@@ -163,6 +225,11 @@ export async function PUT(req: Request) {
         amenities: Array.isArray(amenities) ? amenities : [],
         featured: Boolean(featured),
         images: joinedImages,
+        status: status || 'DRAFT',
+        videoUrl: videoUrl || null,
+        brochureUrl: brochureUrl || null,
+        virtualTourUrl: virtualTourUrl || null,
+        boundaryZones: boundaryZones || null,
         imagesRelation: {
           create: Array.isArray(imagesList) ? imagesList.map((img: any) => ({
             publicId: img.publicId,
@@ -176,6 +243,44 @@ export async function PUT(req: Request) {
         imagesRelation: true
       }
     });
+
+    // Log the details update
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.PROPERTY_UPDATE,
+      description: `Updated listing details for "${property.name}"`,
+      details: { propertyId: id, propertyName: property.name }
+    });
+
+    // Handle status workflow transition events
+    if (oldProperty.status !== status) {
+      if (status === 'PUBLISHED') {
+        eventEmitter.emit(EVENTS.PROPERTY_PUBLISHED, {
+          actorId,
+          propertyId: id,
+          propertyName: property.name
+        });
+      } else if (status === 'ARCHIVED') {
+        eventEmitter.emit(EVENTS.PROPERTY_ARCHIVED, {
+          actorId,
+          propertyId: id,
+          propertyName: property.name
+        });
+      } else if (oldProperty.status === 'ARCHIVED' && (status === 'DRAFT' || status === 'PUBLISHED')) {
+        eventEmitter.emit(EVENTS.PROPERTY_RESTORED, {
+          actorId,
+          propertyId: id,
+          propertyName: property.name
+        });
+        if (status === 'PUBLISHED') {
+          eventEmitter.emit(EVENTS.PROPERTY_PUBLISHED, {
+            actorId,
+            propertyId: id,
+            propertyName: property.name
+          });
+        }
+      }
+    }
 
     return NextResponse.json({ success: true, property });
   } catch (error) {
@@ -213,10 +318,26 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
+    // Fetch the property to get the name before deletion
+    const property = await db.property.findUnique({
+      where: { id },
+      select: { name: true }
+    });
+
     // 2. Delete the property (cascade will delete related images in DB)
     await db.property.delete({
       where: { id },
     });
+
+    const actorId = (session?.user as any)?.id;
+    if (property) {
+      await ActivityService.log({
+        actorId,
+        action: ActivityAction.PROPERTY_DELETE,
+        description: `Deleted property "${property.name}"`,
+        details: { propertyId: id, propertyName: property.name }
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
