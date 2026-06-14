@@ -12,6 +12,42 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  VISIT_SCHEDULED
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  WALK_IN
+  SOCIAL_MEDIA
+  GOOGLE_ADS
+  FACEBOOK_ADS
+  OTHER
+}
+
+enum CommunicationType {
+  CALL
+  EMAIL
+  WHATSAPP
+  SMS
+  MEETING
+  OTHER
+}
+
 enum ActivityAction {
   LOGIN
   LOGOUT
@@ -38,6 +74,17 @@ enum ActivityAction {
   PASSWORD_RESET_COMPLETE
   EMAIL_VERIFIED
   SYSTEM_EVENT
+  
+  // CRM Actions
+  LEAD_CREATE
+  LEAD_UPDATE
+  LEAD_ASSIGN
+  LEAD_REASSIGN
+  LEAD_STATUS_CHANGE
+  FOLLOW_UP_CREATE
+  FOLLOW_UP_COMPLETE
+  FOLLOW_UP_OVERDUE
+  COMMUNICATION_LOG
 }
 
 enum NotificationType {
@@ -47,6 +94,11 @@ enum NotificationType {
   SECURITY
   USER_ACTION
   SYSTEM
+  
+  // CRM Notifications
+  FOLLOW_UP_DUE
+  FOLLOW_UP_OVERDUE
+  FOLLOW_UP_COMPLETED
 }
 
 model User {
@@ -74,6 +126,17 @@ model User {
   notifications     Notification[]
   propertyViews     PropertyView[]
   priceHistoryChanges PropertyPriceHistory[] @relation("PriceChangedBy")
+
+  // Lead CRM relations
+  leadsAssigned        Lead[]                  @relation("LeadAssignedAdmin")
+  notesCreated         LeadNote[]              @relation("NoteCreatedBy")
+  commentsCreated      LeadComment[]           @relation("CommentCreatedBy")
+  assignmentsTarget    LeadAssignmentHistory[] @relation("AssignmentHistoryTarget")
+  assignmentsActor     LeadAssignmentHistory[] @relation("AssignmentHistoryActor")
+  statusHistories      LeadStatusHistory[]     @relation("StatusHistoryActor")
+  followUpsAssigned    FollowUp[]              @relation("FollowUpAssignedAdmin")
+  followUpsCreated     FollowUp[]              @relation("FollowUpCreatedBy")
+  communicationsCreated CommunicationLog[]     @relation("CommunicationCreatedBy")
 }
 
 model AuthToken {
@@ -178,13 +241,99 @@ model AvailableSlot {
 }
 
 model Lead {
-  id        String   @id @default(uuid())
-  name      String
-  email     String
-  phone     String?
-  message   String
-  status    String   @default("PENDING") // "PENDING", "CONTACTED"
-  createdAt DateTime @default(now())
+  id                String                  @id @default(uuid())
+  name              String
+  email             String
+  phone             String?
+  message           String
+  status            LeadStatus              @default(NEW)
+  priority          LeadPriority            @default(MEDIUM)
+  source            LeadSource              @default(WEBSITE)
+  tags              String[]
+  assignedToId      String?
+  assignedTo        User?                   @relation("LeadAssignedAdmin", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  notes             LeadNote[]
+  comments          LeadComment[]
+  followUps         FollowUp[]
+  communications    CommunicationLog[]
+  assignmentHistory LeadAssignmentHistory[]
+  statusHistory     LeadStatusHistory[]
+}
+
+model LeadNote {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content     String
+  createdById String?
+  createdBy   User?    @relation("NoteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  history     Json?    // Array of { content: string, updatedAt: string }
+}
+
+model LeadComment {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content     String
+  createdById String?
+  createdBy   User?    @relation("CommentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LeadAssignmentHistory {
+  id           String   @id @default(uuid())
+  leadId       String
+  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?    @relation("AssignmentHistoryTarget", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedById String?
+  assignedBy   User?    @relation("AssignmentHistoryActor", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedAt   DateTime @default(now())
+}
+
+model LeadStatusHistory {
+  id          String     @id @default(uuid())
+  leadId      String
+  lead        Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStatus  LeadStatus
+  toStatus    LeadStatus
+  changedById String?
+  changedBy   User?      @relation("StatusHistoryActor", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime   @default(now())
+}
+
+model FollowUp {
+  id           String    @id @default(uuid())
+  title        String
+  description  String?
+  dueDate      DateTime
+  completed    Boolean   @default(false)
+  completedAt  DateTime?
+  leadId       String
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?     @relation("FollowUpAssignedAdmin", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById  String?
+  createdBy    User?     @relation("FollowUpCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  history      Json?     // Array of updates
+}
+
+model CommunicationLog {
+  id          String            @id @default(uuid())
+  leadId      String
+  lead        Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        CommunicationType
+  content     String
+  createdById String?
+  createdBy   User?             @relation("CommunicationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime          @default(now())
 }
 
 model ActivityLog {

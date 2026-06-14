@@ -110,6 +110,36 @@ export async function GET() {
       }
     });
 
+    // Query CRM follow-ups and recently updated leads
+    const now = new Date();
+    const upcomingFollowUps = await db.followUp.findMany({
+      where: { completed: false, dueDate: { gte: now } },
+      orderBy: { dueDate: 'asc' },
+      take: 5,
+      include: {
+        lead: { select: { id: true, name: true } },
+        assignedTo: { select: { id: true, name: true, email: true } }
+      }
+    });
+
+    const overdueFollowUps = await db.followUp.findMany({
+      where: { completed: false, dueDate: { lt: now } },
+      orderBy: { dueDate: 'asc' },
+      take: 5,
+      include: {
+        lead: { select: { id: true, name: true } },
+        assignedTo: { select: { id: true, name: true, email: true } }
+      }
+    });
+
+    const recentlyUpdatedLeads = await db.lead.findMany({
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+      include: {
+        assignedTo: { select: { id: true, name: true, email: true } }
+      }
+    });
+
     return NextResponse.json({
       // KPI stats
       ...stats,
@@ -134,7 +164,12 @@ export async function GET() {
       recentAppointments,
       recentUsers,
       recentActivities,
-      upcomingVisits
+      upcomingVisits,
+
+      // CRM specific lists
+      upcomingFollowUps,
+      overdueFollowUps,
+      recentlyUpdatedLeads
     });
   } catch (error) {
     console.error('Fetch admin stats error:', error);

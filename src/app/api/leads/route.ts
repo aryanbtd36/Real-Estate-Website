@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/mail';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { eventEmitter, EVENTS } from '@/lib/events';
+import { LeadStatus } from '@prisma/client';
 
 // Submit inquiry (public)
 export async function POST(req: Request) {
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
         email,
         phone,
         message,
-        status: 'PENDING'
+        status: 'NEW'
       }
     });
 
@@ -111,7 +112,7 @@ export async function PUT(req: Request) {
 
     const updated = await db.lead.update({
       where: { id },
-      data: { status }
+      data: { status: status as LeadStatus }
     });
 
     // Logging & Notification (Decoupled side effects)

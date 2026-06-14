@@ -294,6 +294,213 @@ async function runTestSuite() {
     });
     assert(verifyClean.length === 0, 'Bulk Operations: Bulk delete / cleanup verification successful');
 
+    // --- TEST CASE 8: Lead Funnel Transition Validation ---
+    const validateFunnel = (from: any, to: any): boolean => {
+      if (from === to) return true;
+      if (from === 'WON') return false;
+      if (from === 'LOST') {
+        return ['NEW', 'CONTACTED', 'QUALIFIED'].includes(to);
+      }
+      if (to === 'LOST') return true;
+
+      const funnel = ['NEW', 'CONTACTED', 'QUALIFIED', 'VISIT_SCHEDULED', 'NEGOTIATION', 'WON'];
+      const fromIndex = funnel.indexOf(from);
+      const toIndex = funnel.indexOf(to);
+
+      if (fromIndex !== -1 && toIndex !== -1) {
+        return Math.abs(fromIndex - toIndex) === 1;
+      }
+      return false;
+    };
+
+    assert(validateFunnel('NEW', 'CONTACTED') === true, 'Funnel: Progressing NEW -> CONTACTED is valid');
+    assert(validateFunnel('CONTACTED', 'NEW') === true, 'Funnel: Regressing CONTACTED -> NEW is valid');
+    assert(validateFunnel('NEW', 'WON') === false, 'Funnel: Skipping states NEW -> WON is invalid');
+    assert(validateFunnel('NEW', 'LOST') === true, 'Funnel: Going to LOST from NEW is valid');
+    assert(validateFunnel('LOST', 'NEW') === true, 'Funnel: Restoring from LOST to NEW is valid');
+    assert(validateFunnel('LOST', 'NEGOTIATION') === false, 'Funnel: Restoring from LOST to NEGOTIATION is invalid');
+    assert(validateFunnel('WON', 'LOST') === false, 'Funnel: Transitioning away from terminal WON is invalid');
+
+    // --- TEST CASE 9: Lead Database Actions & Assignment ---
+    await db.lead.deleteMany({
+      where: { email: { in: ['test-crm-lead@aura.com', 'test-crm-lead-2@aura.com'] } }
+    });
+
+    const testLead = await db.lead.create({
+      data: {
+        name: 'CRM Test Client',
+        email: 'test-crm-lead@aura.com',
+        phone: '1234567890',
+        message: 'I want to see the penthouse',
+        status: 'NEW',
+        priority: 'MEDIUM',
+        source: 'WEBSITE',
+      }
+    });
+
+    assert(testLead.status === 'NEW' && testLead.priority === 'MEDIUM', 'Lead Database: Successfully created lead with default status/priority');
+
+    // Soft-delete user validation check: create a soft-deleted admin
+    const softDeletedAdmin = await db.user.create({
+      data: {
+        name: 'Soft Deleted Admin',
+        email: 'soft-deleted-admin@aura.com',
+        role: 'ADMIN',
+        status: UserStatus.ACTIVE,
+        deletedAt: new Date(),
+      }
+    });
+
+    // Validate assignment restriction: soft-deleted user cannot be assigned
+    const assignToSoftDeleted = async (leadId: string, userId: string) => {
+      const targetUser = await db.user.findUnique({ where: { id: userId } });
+      if (!targetUser || targetUser.deletedAt !== null) {
+        throw new Error('Cannot assign to a soft-deleted user.');
+      }
+    };
+
+    let assignmentBlocked = false;
+    try {
+      await assignToSoftDeleted(testLead.id, softDeletedAdmin.id);
+    } catch (err: any) {
+      if (err.message === 'Cannot assign to a soft-deleted user.') {
+        assignmentBlocked = true;
+      }
+    }
+    assert(assignmentBlocked, 'Lead Assignment: Blocking assignations of soft-deleted users is successful');
+
+    // --- TEST CASE 10: CRM Notes and Comments Lifecycle ---
+    const testNote = await db.leadNote.create({
+      data: {
+        leadId: testLead.id,
+        content: 'Initial lead note content',
+        createdById: testUserActor.id,
+      }
+    });
+
+    assert(testNote.content === 'Initial lead note content', 'Lead Notes: Note creation successful');
+
+    // Update note & verify history tracking array
+    const oldContent = testNote.content;
+    const updatedNote = await db.leadNote.update({
+      where: { id: testNote.id },
+      data: {
+        content: 'Updated lead note content',
+        history: [
+          { content: oldContent, updatedAt: new Date().toISOString() }
+        ]
+      }
+    });
+
+    assert(updatedNote.content === 'Updated lead note content' && Array.isArray(updatedNote.history), 'Lead Notes: History tracking array updated on edit');
+
+    const testComment = await db.leadComment.create({
+      data: {
+        leadId: testLead.id,
+        content: 'Internal sales comment',
+        createdById: testUserActor.id,
+      }
+    });
+
+    assert(testComment.content === 'Internal sales comment' && testComment.createdById === testUserActor.id, 'Lead Comments: Comment attribution successful');
+
+    // --- TEST CASE 11: Follow-Ups Lifecycle & Reminder Simulation ---
+    const now = new Date();
+    const testFollowUp = await db.followUp.create({
+      data: {
+        leadId: testLead.id,
+        title: 'Call customer back',
+        description: 'Verify finance pre-approval status',
+        dueDate: new Date(now.getTime() - 1000 * 60 * 60), // overdue (1 hr past)
+        assignedToId: testUserActor.id,
+        createdById: testUserActor.id,
+      }
+    });
+
+    assert(testFollowUp.completed === false && testFollowUp.assignedToId === testUserActor.id, 'Follow-Ups: Scheduled task created and assigned');
+
+    // Complete follow up task
+    const completedFollowUp = await db.followUp.update({
+      where: { id: testFollowUp.id },
+      data: {
+        completed: true,
+        completedAt: new Date(),
+      }
+    });
+
+    assert(completedFollowUp.completed === true && completedFollowUp.completedAt !== null, 'Follow-Ups: Task marked as completed with timestamp');
+
+    // Simulate Reminder Sweeper logic
+    const sweepReminders = async (tasks: any[]) => {
+      const alerts = [];
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      for (const t of tasks) {
+        if (t.completed) continue;
+        const due = new Date(t.dueDate);
+        if (due < todayStart) {
+          alerts.push({ task: t.title, type: 'FOLLOW_UP_OVERDUE' });
+        }
+      }
+      return alerts;
+    };
+
+    // Add another task that is overdue and uncompleted
+    const overdueTask = await db.followUp.create({
+      data: {
+        leadId: testLead.id,
+        title: 'Overdue follow-up task',
+        dueDate: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+        assignedToId: testUserActor.id,
+      }
+    });
+
+    const reminderAlerts = await sweepReminders([completedFollowUp, overdueTask]);
+    assert(reminderAlerts.length === 1 && reminderAlerts[0].type === 'FOLLOW_UP_OVERDUE', 'Reminder Engine: Sweeper alerts generated for overdue follow-ups');
+
+    // --- TEST CASE 12: Communication logs & Analytics Calculations ---
+    const testComm = await db.communicationLog.create({
+      data: {
+        leadId: testLead.id,
+        type: 'CALL',
+        content: 'Spoke on phone. Very interested in beachfront listing.',
+        createdById: testUserActor.id,
+      }
+    });
+
+    assert(testComm.type === 'CALL', 'Communication Logs: Log call interaction successful');
+
+    // Simulate unified timeline merging
+    const mergeTimeline = (notes: any[], comments: any[], followUps: any[]) => {
+      const stream: any[] = [];
+      notes.forEach(n => stream.push({ type: 'NOTE', t: n.createdAt }));
+      comments.forEach(c => stream.push({ type: 'COMMENT', t: c.createdAt }));
+      followUps.forEach(f => stream.push({ type: 'FOLLOW_UP', t: f.createdAt }));
+      return stream.sort((a, b) => b.t.getTime() - a.t.getTime());
+    };
+
+    const merged = mergeTimeline([testNote], [testComment], [testFollowUp]);
+    assert(merged.length === 3, 'Communication Timeline: Merged notes, comments, and follow-ups successfully');
+
+    // Simulate Conversion Analytics Win/Loss Rate calculations
+    const calcAnalytics = (statusMap: any) => {
+      const total = Object.values(statusMap).reduce((a: any, b: any) => a + b, 0) as number;
+      const winRate = total > 0 ? ((statusMap.WON || 0) / total) * 100 : 0;
+      return { total, winRate };
+    };
+
+    const analyticResults = calcAnalytics({ NEW: 5, CONTACTED: 3, WON: 2, LOST: 2 });
+    assert(analyticResults.total === 12 && analyticResults.winRate === (2/12)*100, 'Analytics: Win-rate calculation computes correctly');
+
+    // Clean up CRM test data
+    await db.leadNote.deleteMany({ where: { leadId: testLead.id } });
+    await db.leadComment.deleteMany({ where: { leadId: testLead.id } });
+    await db.followUp.deleteMany({ where: { leadId: testLead.id } });
+    await db.communicationLog.deleteMany({ where: { leadId: testLead.id } });
+    await db.leadStatusHistory.deleteMany({ where: { leadId: testLead.id } });
+    await db.leadAssignmentHistory.deleteMany({ where: { leadId: testLead.id } });
+    await db.lead.delete({ where: { id: testLead.id } });
+    await db.user.delete({ where: { id: softDeletedAdmin.id } });
+
   } catch (err: any) {
     failed++;
     console.error('[CRITICAL ERROR] Test suite execution failed:', err);

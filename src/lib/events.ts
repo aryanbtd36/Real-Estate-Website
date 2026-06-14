@@ -28,6 +28,17 @@ export const EVENTS = {
   PROPERTY_PUBLISHED: 'PROPERTY_PUBLISHED',
   PROPERTY_ARCHIVED: 'PROPERTY_ARCHIVED',
   PROPERTY_RESTORED: 'PROPERTY_RESTORED',
+  
+  // Lead CRM Events
+  LEAD_CREATED: 'LEAD_CREATED',
+  LEAD_UPDATED: 'LEAD_UPDATED',
+  LEAD_ASSIGNED: 'LEAD_ASSIGNED',
+  LEAD_REASSIGNED: 'LEAD_REASSIGNED',
+  LEAD_STATUS_CHANGED: 'LEAD_STATUS_CHANGED',
+  FOLLOW_UP_CREATED: 'FOLLOW_UP_CREATED',
+  FOLLOW_UP_COMPLETED: 'FOLLOW_UP_COMPLETED',
+  FOLLOW_UP_OVERDUE: 'FOLLOW_UP_OVERDUE',
+  COMMUNICATION_LOGGED: 'COMMUNICATION_LOGGED',
 };
 
 // --- Decoupled Side Effect Event Listeners ---
@@ -400,6 +411,188 @@ eventEmitter.on(
       message: `Property "${propertyName}" was restored from archives to draft.`,
       type: NotificationType.PROPERTY,
       link: '/admin/properties',
+    });
+  })
+);
+
+// 20. Lead Created Listener
+eventEmitter.on(
+  EVENTS.LEAD_CREATED,
+  safeListener(async ({ actorId, leadId, name, email, priority, source }: { actorId?: string | null; leadId: string; name: string; email: string; priority: string; source: string }) => {
+    await ActivityService.log({
+      actorId: actorId || null,
+      action: ActivityAction.LEAD_CREATE,
+      description: `New lead created for ${name} (${email})`,
+      details: { leadId, priority, source },
+    });
+
+    await NotificationService.notifyAdmins({
+      title: 'New Lead Registered',
+      message: `Lead ${name} (${email}) has been registered via ${source}.`,
+      type: NotificationType.INQUIRY,
+      link: `/admin/leads/${leadId}`,
+    });
+  })
+);
+
+// 21. Lead Updated Listener
+eventEmitter.on(
+  EVENTS.LEAD_UPDATED,
+  safeListener(async ({ actorId, leadId, name, details }: { actorId: string; leadId: string; name: string; details: any }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.LEAD_UPDATE,
+      description: `Updated lead details for ${name}`,
+      details: { leadId, ...details },
+    });
+  })
+);
+
+// 22. Lead Assigned Listener
+eventEmitter.on(
+  EVENTS.LEAD_ASSIGNED,
+  safeListener(async ({ actorId, leadId, name, assignedToId, assignedToName }: { actorId: string; leadId: string; name: string; assignedToId: string; assignedToName: string }) => {
+    await ActivityService.log({
+      actorId,
+      targetUserId: assignedToId,
+      action: ActivityAction.LEAD_ASSIGN,
+      description: `Assigned lead ${name} to admin ${assignedToName}`,
+      details: { leadId },
+    });
+
+    await NotificationService.create({
+      userId: assignedToId,
+      title: 'New Lead Assigned',
+      message: `You have been assigned to lead ${name}.`,
+      type: NotificationType.USER_ACTION,
+      link: `/admin/leads/${leadId}`,
+    });
+  })
+);
+
+// 23. Lead Reassigned Listener
+eventEmitter.on(
+  EVENTS.LEAD_REASSIGNED,
+  safeListener(async ({ actorId, leadId, name, assignedToId, assignedToName, previousAdminName }: { actorId: string; leadId: string; name: string; assignedToId: string; assignedToName: string; previousAdminName?: string }) => {
+    await ActivityService.log({
+      actorId,
+      targetUserId: assignedToId,
+      action: ActivityAction.LEAD_REASSIGN,
+      description: `Reassigned lead ${name} to admin ${assignedToName} (previously ${previousAdminName || 'unassigned'})`,
+      details: { leadId },
+    });
+
+    await NotificationService.create({
+      userId: assignedToId,
+      title: 'Lead Reassigned to You',
+      message: `Lead ${name} has been reassigned to you.`,
+      type: NotificationType.USER_ACTION,
+      link: `/admin/leads/${leadId}`,
+    });
+  })
+);
+
+// 24. Lead Status Changed Listener
+eventEmitter.on(
+  EVENTS.LEAD_STATUS_CHANGED,
+  safeListener(async ({ actorId, leadId, name, email, fromStatus, toStatus }: { actorId: string; leadId: string; name: string; email: string; fromStatus: string; toStatus: string }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.LEAD_STATUS_CHANGE,
+      description: `Status for lead ${name} changed from ${fromStatus} to ${toStatus}`,
+      details: { leadId, fromStatus, toStatus },
+    });
+
+    // Notify registered client user if any
+    const user = await db.user.findUnique({ where: { email } });
+    if (user) {
+      await NotificationService.create({
+        userId: user.id,
+        title: 'Sales Inquiry Status Updated',
+        message: `Your concierge relationship status is now: ${toStatus.replace('_', ' ')}.`,
+        type: NotificationType.INQUIRY,
+      });
+    }
+  })
+);
+
+// 25. Follow-Up Created Listener
+eventEmitter.on(
+  EVENTS.FOLLOW_UP_CREATED,
+  safeListener(async ({ actorId, leadId, followUpId, title, assignedToId }: { actorId: string; leadId: string; followUpId: string; title: string; assignedToId?: string | null }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.FOLLOW_UP_CREATE,
+      description: `Scheduled new follow-up task: "${title}"`,
+      details: { leadId, followUpId },
+    });
+
+    if (assignedToId) {
+      await NotificationService.create({
+        userId: assignedToId,
+        title: 'New Follow-Up Assigned',
+        message: `You have been assigned to task "${title}".`,
+        type: NotificationType.FOLLOW_UP_DUE,
+        link: `/admin/leads/${leadId}`,
+      });
+    }
+  })
+);
+
+// 26. Follow-Up Completed Listener
+eventEmitter.on(
+  EVENTS.FOLLOW_UP_COMPLETED,
+  safeListener(async ({ actorId, leadId, followUpId, title, assignedToId }: { actorId: string; leadId: string; followUpId: string; title: string; assignedToId?: string | null }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.FOLLOW_UP_COMPLETE,
+      description: `Completed follow-up task: "${title}"`,
+      details: { leadId, followUpId },
+    });
+
+    if (assignedToId) {
+      await NotificationService.create({
+        userId: assignedToId,
+        title: 'Follow-Up Task Completed',
+        message: `Task "${title}" has been marked as completed.`,
+        type: NotificationType.FOLLOW_UP_COMPLETED,
+        link: `/admin/leads/${leadId}`,
+      });
+    }
+  })
+);
+
+// 27. Follow-Up Overdue Listener
+eventEmitter.on(
+  EVENTS.FOLLOW_UP_OVERDUE,
+  safeListener(async ({ leadId, followUpId, title, assignedToId }: { leadId: string; followUpId: string; title: string; assignedToId: string }) => {
+    await ActivityService.log({
+      actorId: null,
+      targetUserId: assignedToId,
+      action: ActivityAction.FOLLOW_UP_OVERDUE,
+      description: `Follow-up task overdue: "${title}"`,
+      details: { leadId, followUpId },
+    });
+
+    await NotificationService.create({
+      userId: assignedToId,
+      title: 'CRITICAL: Follow-Up Task Overdue',
+      message: `The task "${title}" is past its due date.`,
+      type: NotificationType.FOLLOW_UP_OVERDUE,
+      link: `/admin/leads/${leadId}`,
+    });
+  })
+);
+
+// 28. Communication Logged Listener
+eventEmitter.on(
+  EVENTS.COMMUNICATION_LOGGED,
+  safeListener(async ({ actorId, leadId, type, contentSummary }: { actorId: string; leadId: string; type: string; contentSummary: string }) => {
+    await ActivityService.log({
+      actorId,
+      action: ActivityAction.COMMUNICATION_LOG,
+      description: `Logged communication (${type}): ${contentSummary}`,
+      details: { leadId, type },
     });
   })
 );

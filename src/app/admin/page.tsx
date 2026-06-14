@@ -41,7 +41,10 @@ export default function AdminDashboardPage() {
     recentAppointments: [],
     recentUsers: [],
     recentActivities: [],
-    upcomingVisits: []
+    upcomingVisits: [],
+    upcomingFollowUps: [],
+    overdueFollowUps: [],
+    recentlyUpdatedLeads: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -308,17 +311,94 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
-          {/* Follow-up Reminders Widget (CRM placeholder) */}
-          <div className="bg-[#161616] border border-white/5 rounded-xl p-6 space-y-4 relative overflow-hidden group">
-            <div className="absolute -right-8 -bottom-8 text-white/5 group-hover:scale-110 transition-transform duration-500">
-              <Sparkles size={120} />
-            </div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80 border-b border-white/5 pb-2">CRM Reminders</h3>
-            <div className="p-4 bg-[#0A0A0A]/50 border border-dashed border-white/10 rounded-lg text-center space-y-2">
-              <Sparkles className="mx-auto text-[#D4AF37]" size={20} />
-              <p className="text-[11px] text-white/70">Intelligence Follow-up Scheduler</p>
-              <p className="text-[9px] text-white/40 uppercase tracking-widest">Integrating in Wave 2</p>
-            </div>
+          {/* Upcoming CRM Follow-Ups Widget */}
+          <div className="bg-[#161616] border border-white/5 rounded-xl p-6 space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80 border-b border-white/5 pb-2 flex items-center gap-2">
+              <Calendar size={16} className="text-[#D4AF37]" />
+              <span>Upcoming CRM Tasks</span>
+            </h3>
+            {(!stats.upcomingFollowUps || stats.upcomingFollowUps.length === 0) ? (
+              <div className="p-4 text-center text-white/40 italic text-xs">No upcoming follow-ups scheduled.</div>
+            ) : (
+              <div className="space-y-3">
+                {stats.upcomingFollowUps.map((task: any) => (
+                  <div key={task.id} className="p-3 bg-[#0A0A0A] border border-white/5 rounded-lg space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium text-white">{task.title}</span>
+                      <Link href={`/admin/leads/${task.leadId}`} className="text-[9px] text-[#D4AF37] hover:underline uppercase tracking-wider">
+                        View Lead
+                      </Link>
+                    </div>
+                    {task.description && <p className="text-[10px] text-white/50 truncate">{task.description}</p>}
+                    <div className="flex justify-between text-[9px] text-white/40 border-t border-white/5 pt-1.5 mt-1.5">
+                      <span>Lead: {task.lead?.name}</span>
+                      <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Overdue CRM Follow-Ups Widget */}
+          <div className="bg-[#161616] border border-white/5 rounded-xl p-6 space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80 border-b border-white/5 pb-2 flex items-center gap-2">
+              <Clock size={16} className="text-red-500 animate-pulse" />
+              <span className="text-red-400">Overdue Tasks Alert</span>
+            </h3>
+            {(!stats.overdueFollowUps || stats.overdueFollowUps.length === 0) ? (
+              <div className="p-4 text-center text-green-400/50 italic text-xs border border-green-500/10 bg-green-500/5 rounded-lg">All tasks completed or up to date!</div>
+            ) : (
+              <div className="space-y-3">
+                {stats.overdueFollowUps.map((task: any) => (
+                  <div key={task.id} className="p-3 bg-[#110505] border border-red-500/20 rounded-lg space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium text-red-200">{task.title}</span>
+                      <Link href={`/admin/leads/${task.leadId}`} className="text-[9px] text-red-400 hover:underline uppercase tracking-wider font-semibold">
+                        Resolve
+                      </Link>
+                    </div>
+                    <p className="text-[10px] text-red-300/60 truncate">{task.lead?.name || 'Inquiry'}</p>
+                    <p className="text-[9px] text-red-400/80">Overdue since: {new Date(task.dueDate).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recently Updated Leads Widget */}
+          <div className="bg-[#161616] border border-white/5 rounded-xl p-6 space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80 border-b border-white/5 pb-2 flex items-center gap-2">
+              <Activity size={16} className="text-[#D4AF37]" />
+              <span>CRM Lead Pipeline Feed</span>
+            </h3>
+            {(!stats.recentlyUpdatedLeads || stats.recentlyUpdatedLeads.length === 0) ? (
+              <div className="p-4 text-center text-white/40 italic text-xs">No active pipeline leads.</div>
+            ) : (
+              <div className="space-y-3">
+                {stats.recentlyUpdatedLeads.map((lead: any) => (
+                  <div key={lead.id} className="p-3 bg-[#0A0A0A] border border-white/5 rounded-lg space-y-1">
+                    <div className="flex justify-between text-xs items-center">
+                      <Link href={`/admin/leads/${lead.id}`} className="font-medium text-white hover:text-[#D4AF37] transition-colors">
+                        {lead.name}
+                      </Link>
+                      <span className={`text-[8px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ${
+                        lead.status === 'WON' ? 'bg-green-500/10 text-green-400 border border-green-500/25' :
+                        lead.status === 'LOST' ? 'bg-red-500/10 text-red-400 border border-red-500/25' :
+                        lead.status === 'NEGOTIATION' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/25' :
+                        'bg-white/5 text-white/60 border border-white/10'
+                      }`}>
+                        {lead.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[9px] text-white/40">
+                      <span>Owner: {lead.assignedTo ? (lead.assignedTo.name || lead.assignedTo.email) : 'Unassigned'}</span>
+                      <span>Priority: {lead.priority}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
