@@ -74,6 +74,9 @@ enum ActivityAction {
   PASSWORD_RESET_COMPLETE
   EMAIL_VERIFIED
   SYSTEM_EVENT
+  PROFILE_UPDATE
+  ROLE_HISTORY_CREATE
+  STATUS_HISTORY_CREATE
   
   // CRM Actions
   LEAD_CREATE
@@ -137,6 +140,14 @@ model User {
   followUpsAssigned    FollowUp[]              @relation("FollowUpAssignedAdmin")
   followUpsCreated     FollowUp[]              @relation("FollowUpCreatedBy")
   communicationsCreated CommunicationLog[]     @relation("CommunicationCreatedBy")
+
+  // Relations for User History logging
+  roleHistoryTargets    RoleHistory[]         @relation("RoleHistoryTarget")
+  roleHistoryActors     RoleHistory[]         @relation("RoleHistoryActor")
+  statusHistoryTargets  UserStatusHistory[]   @relation("StatusHistoryTarget")
+  statusHistoryActors   UserStatusHistory[]   @relation("StatusHistoryActor")
+  profileHistoryTargets UserProfileHistory[]  @relation("ProfileHistoryTarget")
+  profileHistoryActors  UserProfileHistory[]  @relation("ProfileHistoryActor")
 }
 
 model AuthToken {
@@ -399,5 +410,49 @@ model PropertyPriceHistory {
   createdAt   DateTime @default(now())
 
   @@index([propertyId])
+  @@index([createdAt])
+}
+
+model RoleHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation("RoleHistoryTarget", fields: [userId], references: [id], onDelete: Cascade)
+  changedById  String?
+  changedBy    User?    @relation("RoleHistoryActor", fields: [changedById], references: [id], onDelete: SetNull)
+  previousRole String
+  newRole      String
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model UserStatusHistory {
+  id             String     @id @default(uuid())
+  userId         String
+  user           User       @relation("StatusHistoryTarget", fields: [userId], references: [id], onDelete: Cascade)
+  changedById    String?
+  changedBy      User?      @relation("StatusHistoryActor", fields: [changedById], references: [id], onDelete: SetNull)
+  previousStatus UserStatus
+  newStatus      UserStatus
+  reason         String?
+  createdAt      DateTime   @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model UserProfileHistory {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("ProfileHistoryTarget", fields: [userId], references: [id], onDelete: Cascade)
+  changedById String?
+  changedBy   User?    @relation("ProfileHistoryActor", fields: [changedById], references: [id], onDelete: SetNull)
+  fieldName   String
+  oldValue    String?
+  newValue    String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
   @@index([createdAt])
 }

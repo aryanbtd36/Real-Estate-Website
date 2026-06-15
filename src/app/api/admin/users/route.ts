@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT: Modify user status (suspend/restore) or role (promote/revoke) with strict validations
+// PUT: Modify user status (suspend/restore), role (promote/revoke), or profile details with strict validations and audit logging
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -149,7 +149,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, status, role } = body;
+    const { userId, status, role, name, email, phone, reason } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -175,54 +175,183 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {};
     const eventsToEmit: { eventName: string; payload: any }[] = [];
 
-    // 1. Validate status updates
-    if (status !== undefined) {
-      if (status !== UserStatus.ACTIVE && status !== UserStatus.SUSPENDED) {
-        return NextResponse.json({ error: 'Invalid user status' }, { status: 400 });
+    // Begin database transaction to ensure atomicity
+    const updatedUser = await db.$transaction(async (tx) => {
+      // 1. Validate and track status updates
+      if (status !== undefined) {
+        if (status !== UserStatus.ACTIVE && status !== UserStatus.SUSPENDED) {
+          throw new Error('Invalid user status');
+        }
+        if (status !== targetUser.status) {
+          updateData.status = status;
+          
+          await tx.userStatusHistory.create({
+            data: {
+              userId,
+              changedById: actorId,
+              previousStatus: targetUser.status,
+              newStatus: status,
+              reason: reason || null,
+            },
+          });
+
+          await tx.activityLog.create({
+            data: {
+              actorId,
+              targetUserId: userId,
+              action: 'STATUS_HISTORY_CREATE',
+              description: `Created status history record for ${targetUser.email}: changed from ${targetUser.status} to ${status}${reason ? ` (Reason: ${reason})` : ''}`,
+              details: { previousStatus: targetUser.status, newStatus: status, reason },
+            },
+          });
+
+          const eventName = status === UserStatus.SUSPENDED ? EVENTS.USER_SUSPENDED : EVENTS.USER_RESTORED;
+          eventsToEmit.push({
+            eventName,
+            payload: {
+              actorId,
+              targetUserId: userId,
+              targetEmail: targetUser.email,
+            },
+          });
+        }
       }
-      updateData.status = status;
-      
-      const eventName = status === UserStatus.SUSPENDED ? EVENTS.USER_SUSPENDED : EVENTS.USER_RESTORED;
-      eventsToEmit.push({
-        eventName,
-        payload: {
-          actorId,
-          targetUserId: userId,
-          targetEmail: targetUser.email,
-        },
-      });
-    }
 
-    // 2. Validate role changes
-    if (role !== undefined) {
-      if (role !== 'USER' && role !== 'ADMIN') {
-        return NextResponse.json({ error: 'Invalid role value' }, { status: 400 });
+      // 2. Validate and track role changes
+      if (role !== undefined) {
+        if (role !== 'USER' && role !== 'ADMIN') {
+          throw new Error('Invalid role value');
+        }
+        if (role !== targetUser.role) {
+          updateData.role = role;
+
+          await tx.roleHistory.create({
+            data: {
+              userId,
+              changedById: actorId,
+              previousRole: targetUser.role,
+              newRole: role,
+            },
+          });
+
+          await tx.activityLog.create({
+            data: {
+              actorId,
+              targetUserId: userId,
+              action: 'ROLE_HISTORY_CREATE',
+              description: `Created role history record for ${targetUser.email}: changed from ${targetUser.role} to ${role}`,
+              details: { previousRole: targetUser.role, newRole: role },
+            },
+          });
+
+          const eventName = role === 'ADMIN' ? EVENTS.ROLE_PROMOTED : EVENTS.ROLE_REVOKED;
+          eventsToEmit.push({
+            eventName,
+            payload: {
+              actorId,
+              targetUserId: userId,
+              targetEmail: targetUser.email,
+              previousRole: targetUser.role,
+            },
+          });
+        }
       }
-      updateData.role = role;
 
-      const eventName = role === 'ADMIN' ? EVENTS.ROLE_PROMOTED : EVENTS.ROLE_REVOKED;
-      eventsToEmit.push({
-        eventName,
-        payload: {
-          actorId,
-          targetUserId: userId,
-          targetEmail: targetUser.email,
-          previousRole: targetUser.role,
-        },
+      // 3. Track name changes
+      if (name !== undefined && name !== targetUser.name) {
+        updateData.name = name;
+
+        await tx.userProfileHistory.create({
+          data: {
+            userId,
+            changedById: actorId,
+            fieldName: 'name',
+            oldValue: targetUser.name || null,
+            newValue: name || null,
+          },
+        });
+
+        await tx.activityLog.create({
+          data: {
+            actorId,
+            targetUserId: userId,
+            action: 'PROFILE_UPDATE',
+            description: `Updated name for ${targetUser.email}: "${targetUser.name || ''}" -> "${name || ''}"`,
+            details: { fieldName: 'name', oldValue: targetUser.name, newValue: name },
+          },
+        });
+      }
+
+      // 4. Track email changes
+      if (email !== undefined && email !== targetUser.email) {
+        // Double check if email already exists
+        const existingEmail = await tx.user.findFirst({
+          where: { email, deletedAt: null },
+        });
+        if (existingEmail) {
+          throw new Error('Email is already in use by another user');
+        }
+
+        updateData.email = email;
+
+        await tx.userProfileHistory.create({
+          data: {
+            userId,
+            changedById: actorId,
+            fieldName: 'email',
+            oldValue: targetUser.email,
+            newValue: email,
+          },
+        });
+
+        await tx.activityLog.create({
+          data: {
+            actorId,
+            targetUserId: userId,
+            action: 'PROFILE_UPDATE',
+            description: `Updated email for ${targetUser.email}: "${targetUser.email}" -> "${email}"`,
+            details: { fieldName: 'email', oldValue: targetUser.email, newValue: email },
+          },
+        });
+      }
+
+      // 5. Track phone changes
+      if (phone !== undefined && phone !== targetUser.phone) {
+        updateData.phone = phone;
+
+        await tx.userProfileHistory.create({
+          data: {
+            userId,
+            changedById: actorId,
+            fieldName: 'phone',
+            oldValue: targetUser.phone || null,
+            newValue: phone || null,
+          },
+        });
+
+        await tx.activityLog.create({
+          data: {
+            actorId,
+            targetUserId: userId,
+            action: 'PROFILE_UPDATE',
+            description: `Updated phone for ${targetUser.email}: "${targetUser.phone || ''}" -> "${phone || ''}"`,
+            details: { fieldName: 'phone', oldValue: targetUser.phone, newValue: phone },
+          },
+        });
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return targetUser;
+      }
+
+      // Execute database update
+      return await tx.user.update({
+        where: { id: userId },
+        data: updateData,
       });
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
-    }
-
-    // Execute database update
-    const updatedUser = await db.user.update({
-      where: { id: userId },
-      data: updateData,
     });
 
-    // 3. Emit decoupled event handlers
+    // Emit decoupled event handlers (outside the transaction)
     eventsToEmit.forEach(({ eventName, payload }) => {
       try {
         eventEmitter.emit(eventName, payload);
@@ -232,8 +361,9 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, user: updatedUser });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[API Admin Users PUT] Error:', error);
-    return NextResponse.json({ error: 'Failed to update user profile' }, { status: 500 });
+    const status = error.message === 'User not found or has been soft-deleted' ? 404 : 400;
+    return NextResponse.json({ error: error.message || 'Failed to update user profile' }, { status });
   }
 }

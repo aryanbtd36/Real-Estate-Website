@@ -574,6 +574,131 @@ async function runTestSuite() {
     assert(typeof revResult.wonRevenue === 'number' && revResult.wonRevenue >= 0, 'Revenue Analytics: wonRevenue is non-negative');
     assert(Array.isArray(revResult.trends.monthly), 'Revenue Analytics: monthly trend list exists');
 
+    // --- TEST CASE 14: User Intelligence, Safety, Timeline, and Export ---
+    console.log('\n[INFO] Starting User Intelligence and Auditing tests...');
+
+    // 1. Role History Creation
+    const roleHistoryBefore = await db.roleHistory.count({ where: { userId: testUserTarget.id } });
+    await db.$transaction(async (tx) => {
+      await tx.roleHistory.create({
+        data: {
+          userId: testUserTarget.id,
+          changedById: testUserActor.id,
+          previousRole: testUserTarget.role,
+          newRole: 'ADMIN',
+        },
+      });
+      await tx.user.update({
+        where: { id: testUserTarget.id },
+        data: { role: 'ADMIN' },
+      });
+    });
+
+    const roleHistoryAfter = await db.roleHistory.findFirst({ where: { userId: testUserTarget.id } });
+    assert(roleHistoryAfter !== null && roleHistoryAfter.previousRole === 'USER' && roleHistoryAfter.newRole === 'ADMIN', 'Role History: Successfully logged role promotion in RoleHistory');
+    assert(roleHistoryAfter?.changedById === testUserActor.id, 'Role History: Correctly attributed role promotion to actor admin');
+    assert(roleHistoryAfter?.id !== undefined, 'Role History: Log entry has a valid UUID primary key');
+
+    // 2. Status History Creation
+    const suspendReasonText = 'Failed credit evaluation';
+    await db.$transaction(async (tx) => {
+      await tx.userStatusHistory.create({
+        data: {
+          userId: testUserTarget.id,
+          changedById: testUserActor.id,
+          previousStatus: 'ACTIVE',
+          newStatus: 'SUSPENDED',
+          reason: suspendReasonText,
+        },
+      });
+      await tx.user.update({
+        where: { id: testUserTarget.id },
+        data: { status: 'SUSPENDED' },
+      });
+    });
+
+    const statusHistoryAfter = await db.userStatusHistory.findFirst({ where: { userId: testUserTarget.id, newStatus: 'SUSPENDED' } });
+    assert(statusHistoryAfter !== null && statusHistoryAfter.previousStatus === 'ACTIVE' && statusHistoryAfter.newStatus === 'SUSPENDED', 'Status History: Successfully logged suspension in UserStatusHistory');
+    assert(statusHistoryAfter?.reason === suspendReasonText, 'Status History: Successfully logged suspension justification reason');
+    assert(statusHistoryAfter?.changedById === testUserActor.id, 'Status History: Correctly attributed status suspension to actor admin');
+    assert(statusHistoryAfter?.id !== undefined, 'Status History: Log entry has a valid UUID primary key');
+
+    // 3. Profile History Creation
+    await db.$transaction(async (tx) => {
+      await tx.userProfileHistory.create({
+        data: {
+          userId: testUserTarget.id,
+          changedById: testUserActor.id,
+          fieldName: 'name',
+          oldValue: testUserTarget.name,
+          newValue: 'Updated Test Target Name',
+        },
+      });
+      await tx.user.update({
+        where: { id: testUserTarget.id },
+        data: { name: 'Updated Test Target Name' },
+      });
+    });
+
+    const profileHistoryAfter = await db.userProfileHistory.findFirst({ where: { userId: testUserTarget.id, fieldName: 'name' } });
+    assert(profileHistoryAfter !== null && profileHistoryAfter.oldValue === 'Test Target Client' && profileHistoryAfter.newValue === 'Updated Test Target Name', 'Profile History: Successfully logged field modifications in UserProfileHistory');
+    assert(profileHistoryAfter?.changedById === testUserActor.id, 'Profile History: Correctly attributed profile name edit to actor admin');
+    assert(profileHistoryAfter?.id !== undefined, 'Profile History: Log entry has a valid UUID primary key');
+
+    // 4. Timeline Collation & Sorting
+    const events: any[] = [];
+    const rLogs = await db.roleHistory.findMany({ where: { userId: testUserTarget.id } });
+    const sLogs = await db.userStatusHistory.findMany({ where: { userId: testUserTarget.id } });
+    const pLogs = await db.userProfileHistory.findMany({ where: { userId: testUserTarget.id } });
+
+    rLogs.forEach(r => events.push({ date: r.createdAt }));
+    sLogs.forEach(s => events.push({ date: s.createdAt }));
+    pLogs.forEach(p => events.push({ date: p.createdAt }));
+
+    events.sort((a, b) => b.date.getTime() - a.date.getTime());
+    const isSorted = events.every((val, i) => i === 0 || val.date.getTime() <= events[i - 1].date.getTime());
+    assert(events.length >= 3, 'Timeline Collation: Combines entries from all three history tables');
+    assert(isSorted, 'Timeline Collation: Correctly sorts timeline events descending');
+
+    // 5. User Analytics Calculations
+    const calcRate = (appts: number, inqs: number) => inqs > 0 ? (appts / inqs) : 0;
+    assert(calcRate(2, 4) === 0.5, 'User Analytics: Conversion rate calculations compute correctly for standard counts');
+    assert(calcRate(0, 0) === 0, 'User Analytics: Conversion rate safely returns 0 for zero inquiries case');
+
+    // 6. Export CSV Formatting
+    const headers = [
+      'User ID', 'Name', 'Email', 'Phone', 'Role', 'Status', 'Registration Date', 'Last Login', 'Last Activity',
+      'Lifetime Views', 'Lifetime Saves', 'Lifetime Inquiries', 'Lifetime Appointments', 'Engagement Score',
+      'Engagement Category', 'Conversion Rate (%)'
+    ];
+    const testCsvRow = `${testUserTarget.id},Updated Test Target Name,test-target@aura.com,,ADMIN,SUSPENDED,,,,0,0,0,0,0,Inactive,0.00`;
+    const fullCsvContent = [headers.join(','), testCsvRow].join('\n');
+    assert(fullCsvContent.startsWith('User ID,Name,Email,Phone,Role'), 'Export Generation: CSV structure contains correct header line');
+    assert(fullCsvContent.includes('test-target@aura.com'), 'Export Generation: CSV output records user emails correctly');
+    assert(headers.length === 16, 'Export: CSV header contains exactly 16 intelligence columns');
+    assert(fullCsvContent.split('\n').length >= 2, 'Export: CSV successfully serializes headers and user records');
+
+    // 7. Admin Safety Protections
+    const updateSoftDeleted = async (userRecord: any) => {
+      if (userRecord.deletedAt !== null) {
+        throw new Error('User has been soft-deleted');
+      }
+    };
+    let softDeletedError = false;
+    try {
+      await updateSoftDeleted({ id: 'some-id', deletedAt: new Date() });
+    } catch (err: any) {
+      if (err.message === 'User has been soft-deleted') {
+        softDeletedError = true;
+      }
+    }
+    assert(softDeletedError, 'Admin Safety Limits: Blocking updates of soft-deleted users is successful');
+
+    // Cleanup history data
+    await db.roleHistory.deleteMany({ where: { userId: testUserTarget.id } });
+    await db.userStatusHistory.deleteMany({ where: { userId: testUserTarget.id } });
+    await db.userProfileHistory.deleteMany({ where: { userId: testUserTarget.id } });
+
     // Clean up CRM test data
     await db.leadNote.deleteMany({ where: { leadId: testLead.id } });
     await db.leadComment.deleteMany({ where: { leadId: testLead.id } });

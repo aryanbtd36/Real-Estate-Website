@@ -21,9 +21,11 @@ import {
   BadgeCheck, 
   X,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
 interface UserCRM {
   id: string;
@@ -57,6 +59,7 @@ interface TimelineItem {
 
 export default function UsersCRMPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [users, setUsers] = useState<UserCRM[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -234,12 +237,21 @@ export default function UsersCRMPage() {
   return (
     <div className="space-y-8 relative">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-center">
         <div>
           <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold">Client CRM Suite</span>
           <h1 className="text-3xl font-light tracking-tight mt-1">Client Management</h1>
           <p className="text-xs text-white/50 mt-1">Track profiles, engagement scores, and audit activities.</p>
         </div>
+        <button
+          onClick={() => {
+            window.location.href = '/api/admin/users/export';
+          }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#D4AF37]/10 hover:bg-[#D4AF37] border border-[#D4AF37]/35 text-[#F5D67B] hover:text-black font-semibold rounded-lg text-xs tracking-wider uppercase transition-all"
+        >
+          <Download size={14} />
+          <span>Export Master CSV</span>
+        </button>
       </div>
 
       {/* Search & Filters */}
@@ -471,6 +483,13 @@ export default function UsersCRMPage() {
                   <p className="text-xs text-white/50">{selectedUser.email}</p>
                   {selectedUser.phone && <p className="text-xs text-white/40 mt-1">{selectedUser.phone}</p>}
                 </div>
+                <button
+                  onClick={() => router.push(`/admin/users/${selectedUser.id}`)}
+                  className="mt-1 flex items-center gap-1.5 px-4 py-1.5 bg-[#D4AF37]/10 hover:bg-[#D4AF37] border border-[#D4AF37]/35 text-[#F5D67B] hover:text-black font-semibold rounded-lg text-[10px] uppercase tracking-wider transition-all"
+                >
+                  <span>View 360° Profile</span>
+                  <ExternalLink size={10} />
+                </button>
 
                 <div className="flex items-center space-x-3.5">
                   <span className={`px-2.5 py-0.5 border text-[10px] rounded-full uppercase font-bold tracking-widest ${
