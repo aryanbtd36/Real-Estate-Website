@@ -326,6 +326,10 @@ async function runTestSuite() {
       where: { email: { in: ['test-crm-lead@aura.com', 'test-crm-lead-2@aura.com'] } }
     });
 
+    await db.user.deleteMany({
+      where: { email: { in: ['soft-deleted-admin@aura.com'] } }
+    });
+
     const testLead = await db.lead.create({
       data: {
         name: 'CRM Test Client',
@@ -490,6 +494,85 @@ async function runTestSuite() {
 
     const analyticResults = calcAnalytics({ NEW: 5, CONTACTED: 3, WON: 2, LOST: 2 });
     assert(analyticResults.total === 12 && analyticResults.winRate === (2/12)*100, 'Analytics: Win-rate calculation computes correctly');
+
+    // --- TEST CASE 13: Business Intelligence and Analytics Modules ---
+    console.log('\n[INFO] Starting Business Intelligence Analytics Suite tests...');
+    
+    const { HealthScoreService } = await import('./analytics/health-score');
+    const { ForecastingEngine } = await import('./analytics/forecasting');
+    const { ConversionsService } = await import('./analytics/conversions');
+    const { ExecutiveAnalyticsService } = await import('./analytics/executive');
+    const { LeadAnalyticsService } = await import('./analytics/leads');
+    const { PropertyAnalyticsService } = await import('./analytics/properties');
+    const { AppointmentAnalyticsService } = await import('./analytics/appointments');
+    const { UserAnalyticsService } = await import('./analytics/users');
+    const { GeographicAnalyticsService } = await import('./analytics/geography');
+    const { RevenueAnalyticsService } = await import('./analytics/revenue');
+
+    // 1. Health score
+    const healthResult = await HealthScoreService.calculateHealthScore();
+    assert(typeof healthResult.score === 'number' && healthResult.score >= 0 && healthResult.score <= 100, 'Health Score: returns score between 0 and 100');
+    assert(['EXCELLENT', 'HEALTHY', 'MODERATE', 'RISK', 'CRITICAL'].includes(healthResult.grade), 'Health Score: returns a valid grade');
+    assert(typeof healthResult.breakdown === 'object', 'Health Score: returns detailed breakdown object');
+    assert(typeof healthResult.breakdown.leadConversionRate === 'number', 'Health Score Breakdown: lead conversion rate exists');
+    assert(typeof healthResult.breakdown.propertyEngagement === 'number', 'Health Score Breakdown: property engagement exists');
+
+    // 2. Forecasting
+    const forecastResult = await ForecastingEngine.generateForecasts();
+    assert(typeof forecastResult.leadForecast === 'object', 'Forecasting: leadForecast exists');
+    assert(typeof forecastResult.leadForecast.expectedMonthlyLeads === 'number', 'Forecasting: expectedMonthlyLeads is a number');
+    assert(['UP', 'DOWN', 'FLAT'].includes(forecastResult.leadForecast.trendDirection), 'Forecasting: lead trendDirection is valid');
+    assert(typeof forecastResult.revenueForecast.expectedMonthlyRevenue === 'number', 'Forecasting: expectedMonthlyRevenue is a number');
+    assert(typeof forecastResult.conversionForecast.expectedLeadToWinRatio === 'number', 'Forecasting: expectedLeadToWinRatio is a number');
+
+    // 3. CRM conversions
+    const conversionResult = await ConversionsService.getLeadFunnelData();
+    assert(Array.isArray(conversionResult.stages) && conversionResult.stages.length === 6, 'CRM Conversions: stages array contains 6 statuses');
+    assert(conversionResult.stages.every((s: any) => typeof s.count === 'number'), 'CRM Conversions: counts are numeric');
+    assert(typeof conversionResult.summary.totalActiveLeads === 'number', 'CRM Conversions: active leads count is numeric');
+
+    // 4. Executive overview
+    const execResult = await ExecutiveAnalyticsService.getExecutiveOverview();
+    assert(typeof execResult.properties.total === 'number', 'Executive Overview: property total is a number');
+    assert(typeof execResult.leads.active === 'number', 'Executive Overview: active leads count is a number');
+    assert(typeof execResult.growth.leads.monthly === 'number', 'Executive Overview: lead growth rate exists');
+    assert(typeof execResult.growth.users.weekly === 'number', 'Executive Overview: user growth rate exists');
+
+    // 5. Leads analytics
+    const leadsResult = await LeadAnalyticsService.getLeadAnalytics();
+    assert(Array.isArray(leadsResult.sourcePerformance) && leadsResult.sourcePerformance.length > 0, 'Leads Analytics: sourcePerformance array exists');
+    assert(leadsResult.sourcePerformance.every((s: any) => typeof s.conversionRate === 'number'), 'Leads Analytics: source conversion rates are numeric');
+    assert(Array.isArray(leadsResult.priorityPerformance) && leadsResult.priorityPerformance.length > 0, 'Leads Analytics: priorityPerformance array exists');
+
+    // 6. Property performance
+    const propsResult = await PropertyAnalyticsService.getPropertyAnalytics();
+    assert(Array.isArray(propsResult.performance), 'Property Analytics: performance list exists');
+    assert(typeof propsResult.topPerforming.mostViewed === 'object', 'Property Analytics: top performed viewed list exists');
+    assert(Array.isArray(propsResult.conversionFunnel) && propsResult.conversionFunnel.length === 5, 'Property Analytics: conversion funnel is 5 stages');
+
+    // 7. Appointments analytics
+    const apptsResult = await AppointmentAnalyticsService.getAppointmentAnalytics();
+    assert(typeof apptsResult.overview.scheduled === 'number', 'Appointments Analytics: scheduled count is numeric');
+    assert(typeof apptsResult.outcomes.converted === 'number', 'Appointments Analytics: converted outcome count is numeric');
+    assert(Array.isArray(apptsResult.adminPerformance), 'Appointments Analytics: admin performance list exists');
+
+    // 8. User analytics
+    const usersResult = await UserAnalyticsService.getUserAnalytics();
+    assert(typeof usersResult.growthTrends.dailyRegistrations === 'number', 'User Analytics: daily registrations count is numeric');
+    assert(typeof usersResult.activityMetrics.dau === 'number', 'User Analytics: DAU active metric count is numeric');
+    assert(typeof usersResult.retentionMetrics.returningUsers === 'number', 'User Analytics: returning users count is numeric');
+
+    // 9. Geographic analytics
+    const geogResult = await GeographicAnalyticsService.getGeographicAnalytics();
+    assert(Array.isArray(geogResult.demandHeatmap), 'Geographic Analytics: demand heatmap array exists');
+    assert(Array.isArray(geogResult.interestMap), 'Geographic Analytics: interest heatmap array exists');
+    assert(Array.isArray(geogResult.rankings.cities), 'Geographic Analytics: city rankings exist');
+
+    // 10. Revenue analytics
+    const revResult = await RevenueAnalyticsService.getRevenueAnalytics();
+    assert(typeof revResult.pipelineValue === 'number' && revResult.pipelineValue >= 0, 'Revenue Analytics: pipelineValue is non-negative');
+    assert(typeof revResult.wonRevenue === 'number' && revResult.wonRevenue >= 0, 'Revenue Analytics: wonRevenue is non-negative');
+    assert(Array.isArray(revResult.trends.monthly), 'Revenue Analytics: monthly trend list exists');
 
     // Clean up CRM test data
     await db.leadNote.deleteMany({ where: { leadId: testLead.id } });

@@ -12,7 +12,8 @@ import {
   LogOut,
   Home as HomeIcon,
   Mail,
-  Clock
+  Clock,
+  BarChart2
 } from 'lucide-react';
 
 export function AdminSidebar() {
@@ -21,6 +22,7 @@ export function AdminSidebar() {
 
   const navigationItems = [
     { href: '/admin', name: 'Dashboard stats', icon: LayoutDashboard, exact: true },
+    { href: '/admin/analytics', name: 'BI Analytics', icon: BarChart2, exact: false },
     { href: '/admin/users', name: 'Client CRM', icon: UsersIcon, exact: false },
     { href: '/admin/properties', name: 'Manage residences', icon: Building, exact: false },
     { href: '/admin/appointments', name: 'Visits manager', icon: Calendar, exact: false },
