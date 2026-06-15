@@ -89,6 +89,15 @@ export async function GET(
         where: { userId: id },
         include: {
           property: { select: { name: true } },
+          rescheduleHistory: {
+            include: { changedBy: { select: { name: true, email: true } } },
+          },
+          outcomeHistory: {
+            include: { changedBy: { select: { name: true, email: true } } },
+          },
+          cancellationHistory: {
+            include: { cancelledBy: { select: { name: true, email: true } } },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -206,8 +215,9 @@ export async function GET(
       });
     });
 
-    // 7. Appointments
+    // 7. Appointments & showing sub-events
     appointments.forEach((appt) => {
+      // Main appointment booking
       timelineEvents.push({
         id: `appt-${appt.id}`,
         type: 'APPOINTMENT',
@@ -223,6 +233,64 @@ export async function GET(
           status: appt.status,
         },
       });
+
+      // Reschedule logs
+      appt.rescheduleHistory.forEach((rh) => {
+        timelineEvents.push({
+          id: `appt-resched-${rh.id}`,
+          type: 'APPOINTMENT_RESCHEDULE',
+          date: rh.createdAt.toISOString(),
+          title: 'Showing Rescheduled',
+          description: `Showing for "${appt.property.name}" rescheduled from ${rh.previousDate} to ${rh.newDate} by ${rh.changedBy?.name || rh.changedBy?.email || 'System'}. Reason: ${rh.reason || 'None'}`,
+          icon: 'CalendarRange',
+          badge: 'RESCHEDULED',
+          details: {
+            appointmentId: appt.id,
+            previousDate: rh.previousDate,
+            newDate: rh.newDate,
+            reason: rh.reason,
+            changedBy: rh.changedBy?.name || rh.changedBy?.email,
+          },
+        });
+      });
+
+      // Outcome logs
+      appt.outcomeHistory.forEach((oh) => {
+        timelineEvents.push({
+          id: `appt-outcome-${oh.id}`,
+          type: 'APPOINTMENT_OUTCOME',
+          date: oh.createdAt.toISOString(),
+          title: 'Showing Outcome Recorded',
+          description: `Outcome for "${appt.property.name}" recorded as "${oh.newOutcome}" by ${oh.changedBy?.name || oh.changedBy?.email || 'System'}.${oh.notes ? ` Notes: ${oh.notes}` : ''}`,
+          icon: 'CheckSquare',
+          badge: oh.newOutcome,
+          details: {
+            appointmentId: appt.id,
+            previousOutcome: oh.previousOutcome,
+            newOutcome: oh.newOutcome,
+            notes: oh.notes,
+            changedBy: oh.changedBy?.name || oh.changedBy?.email,
+          },
+        });
+      });
+
+      // Cancellation log
+      if (appt.cancellationHistory) {
+        timelineEvents.push({
+          id: `appt-cancel-${appt.cancellationHistory.id}`,
+          type: 'APPOINTMENT_CANCEL',
+          date: appt.cancellationHistory.createdAt.toISOString(),
+          title: 'Showing Cancelled',
+          description: `Showing for "${appt.property.name}" cancelled by ${appt.cancellationHistory.cancelledBy?.name || appt.cancellationHistory.cancelledBy?.email || 'System'}. Reason: ${appt.cancellationHistory.reason || 'None'}`,
+          icon: 'CalendarX',
+          badge: 'CANCELLED',
+          details: {
+            appointmentId: appt.id,
+            reason: appt.cancellationHistory.reason,
+            cancelledBy: appt.cancellationHistory.cancelledBy?.name || appt.cancellationHistory.cancelledBy?.email,
+          },
+        });
+      }
     });
 
     // 8. General Activity Logs (excluding actions that are already recorded by status, role, and profile history tables)

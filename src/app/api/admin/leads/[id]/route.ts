@@ -87,6 +87,29 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
+    // Fetch appointments matching this lead by id or email
+    const appointments = await db.appointment.findMany({
+      where: {
+        OR: [
+          { leadId: id },
+          { email: { equals: lead.email, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        property: { select: { name: true } },
+        rescheduleHistory: {
+          include: { changedBy: { select: { name: true, email: true } } },
+        },
+        outcomeHistory: {
+          include: { changedBy: { select: { name: true, email: true } } },
+        },
+        cancellationHistory: {
+          include: { cancelledBy: { select: { name: true, email: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
     // Dynamic Engagement Score calculation
     const user = await db.user.findUnique({
       where: { email: lead.email },
@@ -178,6 +201,50 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         content: `Assigned to ${assigneeName}`,
         createdBy: assignLog.assignedBy,
       });
+    });
+
+    // Append showing & showing history logs to timeline
+    appointments.forEach((appt) => {
+      timeline.push({
+        id: `appt-${appt.id}`,
+        type: 'APPOINTMENT',
+        timestamp: appt.createdAt,
+        content: `Showing booked for "${appt.property.name}" on ${appt.date} at ${appt.time} (Status: ${appt.status})`,
+        details: { appointmentId: appt.id, status: appt.status, date: appt.date, time: appt.time },
+      });
+
+      appt.rescheduleHistory.forEach((rh) => {
+        timeline.push({
+          id: `appt-resched-${rh.id}`,
+          type: 'APPOINTMENT_RESCHEDULE',
+          timestamp: rh.createdAt,
+          content: `Showing for "${appt.property.name}" rescheduled to ${rh.newDate}. Reason: ${rh.reason || 'None'}`,
+          createdBy: rh.changedBy,
+          details: { appointmentId: appt.id, previousDate: rh.previousDate, newDate: rh.newDate, reason: rh.reason },
+        });
+      });
+
+      appt.outcomeHistory.forEach((oh) => {
+        timeline.push({
+          id: `appt-outcome-${oh.id}`,
+          type: 'APPOINTMENT_OUTCOME',
+          timestamp: oh.createdAt,
+          content: `Showing outcome recorded: "${oh.newOutcome}". Notes: ${oh.notes || 'None'}`,
+          createdBy: oh.changedBy,
+          details: { appointmentId: appt.id, previousOutcome: oh.previousOutcome, newOutcome: oh.newOutcome, notes: oh.notes },
+        });
+      });
+
+      if (appt.cancellationHistory) {
+        timeline.push({
+          id: `appt-cancel-${appt.cancellationHistory.id}`,
+          type: 'APPOINTMENT_CANCEL',
+          timestamp: appt.cancellationHistory.createdAt,
+          content: `Showing for "${appt.property.name}" cancelled. Reason: ${appt.cancellationHistory.reason || 'None'}`,
+          createdBy: appt.cancellationHistory.cancelledBy,
+          details: { appointmentId: appt.id, reason: appt.cancellationHistory.reason },
+        });
+      }
     });
 
     // Sort timeline chronologically (newest first)

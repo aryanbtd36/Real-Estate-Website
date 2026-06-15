@@ -17,6 +17,12 @@ export const EVENTS = {
   INQUIRY_DELETED: 'INQUIRY_DELETED',
   APPOINTMENT_CREATED: 'APPOINTMENT_CREATED',
   APPOINTMENT_UPDATED: 'APPOINTMENT_UPDATED',
+  APPOINTMENT_RESCHEDULED: 'APPOINTMENT_RESCHEDULED',
+  APPOINTMENT_CANCELLED: 'APPOINTMENT_CANCELLED',
+  APPOINTMENT_COMPLETED: 'APPOINTMENT_COMPLETED',
+  APPOINTMENT_OUTCOME_RECORDED: 'APPOINTMENT_OUTCOME_RECORDED',
+  APPOINTMENT_REMINDER_SENT: 'APPOINTMENT_REMINDER_SENT',
+  FOLLOW_UP_AUTO_CREATED: 'FOLLOW_UP_AUTO_CREATED',
   USER_SUSPENDED: 'USER_SUSPENDED',
   USER_RESTORED: 'USER_RESTORED',
   ROLE_PROMOTED: 'ROLE_PROMOTED',
@@ -596,3 +602,90 @@ eventEmitter.on(
     });
   })
 );
+
+// 29. Appointment Rescheduled Listener
+eventEmitter.on(
+  EVENTS.APPOINTMENT_RESCHEDULED,
+  safeListener(async ({ actorId, targetUserId, appointmentId, propertyName, clientName, status, date, time, reason }: { actorId: string; targetUserId: string; appointmentId: string; propertyName: string; clientName: string; status: string; date: string; time: string; reason: string }) => {
+    if (targetUserId) {
+      await NotificationService.create({
+        userId: targetUserId,
+        title: 'Property Viewing Rescheduled',
+        message: `Your private viewing of "${propertyName}" has been rescheduled to ${date} at ${time}. Reason: ${reason}`,
+        type: NotificationType.APPOINTMENT,
+        link: '/dashboard',
+      });
+    }
+  })
+);
+
+// 30. Appointment Cancelled Listener
+eventEmitter.on(
+  EVENTS.APPOINTMENT_CANCELLED,
+  safeListener(async ({ actorId, targetUserId, appointmentId, propertyName, clientName, status, reason }: { actorId: string; targetUserId: string; appointmentId: string; propertyName: string; clientName: string; status: string; reason: string }) => {
+    if (targetUserId) {
+      await NotificationService.create({
+        userId: targetUserId,
+        title: 'Property Viewing Cancelled',
+        message: `Your private viewing request for "${propertyName}" has been cancelled. Reason: ${reason}`,
+        type: NotificationType.APPOINTMENT,
+        link: '/dashboard',
+      });
+    }
+  })
+);
+
+// 31. Appointment Completed Listener
+eventEmitter.on(
+  EVENTS.APPOINTMENT_COMPLETED,
+  safeListener(async ({ actorId, targetUserId, appointmentId, propertyName, clientName, outcome }: { actorId: string; targetUserId: string; appointmentId: string; propertyName: string; clientName: string; outcome: string }) => {
+    if (targetUserId) {
+      await NotificationService.create({
+        userId: targetUserId,
+        title: 'Property Viewing Completed',
+        message: `Thank you for attending the showing of "${propertyName}". Outcome: ${outcome.replace('_', ' ')}.`,
+        type: NotificationType.APPOINTMENT,
+        link: '/dashboard',
+      });
+    }
+  })
+);
+
+// 32. Appointment Outcome Recorded Listener
+eventEmitter.on(
+  EVENTS.APPOINTMENT_OUTCOME_RECORDED,
+  safeListener(async ({ actorId, targetUserId, appointmentId, outcome, notes }: { actorId: string; targetUserId: string; appointmentId: string; outcome: string; notes?: string }) => {
+    // Audit outcomes internally or notify admins if critical status was reached
+  })
+);
+
+// 33. Appointment Reminder Sent Listener
+eventEmitter.on(
+  EVENTS.APPOINTMENT_REMINDER_SENT,
+  safeListener(async ({ targetUserId, appointmentId, propertyName, clientName, date, time }: { targetUserId: string; appointmentId: string; propertyName: string; clientName: string; date: string; time: string }) => {
+    await ActivityService.log({
+      actorId: null,
+      targetUserId,
+      action: ActivityAction.APPOINTMENT_REMINDER,
+      description: `Sent showing reminder to client ${clientName} for property "${propertyName}"`,
+      details: { appointmentId, date, time },
+    });
+
+    await NotificationService.create({
+      userId: targetUserId,
+      title: 'Upcoming Property Viewing Reminder',
+      message: `Friendly reminder: Your private viewing of "${propertyName}" is scheduled on ${date} at ${time}.`,
+      type: NotificationType.APPOINTMENT,
+      link: '/dashboard',
+    });
+  })
+);
+
+// 34. Follow-Up Auto Created Listener
+eventEmitter.on(
+  EVENTS.FOLLOW_UP_AUTO_CREATED,
+  safeListener(async ({ leadId, followUpId, title, assignedToId }: { leadId: string; followUpId: string; title: string; assignedToId: string }) => {
+    // Side effect for auto created follow-ups if any
+  })
+);
+

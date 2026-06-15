@@ -15,7 +15,20 @@ export async function GET() {
 
     const appointments = await db.appointment.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { property: true, user: true },
+      include: {
+        property: true,
+        user: true,
+        notes: {
+          include: {
+            createdBy: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        admin: {
+          select: { id: true, name: true, email: true },
+        },
+        lead: true,
+      },
     });
 
     return NextResponse.json(appointments);
