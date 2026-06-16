@@ -34,7 +34,7 @@ export function AdminSidebar() {
     { href: '/admin/audit-logs', name: 'Audit logs', icon: Clock, exact: false },
   ];
 
-  const isSuper = userRole === 'PRIMARY_SUPER_ADMIN' || userRole === 'FOUNDER_SUPER_ADMIN';
+  const isSuper = userRole === 'SUPER_ADMIN';
   if (isSuper) {
     navigationItems.push(
       { href: '/admin/admins', name: 'Manage admins', icon: UserCheck, exact: false },
@@ -43,7 +43,7 @@ export function AdminSidebar() {
     );
   }
 
-  if (userRole === 'FOUNDER_SUPER_ADMIN') {
+  if ((session?.user as any)?.isFounder) {
     navigationItems.push(
       { href: '/founder', name: 'Founder console', icon: ShieldAlert, exact: false }
     );
@@ -57,16 +57,21 @@ export function AdminSidebar() {
   };
 
   const getRoleTitleAndBadge = (role: string) => {
-    switch (role) {
-      case 'FOUNDER_SUPER_ADMIN':
+    const isFounder = (session?.user as any)?.isFounder;
+    const isPrimarySA = (session?.user as any)?.isPrimarySA;
+    if (role === 'SUPER_ADMIN') {
+      if (isFounder) {
         return { title: '👑 Founder Super Administrator', badge: 'IMMORTAL' };
-      case 'PRIMARY_SUPER_ADMIN':
+      }
+      if (isPrimarySA) {
         return { title: '🛡️ Primary Super Administrator', badge: 'PRIMARY SA' };
-      case 'ADMIN':
-        return { title: 'Administrator', badge: 'ADMIN' };
-      default:
-        return { title: 'Client', badge: 'USER' };
+      }
+      return { title: 'Super Administrator', badge: 'SUPER ADMIN' };
     }
+    if (role === 'ADMIN') {
+      return { title: 'Administrator', badge: 'ADMIN' };
+    }
+    return { title: 'Client', badge: 'USER' };
   };
   const { title: displayTitle, badge: displayBadge } = getRoleTitleAndBadge(userRole || 'USER');
 
@@ -92,8 +97,8 @@ export function AdminSidebar() {
           </div>
           <div className="flex justify-start">
             <span className={`text-[8px] font-extrabold tracking-wider px-2 py-0.5 rounded border ${
-              userRole === 'FOUNDER_SUPER_ADMIN' ? 'bg-[#D4AF37]/15 border-[#D4AF37]/30 text-[#D4AF37]' :
-              userRole === 'PRIMARY_SUPER_ADMIN' ? 'bg-blue-500/10 border-blue-500/25 text-blue-400' :
+              (session?.user as any)?.isFounder ? 'bg-[#D4AF37]/15 border-[#D4AF37]/30 text-[#D4AF37]' :
+              (session?.user as any)?.isPrimarySA ? 'bg-blue-500/10 border-blue-500/25 text-blue-400' :
               userRole === 'ADMIN' ? 'bg-green-500/10 border-green-500/25 text-green-400' :
               'bg-white/5 border-white/10 text-white/50'
             }`}>

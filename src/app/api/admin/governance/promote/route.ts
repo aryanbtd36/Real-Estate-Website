@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         updatedUser = await tx.user.update({
           where: { id: targetUserId },
           data: {
-            role: UserRole.PRIMARY_SUPER_ADMIN,
+            role: UserRole.SUPER_ADMIN,
             isPrimarySA: true,
             promotedById: callerId,
             promotedAt: new Date(),
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
             userId: targetUserId,
             changedById: callerId,
             previousRole: targetUser.role,
-            newRole: UserRole.PRIMARY_SUPER_ADMIN,
+            newRole: UserRole.SUPER_ADMIN,
           },
         });
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
             targetUserId,
             actorId: callerId,
             previousRole: targetUser.role,
-            newRole: UserRole.PRIMARY_SUPER_ADMIN,
+            newRole: UserRole.SUPER_ADMIN,
             reason: reason || 'Promoted to Primary Super Admin by Founder',
           },
         });
@@ -80,20 +80,21 @@ export async function POST(request: NextRequest) {
             actorId: callerId,
             targetUserId,
             action: ActivityAction.FOUNDER_PROMOTION,
-            description: `Promoted ${targetUser.email} to PRIMARY_SUPER_ADMIN.`,
+            description: `Promoted ${targetUser.email} to SUPER_ADMIN (Primary SA).`,
           },
         });
 
       } else {
         // DEMOTE
-        if (targetUser.role !== UserRole.PRIMARY_SUPER_ADMIN) {
+        if (targetUser.role !== UserRole.SUPER_ADMIN || !targetUser.isPrimarySA) {
           throw new Error('User is not a Primary Super Admin.');
         }
 
         // Count Primary SAs to enforce governance rule: at least one Primary Super Admin must exist
         const psaCount = await tx.user.count({
           where: {
-            role: UserRole.PRIMARY_SUPER_ADMIN,
+            role: UserRole.SUPER_ADMIN,
+            isPrimarySA: true,
             deletedAt: null,
           },
         });

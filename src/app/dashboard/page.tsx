@@ -100,11 +100,11 @@ export default function DashboardPage() {
     }
   };
 
-  // Redirect if unauthenticated or if user is ADMIN
+  // Redirect if unauthenticated or if user is ADMIN or SUPER_ADMIN
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
-    } else if (status === 'authenticated' && session?.user && (session.user as any).role === 'ADMIN') {
+    } else if (status === 'authenticated' && session?.user && ((session.user as any).role === 'ADMIN' || (session.user as any).role === 'SUPER_ADMIN')) {
       router.push('/admin');
     }
   }, [status, session, router]);

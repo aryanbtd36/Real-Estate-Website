@@ -605,8 +605,7 @@ model AppointmentCancellationHistory {
 enum UserRole {
   USER
   ADMIN
-  PRIMARY_SUPER_ADMIN
-  FOUNDER_SUPER_ADMIN
+  SUPER_ADMIN
 }
 
 enum Permission {

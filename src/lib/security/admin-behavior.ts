@@ -166,7 +166,7 @@ async function raiseSecurityAlert({ adminId, type, severity, description, detail
 
     // 2. Dispatch notifications to all SUPER_ADMINS
     const superAdmins = await db.user.findMany({
-      where: { role: { in: [UserRole.PRIMARY_SUPER_ADMIN, UserRole.FOUNDER_SUPER_ADMIN] }, deletedAt: null },
+      where: { role: UserRole.SUPER_ADMIN, deletedAt: null },
       select: { id: true },
     });
 

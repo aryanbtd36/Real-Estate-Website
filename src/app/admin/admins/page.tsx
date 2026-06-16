@@ -252,7 +252,7 @@ export default function AdminDirectoryPage() {
                           ? 'bg-[#D4AF37]/10 border border-[#D4AF37]/25 text-[#F5D67B]'
                           : 'bg-white/5 border border-white/10 text-white/70'
                       }`}>
-                        {admin.role.replace('_', ' ')}
+                        {admin.isFounder ? 'IMMORTAL' : admin.isPrimarySA ? 'PRIMARY SUPER ADMIN' : admin.role.replace('_', ' ')}
                       </span>
                     </td>
                     <td className="py-4">

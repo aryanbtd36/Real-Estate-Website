@@ -25,7 +25,7 @@ export default async function AdminLayout({
     select: { role: true, status: true },
   });
 
-  if (!dbUser || (dbUser.role !== 'ADMIN' && dbUser.role !== 'PRIMARY_SUPER_ADMIN' && dbUser.role !== 'FOUNDER_SUPER_ADMIN')) {
+  if (!dbUser || (dbUser.role !== 'ADMIN' && dbUser.role !== 'SUPER_ADMIN')) {
     console.warn(`[SECURITY MONITOR] Forbidden admin access attempt by: ${session.user.email}`);
     redirect('/');
   }

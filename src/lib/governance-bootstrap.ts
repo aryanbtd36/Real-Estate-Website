@@ -23,7 +23,7 @@ export async function bootstrapGovernance(db: PrismaClient) {
         data: {
           email: founderEmail,
           name: 'Aryan Mishra',
-          role: UserRole.FOUNDER_SUPER_ADMIN,
+          role: UserRole.SUPER_ADMIN,
           status: UserStatus.ACTIVE,
           isFounder: true,
           isPrimarySA: false,
@@ -35,8 +35,8 @@ export async function bootstrapGovernance(db: PrismaClient) {
       repairedFields.push('account_creation');
     } else {
       const updates: any = {};
-      if (founder.role !== UserRole.FOUNDER_SUPER_ADMIN) {
-        updates.role = UserRole.FOUNDER_SUPER_ADMIN;
+      if (founder.role !== UserRole.SUPER_ADMIN) {
+        updates.role = UserRole.SUPER_ADMIN;
         repairedFields.push('role');
       }
       if (founder.status !== UserStatus.ACTIVE) {
@@ -95,8 +95,8 @@ export async function bootstrapGovernance(db: PrismaClient) {
         data: {
           targetUserId: founder.id,
           actorId: 'SYSTEM_BOOTSTRAP',
-          previousRole: UserRole.FOUNDER_SUPER_ADMIN,
-          newRole: UserRole.FOUNDER_SUPER_ADMIN,
+          previousRole: UserRole.SUPER_ADMIN,
+          newRole: UserRole.SUPER_ADMIN,
           reason: 'Auto-restored Founder account/permissions during startup check',
           metadata: { repairedFields },
         },
@@ -127,7 +127,7 @@ export async function bootstrapGovernance(db: PrismaClient) {
         data: {
           email: primarySAEmail,
           name: 'Primary SA',
-          role: UserRole.PRIMARY_SUPER_ADMIN,
+          role: UserRole.SUPER_ADMIN,
           status: UserStatus.ACTIVE,
           isFounder: false,
           isPrimarySA: true,
@@ -139,8 +139,8 @@ export async function bootstrapGovernance(db: PrismaClient) {
       saRepairedFields.push('account_creation');
     } else {
       const saUpdates: any = {};
-      if (primarySA.role !== UserRole.PRIMARY_SUPER_ADMIN) {
-        saUpdates.role = UserRole.PRIMARY_SUPER_ADMIN;
+      if (primarySA.role !== UserRole.SUPER_ADMIN) {
+        saUpdates.role = UserRole.SUPER_ADMIN;
         saRepairedFields.push('role');
       }
       if (primarySA.status !== UserStatus.ACTIVE) {

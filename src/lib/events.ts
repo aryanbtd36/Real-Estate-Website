@@ -77,6 +77,12 @@ function safeListener(handler: (...args: any[]) => Promise<any>) {
 eventEmitter.on(
   EVENTS.LOGIN_SUCCESS,
   safeListener(async ({ userId, provider }: { userId: string; provider?: string }) => {
+    const userExists = await db.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!userExists) return;
+
     await db.user.update({
       where: { id: userId },
       data: { lastLogin: new Date() },

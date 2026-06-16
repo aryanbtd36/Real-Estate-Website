@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
+    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.VIEW_SECURITY));
 
     if (!isAllowed) {
@@ -76,11 +76,12 @@ export async function POST(request: NextRequest) {
 
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
+    const callerIsFounder = (session.user as any).isFounder;
+    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
 
     // Lockdown check
     const { isGlobalLockdownActive, checkImmortalProtection } = await import('@/lib/governance');
-    if (await isGlobalLockdownActive() && callerRole !== 'FOUNDER_SUPER_ADMIN') {
+    if (await isGlobalLockdownActive() && !callerIsFounder) {
       return NextResponse.json({ error: 'System is in Global Lockdown. Mutations are disabled.' }, { status: 503 });
     }
 
@@ -124,11 +125,11 @@ export async function POST(request: NextRequest) {
 
       // Check hierarchy constraints: ADMIN cannot terminate session of Super Admin
       const targetUser = await db.user.findUnique({ where: { id: targetSession.userId } });
-      const targetIsSuper = targetUser?.role === 'PRIMARY_SUPER_ADMIN' || targetUser?.role === 'FOUNDER_SUPER_ADMIN';
+      const targetIsSuper = targetUser?.role === 'SUPER_ADMIN';
       if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot terminate Super Admin sessions' }, { status: 403 });
       }
-      if (targetUser?.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+      if (targetUser?.isFounder && (session.user as any).isPrimarySA) {
         return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot terminate Founder sessions' }, { status: 403 });
       }
 
@@ -175,11 +176,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: err.message }, { status: 403 });
       }
 
-      const targetIsSuper = targetUser.role === 'PRIMARY_SUPER_ADMIN' || targetUser.role === 'FOUNDER_SUPER_ADMIN';
+      const targetIsSuper = targetUser.role === 'SUPER_ADMIN';
       if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify Super Admin profiles' }, { status: 403 });
       }
-      if (targetUser.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+      if (targetUser.isFounder && (session.user as any).isPrimarySA) {
         return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify Founder profiles' }, { status: 403 });
       }
 
@@ -224,11 +225,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: err.message }, { status: 403 });
       }
 
-      const targetIsSuper = targetUser.role === 'PRIMARY_SUPER_ADMIN' || targetUser.role === 'FOUNDER_SUPER_ADMIN';
+      const targetIsSuper = targetUser.role === 'SUPER_ADMIN';
       if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify Super Admin profiles' }, { status: 403 });
       }
-      if (targetUser.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+      if (targetUser.isFounder && (session.user as any).isPrimarySA) {
         return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify Founder profiles' }, { status: 403 });
       }
 
@@ -296,11 +297,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: err.message }, { status: 403 });
       }
 
-      const targetIsSuper = targetUser.role === 'PRIMARY_SUPER_ADMIN' || targetUser.role === 'FOUNDER_SUPER_ADMIN';
+      const targetIsSuper = targetUser.role === 'SUPER_ADMIN';
       if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify Super Admin profiles' }, { status: 403 });
       }
-      if (targetUser.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+      if (targetUser.isFounder && (session.user as any).isPrimarySA) {
         return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify Founder profiles' }, { status: 403 });
       }
 

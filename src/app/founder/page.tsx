@@ -82,7 +82,7 @@ export default function FounderConsolePage() {
       return;
     }
 
-    if (session && (session.user as any).role !== 'FOUNDER_SUPER_ADMIN') {
+    if (session && !(session.user as any).isFounder) {
       // Forbidden access for non-founders
       router.push('/admin');
       return;

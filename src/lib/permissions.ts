@@ -16,8 +16,8 @@ export async function hasPermission(userId: string, permission: Permission): Pro
 
     if (!user) return false;
 
-    // FOUNDER_SUPER_ADMIN and PRIMARY_SUPER_ADMIN have god-mode privileges and bypass all permission checks
-    if (user.role === UserRole.FOUNDER_SUPER_ADMIN || user.role === UserRole.PRIMARY_SUPER_ADMIN) {
+    // SUPER_ADMIN has god-mode privileges and bypasses all permission checks
+    if (user.role === UserRole.SUPER_ADMIN) {
       return true;
     }
 
@@ -71,7 +71,7 @@ export async function requireSuperAdmin(request: NextRequest) {
   }
 
   const userRole = (session.user as any).role;
-  if (userRole !== 'FOUNDER_SUPER_ADMIN' && userRole !== 'PRIMARY_SUPER_ADMIN') {
+  if (userRole !== 'SUPER_ADMIN') {
     return { error: 'Forbidden: Super Admin access required', status: 403 };
   }
 
@@ -88,7 +88,8 @@ export async function requireFounderSuperAdmin(request: NextRequest) {
   }
 
   const userRole = (session.user as any).role;
-  if (userRole !== 'FOUNDER_SUPER_ADMIN') {
+  const isFounder = (session.user as any).isFounder;
+  if (userRole !== 'SUPER_ADMIN' || !isFounder) {
     return { error: 'Forbidden: Founder Super Admin access required', status: 403 };
   }
 

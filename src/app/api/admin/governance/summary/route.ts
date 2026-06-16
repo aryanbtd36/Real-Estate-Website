@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       totalAdminsCount,
     ] = await Promise.all([
       db.user.findMany({
-        where: { role: UserRole.PRIMARY_SUPER_ADMIN, deletedAt: null },
+        where: { role: UserRole.SUPER_ADMIN, isPrimarySA: true, deletedAt: null },
         select: {
           id: true,
           name: true,
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     });
 
     const isFounderActive = founder?.status === UserStatus.ACTIVE;
-    const isFounderRoleIntact = founder?.role === UserRole.FOUNDER_SUPER_ADMIN;
+    const isFounderRoleIntact = founder?.role === UserRole.SUPER_ADMIN && founder?.isFounder;
     const isFounderLockEnabled = !!founder?.governanceLocked;
     const isFounderPermissionsIntact =
       founder?.adminPermissions.length === Object.keys(Permission).length;

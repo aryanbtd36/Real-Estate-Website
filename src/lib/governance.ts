@@ -74,7 +74,6 @@ export async function checkImmortalProtection({
   // Check if target is IMMORTAL (email = 'aryanmishra8113@gmail.com', or role = FOUNDER_SUPER_ADMIN, or isFounder = true)
   const isImmortal =
     target.isFounder ||
-    target.role === UserRole.FOUNDER_SUPER_ADMIN ||
     target.email.toLowerCase() === 'aryanmishra8113@gmail.com';
 
   if (isImmortal) {

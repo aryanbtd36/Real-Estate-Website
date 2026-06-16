@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
+    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.VIEW_SECURITY));
 
     if (!isAllowed) {
@@ -31,14 +31,14 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       db.user.count({
         where: {
-          role: { in: [UserRole.ADMIN, UserRole.PRIMARY_SUPER_ADMIN, UserRole.FOUNDER_SUPER_ADMIN] },
+          role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] },
           status: UserStatus.ACTIVE,
           deletedAt: null,
         },
       }),
       db.user.count({
         where: {
-          role: { in: [UserRole.ADMIN, UserRole.PRIMARY_SUPER_ADMIN, UserRole.FOUNDER_SUPER_ADMIN] },
+          role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] },
           status: UserStatus.SUSPENDED,
           deletedAt: null,
         },

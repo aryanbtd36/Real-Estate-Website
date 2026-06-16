@@ -165,7 +165,7 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await db.user.findUnique({
             where: { email: token.email },
-            select: { id: true, phone: true, emailVerified: true },
+            select: { id: true, phone: true, emailVerified: true, isFounder: true, isPrimarySA: true },
           });
 
           if (dbUser) {
@@ -174,6 +174,8 @@ export const authOptions: NextAuthOptions = {
             token.id = dbUser.id;
             token.phone = dbUser.phone;
             token.emailVerified = dbUser.emailVerified ? dbUser.emailVerified.toISOString() : null;
+            token.isFounder = dbUser.isFounder;
+            token.isPrimarySA = dbUser.isPrimarySA;
           }
         } catch (err) {
           console.error('NextAuth jwt callback error:', err);
@@ -187,6 +189,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).phone = token.phone;
         (session.user as any).emailVerified = token.emailVerified;
+        (session.user as any).isFounder = token.isFounder;
+        (session.user as any).isPrimarySA = token.isPrimarySA;
       }
       return session;
     },
@@ -194,8 +198,18 @@ export const authOptions: NextAuthOptions = {
   events: {
     async signIn({ user, account }) {
       try {
+        let dbUserId = user.id;
+        if (account?.provider === 'google' && user.email) {
+          const dbUser = await db.user.findUnique({
+            where: { email: user.email },
+            select: { id: true },
+          });
+          if (dbUser) {
+            dbUserId = dbUser.id;
+          }
+        }
         eventEmitter.emit(EVENTS.LOGIN_SUCCESS, {
-          userId: user.id,
+          userId: dbUserId,
           provider: account?.provider || 'credentials',
         });
       } catch (err) {

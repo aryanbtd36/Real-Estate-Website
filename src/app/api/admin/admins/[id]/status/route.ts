@@ -19,11 +19,12 @@ export async function PUT(
     const { id: adminId } = await params;
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
+    const callerIsFounder = (session.user as any).isFounder;
+    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
 
     // Lockdown check
     const { isGlobalLockdownActive, checkImmortalProtection } = await import('@/lib/governance');
-    if (await isGlobalLockdownActive() && callerRole !== 'FOUNDER_SUPER_ADMIN') {
+    if (await isGlobalLockdownActive() && !callerIsFounder) {
       return NextResponse.json({ error: 'System is in Global Lockdown. Mutations are disabled.' }, { status: 503 });
     }
 
@@ -61,14 +62,14 @@ export async function PUT(
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
 
-    // ADMIN cannot modify or suspend Super Admins (Primary SA or Founder)
-    const targetIsSuper = targetAdmin.role === 'PRIMARY_SUPER_ADMIN' || targetAdmin.role === 'FOUNDER_SUPER_ADMIN';
+    // ADMIN cannot modify or suspend Super Admins
+    const targetIsSuper = targetAdmin.role === 'SUPER_ADMIN';
     if (targetIsSuper && callerRole === 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify a Super Administrator' }, { status: 403 });
     }
 
     // PRIMARY_SUPER_ADMIN cannot modify or suspend FOUNDER_SUPER_ADMIN
-    if (targetAdmin.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+    if (targetAdmin.isFounder && (session.user as any).isPrimarySA) {
       return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify the Founder' }, { status: 403 });
     }
 

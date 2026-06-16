@@ -72,7 +72,7 @@ export function Navbar() {
             {session ? (
               <div className="flex items-center space-x-4">
                 <Link
-                  href={(session?.user as any)?.role === 'ADMIN' ? '/admin' : '/dashboard'}
+                  href={((session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.role === 'SUPER_ADMIN') ? '/admin' : '/dashboard'}
                   className="flex items-center space-x-2 text-sm text-white/80 hover:text-[#D4AF37] transition-colors"
                 >
                   <User size={16} />
@@ -147,7 +147,7 @@ export function Navbar() {
               {session ? (
                 <>
                   <Link
-                    href={(session?.user as any)?.role === 'ADMIN' ? '/admin' : '/dashboard'}
+                    href={((session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.role === 'SUPER_ADMIN') ? '/admin' : '/dashboard'}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center space-x-2 text-lg text-white"
                   >
