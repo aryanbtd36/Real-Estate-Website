@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import { bootstrapGovernance } from './governance-bootstrap';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
@@ -15,7 +16,12 @@ const createPrismaClient = () => {
     ssl: sslVal,
   });
   const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
+  const client = new PrismaClient({ adapter });
+  
+  // Trigger governance bootstrap check asynchronously on startup
+  bootstrapGovernance(client).catch(console.error);
+
+  return client;
 };
 
 export const db = globalForPrisma.prisma || createPrismaClient();

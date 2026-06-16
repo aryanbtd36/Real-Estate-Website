@@ -18,7 +18,8 @@ export async function GET(
 
     const { id: adminId } = await params;
     const callerId = (session.user as any).id;
-    const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN';
+    const callerRole = (session.user as any).role;
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.MANAGE_ADMINS));
 
     if (!isAllowed) {
@@ -45,7 +46,7 @@ export async function GET(
       return NextResponse.json({ error: 'Administrator not found' }, { status: 404 });
     }
 
-    if (admin.role !== UserRole.ADMIN && admin.role !== UserRole.SUPER_ADMIN) {
+    if (admin.role !== UserRole.ADMIN && admin.role !== UserRole.PRIMARY_SUPER_ADMIN && admin.role !== UserRole.FOUNDER_SUPER_ADMIN) {
       return NextResponse.json({ error: 'Selected user is not an administrator' }, { status: 400 });
     }
 

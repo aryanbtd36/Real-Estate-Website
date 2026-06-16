@@ -19,8 +19,8 @@ export async function POST(
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
 
-    // Restriction: Only SUPER_ADMIN can submit reviews
-    if (callerRole !== UserRole.SUPER_ADMIN) {
+    // Restriction: Only Super Admins (Founder or Primary SA) can submit reviews
+    if (callerRole !== 'PRIMARY_SUPER_ADMIN' && callerRole !== 'FOUNDER_SUPER_ADMIN') {
       return NextResponse.json({ error: 'Forbidden: Super Admin access required' }, { status: 403 });
     }
 

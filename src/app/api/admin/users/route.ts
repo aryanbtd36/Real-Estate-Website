@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     const actorRole = (session?.user as any)?.role;
 
-    if (!session || (actorRole !== 'ADMIN' && actorRole !== 'SUPER_ADMIN')) {
+    const hasAdminAccess = actorRole === 'ADMIN' || actorRole === 'PRIMARY_SUPER_ADMIN' || actorRole === 'FOUNDER_SUPER_ADMIN';
+    if (!session || !hasAdminAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -144,8 +145,15 @@ export async function PUT(request: NextRequest) {
     const actorId = (session?.user as any)?.id;
     const actorRole = (session?.user as any)?.role;
 
-    if (!session || (actorRole !== 'ADMIN' && actorRole !== 'SUPER_ADMIN')) {
+    const hasAdminAccess = actorRole === 'ADMIN' || actorRole === 'PRIMARY_SUPER_ADMIN' || actorRole === 'FOUNDER_SUPER_ADMIN';
+    if (!session || !hasAdminAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Lockdown check
+    const { isGlobalLockdownActive, checkImmortalProtection } = await import('@/lib/governance');
+    if (await isGlobalLockdownActive() && actorRole !== 'FOUNDER_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'System is in Global Lockdown. Mutations are disabled.' }, { status: 503 });
     }
 
     const body = await request.json();
@@ -172,14 +180,32 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'User not found or has been soft-deleted' }, { status: 404 });
     }
 
-    // ADMIN cannot modify SUPER_ADMIN
-    if (targetUser.role === 'SUPER_ADMIN' && actorRole !== 'SUPER_ADMIN') {
+    // Check Immortal Protection
+    try {
+      await checkImmortalProtection({
+        targetUserId: userId,
+        actorId,
+        action: `Modify User (role: ${role || targetUser.role}, status: ${status || targetUser.status})`,
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
+
+    // Standard Admins cannot modify Super Admins (Primary SA or Founder)
+    const isTargetSuper = targetUser.role === 'PRIMARY_SUPER_ADMIN' || targetUser.role === 'FOUNDER_SUPER_ADMIN';
+    if (isTargetSuper && actorRole === 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify a Super Administrator.' }, { status: 403 });
     }
 
-    // ADMIN cannot create/promote someone to SUPER_ADMIN
-    if (role === 'SUPER_ADMIN' && actorRole !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Forbidden: Only Super Administrators can create or promote other Super Administrators.' }, { status: 403 });
+    // Primary SAs cannot modify the Founder
+    if (targetUser.role === 'FOUNDER_SUPER_ADMIN' && actorRole === 'PRIMARY_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify the Founder.' }, { status: 403 });
+    }
+
+    // Only Founder can assign Super Admin roles
+    const assigningSuper = role === 'PRIMARY_SUPER_ADMIN' || role === 'FOUNDER_SUPER_ADMIN';
+    if (assigningSuper && actorRole !== 'FOUNDER_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: Only the Founder can assign Super Administrator roles.' }, { status: 403 });
     }
 
     const updateData: any = {};
@@ -229,7 +255,7 @@ export async function PUT(request: NextRequest) {
 
       // 2. Validate and track role changes
       if (role !== undefined) {
-        if (role !== 'USER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+        if (role !== 'USER' && role !== 'ADMIN' && role !== 'PRIMARY_SUPER_ADMIN' && role !== 'FOUNDER_SUPER_ADMIN') {
           throw new Error('Invalid role value');
         }
         if (role !== targetUser.role) {

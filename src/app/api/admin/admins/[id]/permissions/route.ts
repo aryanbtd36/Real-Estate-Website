@@ -19,7 +19,14 @@ export async function POST(
     const { id: adminId } = await params;
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
+
+    // Lockdown check
+    const { isGlobalLockdownActive, checkImmortalProtection } = await import('@/lib/governance');
+    if (await isGlobalLockdownActive() && callerRole !== 'FOUNDER_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'System is in Global Lockdown. Mutations are disabled.' }, { status: 503 });
+    }
+
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.MANAGE_ADMINS));
 
     if (!isAllowed) {
@@ -35,9 +42,26 @@ export async function POST(
       return NextResponse.json({ error: 'Administrator not found' }, { status: 404 });
     }
 
-    // ADMIN cannot change SUPER_ADMIN permissions
-    if (targetAdmin.role === UserRole.SUPER_ADMIN && !isSuperAdmin) {
+    // Check Immortal Protection
+    try {
+      await checkImmortalProtection({
+        targetUserId: adminId,
+        actorId: callerId,
+        action: 'Modify Administrator Permissions',
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
+
+    // ADMIN cannot change Super Admin permissions
+    const targetIsSuper = targetAdmin.role === 'PRIMARY_SUPER_ADMIN' || targetAdmin.role === 'FOUNDER_SUPER_ADMIN';
+    if (targetIsSuper && callerRole === 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify Super Admin permissions' }, { status: 403 });
+    }
+
+    // PRIMARY_SUPER_ADMIN cannot change Founder permissions
+    if (targetAdmin.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify Founder permissions' }, { status: 403 });
     }
 
     const body = await request.json();

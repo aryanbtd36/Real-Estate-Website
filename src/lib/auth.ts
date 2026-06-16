@@ -33,6 +33,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Turnstile verification failed.');
         }
 
+        // 1.5. Verify if global lockdown is active
+        const { isGlobalLockdownActive } = await import('./governance');
+        if (await isGlobalLockdownActive()) {
+          if (credentials.email.toLowerCase() !== 'aryanmishra8113@gmail.com') {
+            throw new Error('GlobalLockdownActive');
+          }
+        }
+
         // 2. Fetch user from database
         const user = await db.user.findUnique({
           where: { email: credentials.email },
@@ -109,6 +117,15 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === 'google') {
         const email = user.email;
         if (!email) return false;
+
+        // Verify if global lockdown is active
+        const { isGlobalLockdownActive } = await import('./governance');
+        if (await isGlobalLockdownActive()) {
+          if (email.toLowerCase() !== 'aryanmishra8113@gmail.com') {
+            console.warn(`[SECURITY MONITOR] Blocked Google sign-in during global lockdown for: ${email}`);
+            return false;
+          }
+        }
 
         try {
           const dbUser = await db.user.findUnique({

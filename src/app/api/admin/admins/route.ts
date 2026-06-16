@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     }
 
     const callerId = (session.user as any).id;
-    const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN';
+    const callerRole = (session.user as any).role;
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.MANAGE_ADMINS));
 
     if (!isAllowed) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     // Fetch all users with admin or super admin roles
     const admins = await db.user.findMany({
       where: {
-        role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] },
+        role: { in: [UserRole.ADMIN, UserRole.PRIMARY_SUPER_ADMIN, UserRole.FOUNDER_SUPER_ADMIN] },
         deletedAt: null,
       },
       select: {
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.MANAGE_ADMINS));
 
     if (!isAllowed) {
@@ -103,13 +104,14 @@ export async function POST(request: NextRequest) {
     }
 
     const targetRole = role || UserRole.ADMIN;
-    if (targetRole !== UserRole.ADMIN && targetRole !== UserRole.SUPER_ADMIN) {
+    if (targetRole !== UserRole.ADMIN && targetRole !== UserRole.PRIMARY_SUPER_ADMIN && targetRole !== UserRole.FOUNDER_SUPER_ADMIN) {
       return NextResponse.json({ error: 'Invalid target administrative role' }, { status: 400 });
     }
 
-    // Restriction: ADMIN cannot create SUPER_ADMIN
-    if (targetRole === UserRole.SUPER_ADMIN && !isSuperAdmin) {
-      return NextResponse.json({ error: 'Forbidden: Only Super Administrators can create Super Administrators' }, { status: 403 });
+    // Restriction: Only Founder can assign Super Admin roles
+    const targetIsSuper = targetRole === UserRole.PRIMARY_SUPER_ADMIN || targetRole === UserRole.FOUNDER_SUPER_ADMIN;
+    if (targetIsSuper && callerRole !== 'FOUNDER_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: Only the Founder can create or promote Super Administrators' }, { status: 403 });
     }
 
     // Check if user exists

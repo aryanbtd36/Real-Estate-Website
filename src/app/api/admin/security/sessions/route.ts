@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     }
 
     const callerId = (session.user as any).id;
-    const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN';
+    const callerRole = (session.user as any).role;
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.VIEW_SECURITY));
 
     if (!isAllowed) {
@@ -75,7 +76,14 @@ export async function POST(request: NextRequest) {
 
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
+
+    // Lockdown check
+    const { isGlobalLockdownActive, checkImmortalProtection } = await import('@/lib/governance');
+    if (await isGlobalLockdownActive() && callerRole !== 'FOUNDER_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'System is in Global Lockdown. Mutations are disabled.' }, { status: 503 });
+    }
+
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.VIEW_SECURITY));
 
     if (!isAllowed) {
@@ -103,10 +111,25 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
 
-      // Check hierarchy constraints: ADMIN cannot terminate session of SUPER_ADMIN
+      // Check Immortal Protection
+      try {
+        await checkImmortalProtection({
+          targetUserId: targetSession.userId,
+          actorId: callerId,
+          action: 'Terminate Session',
+        });
+      } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 403 });
+      }
+
+      // Check hierarchy constraints: ADMIN cannot terminate session of Super Admin
       const targetUser = await db.user.findUnique({ where: { id: targetSession.userId } });
-      if (targetUser && targetUser.role === UserRole.SUPER_ADMIN && !isSuperAdmin) {
+      const targetIsSuper = targetUser?.role === 'PRIMARY_SUPER_ADMIN' || targetUser?.role === 'FOUNDER_SUPER_ADMIN';
+      if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot terminate Super Admin sessions' }, { status: 403 });
+      }
+      if (targetUser?.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+        return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot terminate Founder sessions' }, { status: 403 });
       }
 
       await db.$transaction(async (tx) => {
@@ -141,8 +164,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
-      if (targetUser.role === UserRole.SUPER_ADMIN && !isSuperAdmin) {
+      // Check Immortal Protection
+      try {
+        await checkImmortalProtection({
+          targetUserId,
+          actorId: callerId,
+          action: 'Terminate All Sessions',
+        });
+      } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 403 });
+      }
+
+      const targetIsSuper = targetUser.role === 'PRIMARY_SUPER_ADMIN' || targetUser.role === 'FOUNDER_SUPER_ADMIN';
+      if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify Super Admin profiles' }, { status: 403 });
+      }
+      if (targetUser.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+        return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify Founder profiles' }, { status: 403 });
       }
 
       await db.$transaction(async (tx) => {
@@ -175,8 +213,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
-      if (targetUser.role === UserRole.SUPER_ADMIN && !isSuperAdmin) {
+      // Check Immortal Protection
+      try {
+        await checkImmortalProtection({
+          targetUserId,
+          actorId: callerId,
+          action: 'Lock Account',
+        });
+      } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 403 });
+      }
+
+      const targetIsSuper = targetUser.role === 'PRIMARY_SUPER_ADMIN' || targetUser.role === 'FOUNDER_SUPER_ADMIN';
+      if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify Super Admin profiles' }, { status: 403 });
+      }
+      if (targetUser.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+        return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify Founder profiles' }, { status: 403 });
       }
 
       await db.$transaction(async (tx) => {
@@ -232,8 +285,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
-      if (targetUser.role === UserRole.SUPER_ADMIN && !isSuperAdmin) {
+      // Check Immortal Protection
+      try {
+        await checkImmortalProtection({
+          targetUserId,
+          actorId: callerId,
+          action: 'Force Password Reset',
+        });
+      } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 403 });
+      }
+
+      const targetIsSuper = targetUser.role === 'PRIMARY_SUPER_ADMIN' || targetUser.role === 'FOUNDER_SUPER_ADMIN';
+      if (targetIsSuper && callerRole === 'ADMIN') {
         return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify Super Admin profiles' }, { status: 403 });
+      }
+      if (targetUser.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+        return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify Founder profiles' }, { status: 403 });
       }
 
       await db.$transaction(async (tx) => {

@@ -34,11 +34,18 @@ export function AdminSidebar() {
     { href: '/admin/audit-logs', name: 'Audit logs', icon: Clock, exact: false },
   ];
 
-  if (userRole === 'SUPER_ADMIN') {
+  const isSuper = userRole === 'PRIMARY_SUPER_ADMIN' || userRole === 'FOUNDER_SUPER_ADMIN';
+  if (isSuper) {
     navigationItems.push(
       { href: '/admin/admins', name: 'Manage admins', icon: UserCheck, exact: false },
       { href: '/admin/security', name: 'Security SOC', icon: ShieldAlert, exact: false },
       { href: '/admin/super-admin', name: 'Executive center', icon: Compass, exact: false }
+    );
+  }
+
+  if (userRole === 'FOUNDER_SUPER_ADMIN') {
+    navigationItems.push(
+      { href: '/founder', name: 'Founder console', icon: ShieldAlert, exact: false }
     );
   }
 
@@ -48,6 +55,20 @@ export function AdminSidebar() {
     }
     return pathname.startsWith(item.href);
   };
+
+  const getRoleTitleAndBadge = (role: string) => {
+    switch (role) {
+      case 'FOUNDER_SUPER_ADMIN':
+        return { title: '👑 Founder Super Administrator', badge: 'IMMORTAL' };
+      case 'PRIMARY_SUPER_ADMIN':
+        return { title: '🛡️ Primary Super Administrator', badge: 'PRIMARY SA' };
+      case 'ADMIN':
+        return { title: 'Administrator', badge: 'ADMIN' };
+      default:
+        return { title: 'Client', badge: 'USER' };
+    }
+  };
+  const { title: displayTitle, badge: displayBadge } = getRoleTitleAndBadge(userRole || 'USER');
 
   return (
     <aside className="w-full md:w-72 bg-[#161616] border-r border-white/5 flex flex-col justify-between p-6 shrink-0 md:min-h-screen">
@@ -59,13 +80,25 @@ export function AdminSidebar() {
         </Link>
 
         {/* User Badge */}
-        <div className="p-4 bg-[#1E1E1E] rounded-lg border border-white/5 flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#F5D67B] font-semibold">
-            {session?.user?.name?.charAt(0) || 'A'}
+        <div className="p-4 bg-[#1E1E1E] rounded-lg border border-white/5 flex flex-col gap-2">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#F5D67B] font-semibold">
+              {session?.user?.name?.charAt(0) || 'A'}
+            </div>
+            <div className="overflow-hidden flex-1">
+              <span className="text-[10px] text-[#D4AF37] block font-bold truncate uppercase">{displayTitle}</span>
+              <span className="text-sm font-medium text-white truncate block max-w-[150px]">{session?.user?.name || 'User'}</span>
+            </div>
           </div>
-          <div className="overflow-hidden">
-            <span className="text-xs text-[#D4AF37] block font-semibold">Administrator</span>
-            <span className="text-sm font-medium text-white truncate block max-w-[150px]">{session?.user?.name || 'Admin'}</span>
+          <div className="flex justify-start">
+            <span className={`text-[8px] font-extrabold tracking-wider px-2 py-0.5 rounded border ${
+              userRole === 'FOUNDER_SUPER_ADMIN' ? 'bg-[#D4AF37]/15 border-[#D4AF37]/30 text-[#D4AF37]' :
+              userRole === 'PRIMARY_SUPER_ADMIN' ? 'bg-blue-500/10 border-blue-500/25 text-blue-400' :
+              userRole === 'ADMIN' ? 'bg-green-500/10 border-green-500/25 text-green-400' :
+              'bg-white/5 border-white/10 text-white/50'
+            }`}>
+              {displayBadge}
+            </span>
           </div>
         </div>
 

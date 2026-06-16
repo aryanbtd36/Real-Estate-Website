@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // 2. Load all administrators for leaderboard and per-admin analytics
     const admins = await db.user.findMany({
       where: {
-        role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] },
+        role: { in: [UserRole.ADMIN, UserRole.PRIMARY_SUPER_ADMIN, UserRole.FOUNDER_SUPER_ADMIN] },
         deletedAt: null,
       },
       select: { id: true, name: true, email: true }

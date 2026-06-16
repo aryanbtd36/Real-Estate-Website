@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
     }
 
     const callerId = (session.user as any).id;
-    const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN';
+    const callerRole = (session.user as any).role;
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.VIEW_SECURITY));
 
     if (!isAllowed) {
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
     }
 
     const callerId = (session.user as any).id;
-    const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN';
+    const callerRole = (session.user as any).role;
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.VIEW_SECURITY));
 
     if (!isAllowed) {

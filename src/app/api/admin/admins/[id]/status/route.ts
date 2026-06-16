@@ -19,7 +19,14 @@ export async function PUT(
     const { id: adminId } = await params;
     const callerId = (session.user as any).id;
     const callerRole = (session.user as any).role;
-    const isSuperAdmin = callerRole === 'SUPER_ADMIN';
+    const isSuperAdmin = callerRole === 'PRIMARY_SUPER_ADMIN' || callerRole === 'FOUNDER_SUPER_ADMIN';
+
+    // Lockdown check
+    const { isGlobalLockdownActive, checkImmortalProtection } = await import('@/lib/governance');
+    if (await isGlobalLockdownActive() && callerRole !== 'FOUNDER_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'System is in Global Lockdown. Mutations are disabled.' }, { status: 503 });
+    }
+
     const isAllowed = isSuperAdmin || (await hasPermission(callerId, Permission.MANAGE_ADMINS));
 
     if (!isAllowed) {
@@ -40,13 +47,30 @@ export async function PUT(
       return NextResponse.json({ error: 'Administrator not found' }, { status: 404 });
     }
 
-    // ADMIN cannot modify or suspend SUPER_ADMIN
-    if (targetAdmin.role === UserRole.SUPER_ADMIN && !isSuperAdmin) {
+    const body = await request.json();
+    const { action, reason } = body; // action can be: 'SUSPEND', 'RESTORE', 'REVOKE'
+
+    // Check Immortal Protection
+    try {
+      await checkImmortalProtection({
+        targetUserId: adminId,
+        actorId: callerId,
+        action: `${action} Administrator`,
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
+
+    // ADMIN cannot modify or suspend Super Admins (Primary SA or Founder)
+    const targetIsSuper = targetAdmin.role === 'PRIMARY_SUPER_ADMIN' || targetAdmin.role === 'FOUNDER_SUPER_ADMIN';
+    if (targetIsSuper && callerRole === 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify a Super Administrator' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { action, reason } = body; // action can be: 'SUSPEND', 'RESTORE', 'REVOKE'
+    // PRIMARY_SUPER_ADMIN cannot modify or suspend FOUNDER_SUPER_ADMIN
+    if (targetAdmin.role === 'FOUNDER_SUPER_ADMIN' && callerRole === 'PRIMARY_SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify the Founder' }, { status: 403 });
+    }
 
     if (!action || !['SUSPEND', 'RESTORE', 'REVOKE'].includes(action)) {
       return NextResponse.json({ error: 'Invalid or missing administrative action' }, { status: 400 });

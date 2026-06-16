@@ -20,6 +20,30 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Name and Email are required' }, { status: 400 });
     }
 
+    const user = await db.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt !== null) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check Immortal Protection
+    const { checkImmortalProtection } = await import('@/lib/governance');
+    try {
+      await checkImmortalProtection({
+        targetUserId: userId,
+        actorId: userId,
+        action: `Update Profile (name: ${name}, email: ${email})`,
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
+
+    // Prevent changing Founder email to preserve hardcoded references
+    if (user.isFounder || user.email.toLowerCase() === 'aryanmishra8113@gmail.com') {
+      if (email.toLowerCase() !== 'aryanmishra8113@gmail.com') {
+        return NextResponse.json({ error: 'Email changes are not allowed for the Founder account' }, { status: 400 });
+      }
+    }
+
     // Check email uniqueness if email changed
     const existing = await db.user.findFirst({
       where: {

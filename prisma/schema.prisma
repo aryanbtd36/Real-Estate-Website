@@ -107,6 +107,19 @@ enum ActivityAction {
   SECURITY_ALERT
   ADMIN_REVIEW
   EXPORT_DATA
+
+  // Wave 7 Actions
+  FOUNDER_ACCESS
+  FOUNDER_PROMOTION
+  FOUNDER_DEMOTION
+  SUPER_ADMIN_CREATED
+  SUPER_ADMIN_REMOVED
+  GOVERNANCE_OVERRIDE
+  IMMORTAL_ACCESS
+  IMMORTAL_LOCKDOWN
+  IMMORTAL_OVERRIDE
+  PROTECTED_ACCOUNT_ACCESS_ATTEMPT
+  OWNERSHIP_TRANSFER
 }
 
 enum NotificationType {
@@ -182,6 +195,15 @@ model User {
   securityAlerts       SecurityAlert[]
   reviewsReceived      AdminReview[]     @relation("AdminReviewed")
   reviewsGiven         AdminReview[]     @relation("AdminReviewer")
+
+  // Wave 7 Governance fields
+  isFounder            Boolean           @default(false)
+  isPrimarySA          Boolean           @default(false)
+  promotedById         String?
+  promotedBy           User?             @relation("UserPromotions", fields: [promotedById], references: [id])
+  promotedUsers        User[]            @relation("UserPromotions")
+  promotedAt           DateTime?
+  governanceLocked     Boolean           @default(false)
 }
 
 model AuthToken {
@@ -583,7 +605,8 @@ model AppointmentCancellationHistory {
 enum UserRole {
   USER
   ADMIN
-  SUPER_ADMIN
+  PRIMARY_SUPER_ADMIN
+  FOUNDER_SUPER_ADMIN
 }
 
 enum Permission {
@@ -669,4 +692,24 @@ model AdminReview {
   reviewedBy   User?       @relation("AdminReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([adminId])
+}
+
+model GovernanceHistory {
+  id           String        @id @default(uuid())
+  targetUserId String
+  actorId      String
+  previousRole UserRole?
+  newRole      UserRole
+  reason       String?
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+
+  @@index([targetUserId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  key   String @id
+  value String
 }
