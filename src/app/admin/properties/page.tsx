@@ -24,12 +24,17 @@ import {
   FileCheck,
   Globe,
   Settings,
-  X
+  X,
+  Eye,
+  Compass,
+  Navigation,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Dynamically import Leaflet components with SSR disabled to prevent window-undefined errors
 const PropertyEditMap = dynamic(() => import('@/components/property-edit-map'), { ssr: false });
+const PropertyViewMap = dynamic(() => import('@/components/property-view-map'), { ssr: false });
 import { formatIndianRealEstatePrice } from '@/lib/currency';
 
 export default function AdminPropertiesPage() {
@@ -49,6 +54,7 @@ export default function AdminPropertiesPage() {
 
   // Form State
   const [showForm, setShowForm] = useState(false);
+  const [selectedPropertyDetails, setSelectedPropertyDetails] = useState<any | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -1195,6 +1201,13 @@ export default function AdminPropertiesPage() {
                                 <History size={13} />
                               </Link>
                               <button
+                                onClick={() => setSelectedPropertyDetails(prop)}
+                                className="p-1.5 border border-white/5 hover:border-[#D4AF37]/30 text-white/40 hover:text-[#D4AF37] rounded"
+                                title="View GIS Details"
+                              >
+                                <Eye size={13} />
+                              </button>
+                              <button
                                 onClick={() => handleOpenEdit(prop)}
                                 className="p-1.5 border border-white/5 hover:border-[#D4AF37]/30 text-white/40 hover:text-[#D4AF37] rounded"
                                 title="Edit Details"
@@ -1218,6 +1231,131 @@ export default function AdminPropertiesPage() {
               </div>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Property Details Drawer */}
+      <AnimatePresence>
+        {selectedPropertyDetails && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedPropertyDetails(null)}
+              className="fixed inset-0 bg-black z-40 cursor-pointer"
+            />
+            {/* Drawer body */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-full max-w-lg bg-[#161616] border-l border-white/5 shadow-2xl z-50 overflow-y-auto p-6 space-y-6"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                <div>
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block">Property Details Drawer</span>
+                  <h2 className="text-xl font-light text-white mt-1">{selectedPropertyDetails.name}</h2>
+                </div>
+                <button
+                  onClick={() => setSelectedPropertyDetails(null)}
+                  className="p-1 border border-white/5 hover:border-white/25 text-white/50 hover:text-white rounded"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Specification Grid */}
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="bg-black/35 border border-white/5 p-3.5 rounded-lg">
+                  <span className="text-[9px] uppercase tracking-widest text-white/45 block">Type</span>
+                  <span className="text-white font-semibold mt-1 block">{selectedPropertyDetails.type}</span>
+                </div>
+                <div className="bg-black/35 border border-white/5 p-3.5 rounded-lg">
+                  <span className="text-[9px] uppercase tracking-widest text-white/45 block">Price</span>
+                  <span className="text-[#D4AF37] font-semibold mt-1 block">{formatIndianRealEstatePrice(selectedPropertyDetails.price)}</span>
+                </div>
+                <div className="bg-black/35 border border-white/5 p-3.5 rounded-lg">
+                  <span className="text-[9px] uppercase tracking-widest text-white/45 block">Area</span>
+                  <span className="text-white font-semibold mt-1 block">{selectedPropertyDetails.area.toLocaleString()} {selectedPropertyDetails.areaUnit || 'Sq Ft'}</span>
+                </div>
+                <div className="bg-black/35 border border-white/5 p-3.5 rounded-lg">
+                  <span className="text-[9px] uppercase tracking-widest text-white/45 block">Floor level</span>
+                  <span className="text-white font-semibold mt-1 block">Floor {selectedPropertyDetails.floor}</span>
+                </div>
+              </div>
+
+              {/* Location details */}
+              <div className="space-y-1">
+                <span className="text-[9px] uppercase tracking-widest text-white/40 block">GIS Coordinates</span>
+                <p className="text-xs text-white/80 font-mono">
+                  Latitude: {selectedPropertyDetails.latitude || 'N/A'}, Longitude: {selectedPropertyDetails.longitude || 'N/A'}
+                </p>
+                <p className="text-xs text-white/55">
+                  Location: {selectedPropertyDetails.location || `${selectedPropertyDetails.address}, ${selectedPropertyDetails.city}, ${selectedPropertyDetails.state}`}
+                </p>
+              </div>
+
+              {/* Interactive map display */}
+              {selectedPropertyDetails.latitude && selectedPropertyDetails.longitude && (
+                <div className="space-y-2">
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block font-semibold flex items-center gap-1.5">
+                    <Compass size={12} className="text-[#D4AF37]" />
+                    Interactive Map View
+                  </span>
+                  <div className="h-[220px] rounded-lg overflow-hidden border border-white/5 relative z-10 bg-black">
+                    <PropertyViewMap
+                      latitude={selectedPropertyDetails.latitude}
+                      longitude={selectedPropertyDetails.longitude}
+                      boundary={selectedPropertyDetails.boundary}
+                    />
+                  </div>
+                  
+                  {/* Google maps navigation */}
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedPropertyDetails.latitude},${selectedPropertyDetails.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-4 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white rounded text-xs font-bold uppercase tracking-wider text-center"
+                    >
+                      <ExternalLink size={12} />
+                      Open Maps
+                    </a>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPropertyDetails.latitude},${selectedPropertyDetails.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-4 bg-[#D4AF37] hover:opacity-90 text-black rounded text-xs font-bold uppercase tracking-wider text-center"
+                    >
+                      <Navigation size={12} />
+                      Get Directions
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Amenities */}
+              {selectedPropertyDetails.amenities && selectedPropertyDetails.amenities.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[9px] uppercase tracking-widest text-white/40 block font-semibold">Amenities</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedPropertyDetails.amenities.map((amenity: string) => (
+                      <span
+                        key={amenity}
+                        className="px-2 py-1 bg-white/5 border border-white/5 text-white/80 text-[10px] rounded"
+                      >
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

@@ -92,6 +92,7 @@ enum ActivityAction {
   FOLLOW_UP_COMPLETE
   FOLLOW_UP_OVERDUE
   COMMUNICATION_LOG
+  MAP_CURRENT_LOCATION_USED
 }
 
 enum NotificationType {

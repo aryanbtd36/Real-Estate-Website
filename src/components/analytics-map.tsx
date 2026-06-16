@@ -29,6 +29,19 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const layersRef = useRef<L.LayerGroup | null>(null);
 
+  const baseTileLayerRef = useRef<L.TileLayer | null>(null);
+  const overlayTileLayerRef = useRef<L.TileLayer | null>(null);
+
+  const [mapLayer, setMapLayer] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
+
+  // Load saved layer choices
+  useEffect(() => {
+    const savedLayer = localStorage.getItem('aura_estates_map_layer');
+    if (savedLayer === 'satellite' || savedLayer === 'hybrid' || savedLayer === 'standard') {
+      setMapLayer(savedLayer);
+    }
+  }, []);
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -43,10 +56,6 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
         zoom: 12,
         scrollWheelZoom: false,
       });
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(mapRef.current);
 
       layersRef.current = L.layerGroup().addTo(mapRef.current);
     }
@@ -92,10 +101,6 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
         map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
       }
     }
-
-    return () => {
-      // Don't fully destroy map on simple point updates, but let's clean up on unmount
-    };
   }, [points, type]);
 
   // Clean up on complete unmount
@@ -108,9 +113,73 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
     };
   }, []);
 
+  // Update map tile layers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (baseTileLayerRef.current) {
+      map.removeLayer(baseTileLayerRef.current);
+      baseTileLayerRef.current = null;
+    }
+    if (overlayTileLayerRef.current) {
+      map.removeLayer(overlayTileLayerRef.current);
+      overlayTileLayerRef.current = null;
+    }
+
+    if (mapLayer === 'satellite' || mapLayer === 'hybrid') {
+      baseTileLayerRef.current = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '&copy; Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        }
+      ).addTo(map);
+
+      if (mapLayer === 'hybrid') {
+        overlayTileLayerRef.current = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+          {
+            attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
+          }
+        ).addTo(map);
+      }
+    } else {
+      baseTileLayerRef.current = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          attribution: '&copy; OpenStreetMap contributors',
+        }
+      ).addTo(map);
+    }
+  }, [mapLayer]);
+
   return (
-    <div className="w-full h-[400px] rounded-xl overflow-hidden border border-white/10 relative z-10">
-      <div ref={mapContainerRef} className="w-full h-full" />
+    <div className="w-full h-[400px] rounded-xl overflow-hidden border border-white/10 relative z-10 flex flex-col gap-2 p-1 bg-[#161616]">
+      {/* Map Layer Switcher */}
+      <div className="flex gap-2 justify-end px-2 pt-1">
+        {(['standard', 'satellite', 'hybrid'] as const).map((layer) => (
+          <button
+            key={layer}
+            type="button"
+            onClick={() => {
+              setMapLayer(layer);
+              localStorage.setItem('aura_estates_map_layer', layer);
+            }}
+            className={`px-2.5 py-1 bg-black/40 border text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
+              mapLayer === layer
+                ? 'border-[#D4AF37] bg-[#D4AF37]/10 text-[#F5D67B]'
+                : 'border-white/5 text-white/40 hover:text-white'
+            }`}
+          >
+            {layer === 'standard' && '🗺 Standard'}
+            {layer === 'satellite' && '🛰 Satellite'}
+            {layer === 'hybrid' && '🌍 Hybrid'}
+          </button>
+        ))}
+      </div>
+      <div className="w-full h-full relative overflow-hidden rounded-lg">
+        <div ref={mapContainerRef} className="w-full h-full" />
+      </div>
     </div>
   );
 }

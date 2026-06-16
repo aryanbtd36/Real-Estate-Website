@@ -47,8 +47,15 @@ export default function PropertyEditMap({
   const zonesPolygonsRef = useRef<Map<number, L.Polygon>>(new Map());
   const zonesPointsRef = useRef<Map<number, L.CircleMarker[]>>(new Map());
 
+  // Tile layers refs for standard/satellite/hybrid
+  const baseTileLayerRef = useRef<L.TileLayer | null>(null);
+  const overlayTileLayerRef = useRef<L.TileLayer | null>(null);
+
   // Edit Modes: 'pin' | 'boundary' | 'upload' | 'measurement' | 'zones'
   const [activeTab, setActiveTab] = useState<'pin' | 'boundary' | 'upload' | 'measurement' | 'zones'>('pin');
+
+  // Map layer state: 'standard' | 'satellite' | 'hybrid'
+  const [mapLayer, setMapLayer] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
 
   // State arrays for drawing
   const [tempPoints, setTempPoints] = useState<[number, number][]>([]);
@@ -93,22 +100,62 @@ export default function PropertyEditMap({
     }
   }, [boundaryZones]);
 
+  // Load layer/zoom/center preferences from localStorage
+  useEffect(() => {
+    const savedLayer = localStorage.getItem('aura_estates_map_layer');
+    if (savedLayer === 'satellite' || savedLayer === 'hybrid' || savedLayer === 'standard') {
+      setMapLayer(savedLayer);
+    }
+  }, []);
+
   // Map Initialization
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const defaultLat = latitude || 26.8467;
-    const defaultLng = longitude || 80.9462;
+    const savedCenter = localStorage.getItem('aura_estates_map_center');
+    const savedZoom = localStorage.getItem('aura_estates_map_zoom');
+
+    let defaultLat = latitude || 26.8467;
+    let defaultLng = longitude || 80.9462;
+    let defaultZoom = latitude && longitude ? 14 : 13;
+
+    if (!latitude && !longitude) {
+      if (savedCenter) {
+        try {
+          const parsed = JSON.parse(savedCenter);
+          if (Array.isArray(parsed) && parsed.length === 2) {
+            defaultLat = parsed[0];
+            defaultLng = parsed[1];
+          }
+        } catch {}
+      }
+      if (savedZoom) {
+        const z = parseInt(savedZoom, 10);
+        if (!isNaN(z)) {
+          defaultZoom = z;
+        }
+      }
+    }
 
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
-        zoom: latitude && longitude ? 14 : 13,
+        zoom: defaultZoom,
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-      }).addTo(mapRef.current);
+      // Move/zoom event persistence listeners
+      mapRef.current.on('zoomend', () => {
+        if (mapRef.current) {
+          localStorage.setItem('aura_estates_map_zoom', mapRef.current.getZoom().toString());
+        }
+      });
+
+      mapRef.current.on('moveend', () => {
+        if (mapRef.current) {
+          const center = mapRef.current.getCenter();
+          localStorage.setItem('aura_estates_map_center', JSON.stringify([center.lat, center.lng]));
+        }
+      });
     }
 
     const map = mapRef.current;
@@ -145,6 +192,47 @@ export default function PropertyEditMap({
       map.off('click', handleMapClick);
     };
   }, [latitude, longitude, activeTab, selectedZoneIndex, onChangeLocation, onChangeBoundary, onChangeBoundaryZones]);
+
+  // Map Tiles Synchronizer Effect
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (baseTileLayerRef.current) {
+      map.removeLayer(baseTileLayerRef.current);
+      baseTileLayerRef.current = null;
+    }
+    if (overlayTileLayerRef.current) {
+      map.removeLayer(overlayTileLayerRef.current);
+      overlayTileLayerRef.current = null;
+    }
+
+    if (mapLayer === 'satellite' || mapLayer === 'hybrid') {
+      baseTileLayerRef.current = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        }
+      ).addTo(map);
+
+      if (mapLayer === 'hybrid') {
+        overlayTileLayerRef.current = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+          {
+            attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
+          }
+        ).addTo(map);
+      }
+    } else {
+      baseTileLayerRef.current = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          attribution: '&copy; OpenStreetMap contributors',
+        }
+      ).addTo(map);
+    }
+  }, [mapLayer]);
+
 
   // Render Pin, Primary Boundary, and Secondary Zones
   useEffect(() => {
@@ -340,26 +428,45 @@ export default function PropertyEditMap({
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Current location could not be determined.");
+      alert("Unable to determine current location.");
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude: lat, longitude: lng } = position.coords;
         onChangeLocation(lat, lng);
+        
+        // Persist last coordinates choice
+        localStorage.setItem('aura_estates_map_last_coords', JSON.stringify([lat, lng]));
+
         if (mapRef.current) {
           mapRef.current.setView([lat, lng], 15);
         }
+
+        // Post activity logging
+        fetch('/api/admin/audit-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'MAP_CURRENT_LOCATION_USED',
+            description: `Map coordinate pin updated to user GPS location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+            details: { latitude: lat, longitude: lng }
+          })
+        }).catch(err => console.error('Failed to log geolocation activity', err));
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
-          alert("Unable to access location. Please enable location permissions or enter coordinates manually.");
+          alert("Location permission denied.");
+        } else if (error.code === error.TIMEOUT) {
+          alert("Location request timed out.");
         } else {
-          alert("Current location could not be determined.");
+          alert("Unable to determine current location.");
         }
-      }
+      },
+      { timeout: 10000 }
     );
   };
+
 
   // Actions: Secondary Zones CRUD
   const handleAddZone = () => {
@@ -648,6 +755,29 @@ export default function PropertyEditMap({
           </div>
         )}
 
+      </div>
+
+      {/* Map Layer Switcher */}
+      <div className="flex gap-2 justify-end">
+        {(['standard', 'satellite', 'hybrid'] as const).map((layer) => (
+          <button
+            key={layer}
+            type="button"
+            onClick={() => {
+              setMapLayer(layer);
+              localStorage.setItem('aura_estates_map_layer', layer);
+            }}
+            className={`px-2.5 py-1 bg-black/40 border text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
+              mapLayer === layer
+                ? 'border-[#D4AF37] bg-[#D4AF37]/10 text-[#F5D67B]'
+                : 'border-white/5 text-white/40 hover:text-white'
+            }`}
+          >
+            {layer === 'standard' && '🗺 Standard'}
+            {layer === 'satellite' && '🛰 Satellite'}
+            {layer === 'hybrid' && '🌍 Hybrid'}
+          </button>
+        ))}
       </div>
 
       {/* Map Container */}

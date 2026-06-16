@@ -34,6 +34,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 import { formatIndianRealEstatePrice } from '@/lib/currency';
+import { calculateDistance } from '@/lib/maps/distance';
 
 const PropertyViewMap = dynamic(() => import('@/components/property-view-map'), { ssr: false });
 
@@ -135,6 +136,45 @@ export default function Home() {
   // Turnstile token states
   const [leadTurnstileToken, setLeadTurnstileToken] = useState('');
   const [bookingTurnstileToken, setBookingTurnstileToken] = useState('');
+
+  // Near Me / GPS state
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [nearMeActive, setNearMeActive] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const handleNearMeToggle = () => {
+    if (nearMeActive) {
+      setNearMeActive(false);
+      setUserCoords(null);
+      return;
+    }
+    if (!navigator.geolocation) {
+      alert("Unable to determine current location.");
+      return;
+    }
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserCoords({ lat, lng });
+        setNearMeActive(true);
+        setGpsLoading(false);
+      },
+      (error) => {
+        setGpsLoading(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          alert("Location permission denied.");
+        } else if (error.code === error.TIMEOUT) {
+          alert("Location request timed out.");
+        } else {
+          alert("Unable to determine current location.");
+        }
+      },
+      { timeout: 10000 }
+    );
+  };
+
 
   // Search submission scrolls to property grid and applies filters
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -594,7 +634,7 @@ export default function Home() {
 
           {/* Advanced Dynamic Filters Panel */}
           <div className="mb-12 p-6 bg-white/[0.02] border border-white/5 rounded-2xl backdrop-blur-md">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-widest text-white/45 block">Location</label>
                 <select
@@ -661,6 +701,22 @@ export default function Home() {
 
               <div className="space-y-1.5 flex flex-col justify-end">
                 <button
+                  type="button"
+                  onClick={handleNearMeToggle}
+                  disabled={gpsLoading}
+                  className={`w-full py-2.5 border text-white text-xs tracking-wider uppercase font-semibold transition-colors flex items-center justify-center gap-1.5 rounded ${
+                    nearMeActive
+                      ? 'border-[#D4AF37] bg-[#D4AF37]/15 text-[#F5D67B]'
+                      : 'border-white/10 hover:border-[#D4AF37] hover:text-[#D4AF37]'
+                  }`}
+                >
+                  <Compass size={12} className={gpsLoading ? 'animate-spin' : ''} />
+                  {gpsLoading ? 'Locating...' : nearMeActive ? 'Near Me On' : 'Near Me'}
+                </button>
+              </div>
+
+              <div className="space-y-1.5 flex flex-col justify-end">
+                <button
                   onClick={() => {
                     setFilterLocation('');
                     setFilterType('');
@@ -670,6 +726,8 @@ export default function Home() {
                     setSearchLocation('');
                     setSearchType('');
                     setSearchBudget('');
+                    setNearMeActive(false);
+                    setUserCoords(null);
                   }}
                   className="w-full py-2.5 border border-white/10 hover:border-[#D4AF37] hover:text-[#D4AF37] rounded text-white text-xs tracking-wider uppercase font-semibold transition-colors"
                 >
@@ -687,14 +745,27 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {(Array.isArray(properties) ? properties : []).filter(property => {
-                if (filterLocation && property.location !== filterLocation) return false;
-                if (filterType && property.type !== filterType) return false;
-                if (filterBudget && property.price > parseInt(filterBudget)) return false;
-                if (filterBedrooms && property.bedrooms < parseInt(filterBedrooms)) return false;
-                if (filterAvailability && property.availability !== filterAvailability) return false;
-                return true;
-              }).map((property, idx) => (
+              {(() => {
+                const filtered = (Array.isArray(properties) ? properties : []).filter(property => {
+                  if (filterLocation && property.location !== filterLocation) return false;
+                  if (filterType && property.type !== filterType) return false;
+                  if (filterBudget && property.price > parseInt(filterBudget)) return false;
+                  if (filterBedrooms && property.bedrooms < parseInt(filterBedrooms)) return false;
+                  if (filterAvailability && property.availability !== filterAvailability) return false;
+                  return true;
+                });
+                
+                const mapped = nearMeActive && userCoords
+                  ? filtered.map(p => {
+                      const dist = p.latitude && p.longitude
+                        ? calculateDistance(userCoords.lat, userCoords.lng, p.latitude, p.longitude)
+                        : 99999;
+                      return { ...p, distanceKm: dist };
+                    }).sort((a, b) => a.distanceKm - b.distanceKm)
+                  : filtered;
+
+                return mapped;
+              })().map((property: any, idx) => (
                 <motion.div
                   key={property.id}
                   initial={{ opacity: 0, y: 30 }}
@@ -710,8 +781,15 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
                     
                     {/* Visual indicators */}
-                    <div className="absolute top-4 left-4 z-20 px-2.5 py-1 bg-black/60 backdrop-blur-md border border-white/10 rounded text-[10px] uppercase tracking-wider text-white">
-                      Floor {property.floor}
+                    <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 items-start">
+                      <div className="px-2.5 py-1 bg-black/60 backdrop-blur-md border border-white/10 rounded text-[10px] uppercase tracking-wider text-white">
+                        Floor {property.floor}
+                      </div>
+                      {property.distanceKm !== undefined && property.distanceKm !== 99999 && (
+                        <div className="px-2.5 py-1 bg-[#D4AF37] text-black text-[9px] uppercase tracking-wider font-extrabold rounded shadow-md">
+                          {property.distanceKm.toFixed(1)} km away
+                        </div>
+                      )}
                     </div>
 
                     <div className="absolute top-4 right-4 z-20 flex gap-2">

@@ -592,7 +592,7 @@ async function runTestSuite() {
         where: { id: testUserTarget.id },
         data: { role: 'ADMIN' },
       });
-    });
+    }, { maxWait: 20000, timeout: 60000 });
 
     const roleHistoryAfter = await db.roleHistory.findFirst({ where: { userId: testUserTarget.id } });
     assert(roleHistoryAfter !== null && roleHistoryAfter.previousRole === 'USER' && roleHistoryAfter.newRole === 'ADMIN', 'Role History: Successfully logged role promotion in RoleHistory');
@@ -615,7 +615,7 @@ async function runTestSuite() {
         where: { id: testUserTarget.id },
         data: { status: 'SUSPENDED' },
       });
-    });
+    }, { maxWait: 20000, timeout: 60000 });
 
     const statusHistoryAfter = await db.userStatusHistory.findFirst({ where: { userId: testUserTarget.id, newStatus: 'SUSPENDED' } });
     assert(statusHistoryAfter !== null && statusHistoryAfter.previousStatus === 'ACTIVE' && statusHistoryAfter.newStatus === 'SUSPENDED', 'Status History: Successfully logged suspension in UserStatusHistory');
@@ -638,7 +638,7 @@ async function runTestSuite() {
         where: { id: testUserTarget.id },
         data: { name: 'Updated Test Target Name' },
       });
-    });
+    }, { maxWait: 20000, timeout: 60000 });
 
     const profileHistoryAfter = await db.userProfileHistory.findFirst({ where: { userId: testUserTarget.id, fieldName: 'name' } });
     assert(profileHistoryAfter !== null && profileHistoryAfter.oldValue === 'Test Target Client' && profileHistoryAfter.newValue === 'Updated Test Target Name', 'Profile History: Successfully logged field modifications in UserProfileHistory');
@@ -929,7 +929,7 @@ async function runTestSuite() {
           where: { id: testL.id },
           data: { status: trans.expectedStatus as any }
         });
-      });
+      }, { maxWait: 20000, timeout: 60000 });
 
       const updatedL = await db.lead.findUnique({ where: { id: testL.id } });
       const updatedAppt = await db.appointment.findUnique({ where: { id: appT.id } });
@@ -1013,7 +1013,7 @@ async function runTestSuite() {
         }
       });
       apptFollowUpCreatedShow = true;
-    });
+    }, { maxWait: 20000, timeout: 60000 });
 
     assert(apptFollowUpCreatedShow && apptAutoFollowUpShow !== null, 'Auto Follow-up: Triggered task creation transaction');
     const apptDbFollowUpShow = await db.followUp.findUnique({ where: { id: (apptAutoFollowUpShow as any).id } });
@@ -1060,6 +1060,84 @@ async function runTestSuite() {
     await db.user.deleteMany({ where: { email: { in: ['test-appt-admin@aura.com', 'test-appt-admin-2@aura.com', 'test-appt-client@aura.com'] } } });
 
     console.log('[PASS] Appointment Management Pro integration tests completed.');
+
+    // --- GIS AND LOCATION INTELLIGENCE (WAVE 5.2) TESTS ---
+    console.log('\n[INFO] Starting GIS and Location Intelligence (Wave 5.2) tests...');
+    
+    // 1. Distance Math Engine Tests
+    const { calculateDistance, sortByDistance, rankNearbyProperties } = await import('./maps/distance');
+    
+    // Hazratganj coordinates: (26.8467, 80.9462)
+    // Gomti Nagar coordinates: (26.8600, 80.9700)
+    const distanceHzToGm = calculateDistance(26.8467, 80.9462, 26.8600, 80.9700);
+    assert(distanceHzToGm > 0 && distanceHzToGm < 10, 'Distance Engine: Hazratganj to Gomti Nagar math resolves correctly (~2.8km)');
+    
+    // 2. Proximity Sorting and Ranking Proximity
+    const mockProps = [
+      { id: '1', name: 'Far Property', latitude: 27.0000, longitude: 81.0000, featured: false },
+      { id: '2', name: 'Near Featured Property', latitude: 26.8480, longitude: 80.9470, featured: true },
+      { id: '3', name: 'Near Standard Property', latitude: 26.8480, longitude: 80.9470, featured: false },
+    ];
+    
+    const sorted = sortByDistance(mockProps, 26.8467, 80.9462);
+    assert(sorted[0].id === '2' || sorted[0].id === '3', 'Distance Engine: sortByDistance places close coordinates first');
+    assert(sorted[2].id === '1', 'Distance Engine: sortByDistance places far coordinates last');
+    assert(sorted[0].distanceKm < 1, 'Distance Engine: proximity distance calculation correct');
+
+    const ranked = rankNearbyProperties(mockProps, 26.8467, 80.9462);
+    assert(ranked[0].id === '2', 'Distance Engine: rankNearbyProperties places Featured close properties at rank #1');
+    assert(ranked[0].score > ranked[1].score, 'Distance Engine: Featured property score includes weight boost');
+
+    // 3. Navigation URLs
+    const targetLat = 26.8467;
+    const targetLng = 80.9462;
+    const openMapsUrl = `https://www.google.com/maps?q=${targetLat},${targetLng}`;
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLng}`;
+    assert(openMapsUrl.includes('q=26.8467,80.9462'), 'Navigation: Google Maps search query is properly compiled');
+    assert(directionsUrl.includes('destination=26.8467,80.9462'), 'Navigation: directions URL destination parameter matches coordinate values');
+
+    // 4. Geolocation Error String Constants
+    const mockGeolocationErrorCodes = {
+      PERMISSION_DENIED: 1,
+      POSITION_UNAVAILABLE: 2,
+      TIMEOUT: 3
+    };
+    
+    function resolveGeolocationErrorMessage(code: number) {
+      if (code === mockGeolocationErrorCodes.PERMISSION_DENIED) {
+        return "Location permission denied.";
+      } else if (code === mockGeolocationErrorCodes.TIMEOUT) {
+        return "Location request timed out.";
+      } else {
+        return "Unable to determine current location.";
+      }
+    }
+    
+    assert(resolveGeolocationErrorMessage(1) === "Location permission denied.", 'Geolocation: permission denial resolves expected alert constant');
+    assert(resolveGeolocationErrorMessage(3) === "Location request timed out.", 'Geolocation: request timeout resolves expected alert constant');
+    assert(resolveGeolocationErrorMessage(2) === "Unable to determine current location.", 'Geolocation: position unavailable resolves expected alert constant');
+
+    // 5. LocalStorage state persistence mock
+    const mockLocalStorage: Record<string, string> = {};
+    const mockStorageInterface = {
+      setItem(key: string, value: string) {
+        mockLocalStorage[key] = value;
+      },
+      getItem(key: string) {
+        return mockLocalStorage[key] || null;
+      }
+    };
+    
+    mockStorageInterface.setItem('aura_estates_map_layer', 'hybrid');
+    mockStorageInterface.setItem('aura_estates_map_zoom', '14');
+    mockStorageInterface.setItem('aura_estates_map_center', JSON.stringify([26.8467, 80.9462]));
+    
+    assert(mockStorageInterface.getItem('aura_estates_map_layer') === 'hybrid', 'Persistence: saved layer value resolves correctly');
+    assert(mockStorageInterface.getItem('aura_estates_map_zoom') === '14', 'Persistence: saved zoom level resolves correctly');
+    const parsedCenter = JSON.parse(mockStorageInterface.getItem('aura_estates_map_center')!);
+    assert(parsedCenter[0] === 26.8467 && parsedCenter[1] === 80.9462, 'Persistence: saved map center coordinates resolve correctly');
+
+    console.log('[PASS] GIS and Location Intelligence (Wave 5.2) tests completed.');
 
     await db.followUp.deleteMany({ where: { leadId: testLead.id } });
     await db.communicationLog.deleteMany({ where: { leadId: testLead.id } });

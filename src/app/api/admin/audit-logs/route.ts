@@ -50,3 +50,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+
+    if (!session || !userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { action, description, details } = body;
+
+    if (!action || !Object.values(ActivityAction).includes(action as any)) {
+      return NextResponse.json({ error: 'Invalid or missing action' }, { status: 400 });
+    }
+
+    const logEntry = await ActivityService.log({
+      actorId: userId,
+      action: action as ActivityAction,
+      description: description || '',
+      details: details || null,
+    });
+
+    return NextResponse.json({ success: true, logEntry }, { status: 201 });
+  } catch (error) {
+    console.error('[API Audit Logs POST] Error:', error);
+    return NextResponse.json({ error: 'Failed to create audit log' }, { status: 500 });
+  }
+}
+
