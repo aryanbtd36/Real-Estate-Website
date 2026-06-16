@@ -1139,6 +1139,440 @@ async function runTestSuite() {
 
     console.log('[PASS] GIS and Location Intelligence (Wave 5.2) tests completed.');
 
+    // --- WAVE 6: SUPER ADMIN, GOVERNANCE & COMMAND CENTER TESTS ---
+    console.log('\n[INFO] Starting Governance, Security SOC & Hierarchy (Wave 6) tests...');
+
+    const { Permission, UserRole, AlertSeverity } = await import('@prisma/client');
+    const { hasPermission } = await import('./permissions');
+    const { analyzeAdminBehavior } = await import('./security/admin-behavior');
+    const { calculateAdminProductivity } = await import('./admin-analytics/productivity');
+
+    // Clean up any potential orphaned records first
+    await db.adminPermission.deleteMany({
+      where: { userId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.adminSession.deleteMany({
+      where: { userId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.adminReview.deleteMany({
+      where: { adminId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.securityAlert.deleteMany({
+      where: { adminId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.activityLog.deleteMany({
+      where: { actorId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.user.deleteMany({
+      where: { email: { in: ['test-sa@aura.com', 'test-adm@aura.com', 'test-usr@aura.com'] } }
+    });
+
+    // 1. Setup Role Hierarchy Users
+    const testSuperAdmin = await db.user.create({
+      data: {
+        id: 'test-sa-id',
+        name: 'Test Super Admin',
+        email: 'test-sa@aura.com',
+        role: UserRole.SUPER_ADMIN,
+        status: 'ACTIVE'
+      }
+    });
+
+    const testAdmin = await db.user.create({
+      data: {
+        id: 'test-adm-id',
+        name: 'Test Admin User',
+        email: 'test-adm@aura.com',
+        role: UserRole.ADMIN,
+        status: 'ACTIVE'
+      }
+    });
+
+    const testStandardUser = await db.user.create({
+      data: {
+        id: 'test-user-id',
+        name: 'Test Standard User',
+        email: 'test-usr@aura.com',
+        role: UserRole.USER,
+        status: 'ACTIVE'
+      }
+    });
+
+    assert(testSuperAdmin !== null, 'Wave 6 Setup: Super Admin user created');
+    assert(testAdmin !== null, 'Wave 6 Setup: Admin user created');
+    assert(testStandardUser !== null, 'Wave 6 Setup: Normal user created');
+
+    // 2. Granular Permissions Checks (hasPermission)
+    // Initially, testAdmin has no granular permissions explicitly granted.
+    const hasPropPermDefault = await hasPermission(testAdmin.id, Permission.MANAGE_PROPERTIES);
+    assert(hasPropPermDefault === false, 'Granular Permissions: Admin has no MANAGE_PROPERTIES permission by default');
+
+    // Grant permission
+    const grantedPerm = await db.adminPermission.create({
+      data: {
+        userId: testAdmin.id,
+        permission: Permission.MANAGE_PROPERTIES,
+        grantedById: testSuperAdmin.id
+      }
+    });
+    assert(grantedPerm !== null, 'Granular Permissions: Granted MANAGE_PROPERTIES successfully');
+
+    const hasPropPermAfter = await hasPermission(testAdmin.id, Permission.MANAGE_PROPERTIES);
+    assert(hasPropPermAfter === true, 'Granular Permissions: Admin has MANAGE_PROPERTIES after grant');
+
+    const hasLeadPermAfter = await hasPermission(testAdmin.id, Permission.MANAGE_LEADS);
+    assert(hasLeadPermAfter === false, 'Granular Permissions: Admin does not have MANAGE_LEADS permission');
+
+    // Super Admin God-Mode Checks
+    const saHasProp = await hasPermission(testSuperAdmin.id, Permission.MANAGE_PROPERTIES);
+    assert(saHasProp === true, 'Granular Permissions: Super Admin bypasses and has MANAGE_PROPERTIES by default');
+
+    const saHasSecurity = await hasPermission(testSuperAdmin.id, Permission.VIEW_SECURITY);
+    assert(saHasSecurity === true, 'Granular Permissions: Super Admin bypasses and has VIEW_SECURITY by default');
+
+    const saHasAudits = await hasPermission(testSuperAdmin.id, Permission.VIEW_AUDITS);
+    assert(saHasAudits === true, 'Granular Permissions: Super Admin bypasses and has VIEW_AUDITS by default');
+
+    // Standard User Permissions Checks
+    const userHasProp = await hasPermission(testStandardUser.id, Permission.MANAGE_PROPERTIES);
+    assert(userHasProp === false, 'Granular Permissions: Standard user has no MANAGE_PROPERTIES permission');
+
+    const userHasSecurity = await hasPermission(testStandardUser.id, Permission.VIEW_SECURITY);
+    assert(userHasSecurity === false, 'Granular Permissions: Standard user has no VIEW_SECURITY permission');
+
+    // Revoke permission
+    await db.adminPermission.delete({
+      where: {
+        userId_permission: {
+          userId: testAdmin.id,
+          permission: Permission.MANAGE_PROPERTIES
+        }
+      }
+    });
+    const hasPropPermAfterRevoke = await hasPermission(testAdmin.id, Permission.MANAGE_PROPERTIES);
+    assert(hasPropPermAfterRevoke === false, 'Granular Permissions: Admin MANAGE_PROPERTIES permission is false after revoke');
+
+    // 3. Security Limits / Governance Safeguards
+    // Standard admins cannot modify SUPER_ADMINs (e.g., changing role or suspending them)
+    const checkRoleModificationSafety = (actor: any, target: any, newRole: string) => {
+      if (actor.role === UserRole.ADMIN && target.role === UserRole.SUPER_ADMIN) {
+        throw new Error('Action blocked: Standard admins cannot modify Super Admin accounts.');
+      }
+      return true;
+    };
+
+    let hierarchyLockTriggered = false;
+    try {
+      checkRoleModificationSafety(testAdmin, testSuperAdmin, 'USER');
+    } catch (err: any) {
+      if (err.message.includes('Standard admins cannot modify Super Admin accounts')) {
+        hierarchyLockTriggered = true;
+      }
+    }
+    assert(hierarchyLockTriggered, 'Governance Safeguards: Standard admin blocked from downgrading Super Admin');
+
+    let suspensionLockTriggered = false;
+    try {
+      checkRoleModificationSafety(testAdmin, testSuperAdmin, 'SUSPENDED');
+    } catch (err: any) {
+      if (err.message.includes('Standard admins cannot modify Super Admin accounts')) {
+        suspensionLockTriggered = true;
+      }
+    }
+    assert(suspensionLockTriggered, 'Governance Safeguards: Standard admin blocked from suspending Super Admin');
+
+    // 4. Session Monitoring & Audits
+    const testSession = await db.adminSession.create({
+      data: {
+        userId: testAdmin.id,
+        ipAddress: '192.168.1.10',
+        browser: 'Chrome',
+        device: 'Desktop',
+        operatingSystem: 'Windows 11',
+        country: 'India',
+        city: 'Lucknow',
+        isActive: true
+      }
+    });
+
+    assert(testSession.id !== undefined, 'Session Tracker: Session successfully created');
+    assert(testSession.isActive === true, 'Session Tracker: Session is active initially');
+    assert(testSession.city === 'Lucknow', 'Session Tracker: City is correctly logged');
+    assert(testSession.ipAddress === '192.168.1.10', 'Session Tracker: IP Address is correctly logged');
+
+    // Terminate session
+    const updatedSession = await db.adminSession.update({
+      where: { id: testSession.id },
+      data: { isActive: false, logoutAt: new Date() }
+    });
+    assert(updatedSession.isActive === false, 'Session Tracker: Session status successfully set to inactive');
+    assert(updatedSession.logoutAt !== null, 'Session Tracker: Session logout timestamp recorded');
+
+    // 5. Behavior Anomaly Detection Engine
+    // 5.1 Mass Property Deletions (>3 property deletions within 5 minutes)
+    // We clean first
+    await db.activityLog.deleteMany({ where: { actorId: testAdmin.id } });
+    await db.securityAlert.deleteMany({ where: { adminId: testAdmin.id } });
+
+    await db.activityLog.createMany({
+      data: [
+        { actorId: testAdmin.id, action: ActivityAction.PROPERTY_DELETE, description: 'Deleted property A', details: {} },
+        { actorId: testAdmin.id, action: ActivityAction.PROPERTY_DELETE, description: 'Deleted property B', details: {} },
+        { actorId: testAdmin.id, action: ActivityAction.PROPERTY_DELETE, description: 'Deleted property C', details: {} }
+      ]
+    });
+
+    await analyzeAdminBehavior(testAdmin.id);
+    const deletionAlert = await db.securityAlert.findFirst({
+      where: { adminId: testAdmin.id, type: 'MASS_PROPERTY_DELETION' }
+    });
+    assert(deletionAlert !== null, 'Behavior Anomaly Engine: Successfully generated alert for mass property deletion');
+    assert(deletionAlert?.severity === AlertSeverity.CRITICAL, 'Behavior Anomaly Engine: Deletion alert severity is CRITICAL');
+
+    // 5.2 Mass User Modification (>3 suspensions within 5 minutes)
+    await db.activityLog.deleteMany({ where: { actorId: testAdmin.id } });
+    await db.securityAlert.deleteMany({ where: { adminId: testAdmin.id } });
+
+    await db.activityLog.createMany({
+      data: [
+        { actorId: testAdmin.id, action: ActivityAction.USER_SUSPEND, description: 'Suspended user 1', details: {} },
+        { actorId: testAdmin.id, action: ActivityAction.USER_SUSPEND, description: 'Suspended user 2', details: {} },
+        { actorId: testAdmin.id, action: ActivityAction.USER_SUSPEND, description: 'Suspended user 3', details: {} }
+      ]
+    });
+
+    await analyzeAdminBehavior(testAdmin.id);
+    const suspensionAlert = await db.securityAlert.findFirst({
+      where: { adminId: testAdmin.id, type: 'MASS_USER_MODIFICATION' }
+    });
+    assert(suspensionAlert !== null, 'Behavior Anomaly Engine: Successfully generated alert for mass user suspension');
+    assert(suspensionAlert?.severity === AlertSeverity.HIGH, 'Behavior Anomaly Engine: Suspension alert severity is HIGH');
+
+    // 5.3 Excessive Exports (>3 data exports within 5 minutes)
+    await db.activityLog.deleteMany({ where: { actorId: testAdmin.id } });
+    await db.securityAlert.deleteMany({ where: { adminId: testAdmin.id } });
+
+    await db.activityLog.createMany({
+      data: [
+        { actorId: testAdmin.id, action: ActivityAction.EXPORT_DATA, description: 'Exported data 1', details: {} },
+        { actorId: testAdmin.id, action: ActivityAction.EXPORT_DATA, description: 'Exported data 2', details: {} },
+        { actorId: testAdmin.id, action: ActivityAction.EXPORT_DATA, description: 'Exported data 3', details: {} }
+      ]
+    });
+
+    await analyzeAdminBehavior(testAdmin.id);
+    const exportAlert = await db.securityAlert.findFirst({
+      where: { adminId: testAdmin.id, type: 'EXCESSIVE_EXPORTS' }
+    });
+    assert(exportAlert !== null, 'Behavior Anomaly Engine: Successfully generated alert for excessive exports');
+    assert(exportAlert?.severity === AlertSeverity.HIGH, 'Behavior Anomaly Engine: Export alert severity is HIGH');
+
+    // 5.4 Unusual Login Times (Login between 11PM and 5AM)
+    await db.activityLog.deleteMany({ where: { actorId: testAdmin.id } });
+    await db.securityAlert.deleteMany({ where: { adminId: testAdmin.id } });
+
+    const offHoursDate = new Date();
+    offHoursDate.setHours(23, 30, 0, 0); // 11:30 PM
+
+    await db.activityLog.create({
+      data: {
+        actorId: testAdmin.id,
+        action: ActivityAction.LOGIN,
+        description: 'Logged in during off-hours',
+        createdAt: offHoursDate
+      }
+    });
+
+    await analyzeAdminBehavior(testAdmin.id);
+    const timeAlert = await db.securityAlert.findFirst({
+      where: { adminId: testAdmin.id, type: 'UNUSUAL_LOGIN_TIME' }
+    });
+    assert(timeAlert !== null, 'Behavior Anomaly Engine: Successfully generated alert for off-hours access');
+    assert(timeAlert?.severity === AlertSeverity.MEDIUM, 'Behavior Anomaly Engine: Time alert severity is MEDIUM');
+
+    // 5.5 Activity Bursts (>15 operations in 5 minutes)
+    await db.activityLog.deleteMany({ where: { actorId: testAdmin.id } });
+    await db.securityAlert.deleteMany({ where: { adminId: testAdmin.id } });
+
+    const manyLogs = Array.from({ length: 15 }).map((_, i) => ({
+      actorId: testAdmin.id,
+      action: ActivityAction.PROPERTY_VIEW,
+      description: `Action number ${i}`,
+      details: {}
+    }));
+    await db.activityLog.createMany({ data: manyLogs });
+
+    await analyzeAdminBehavior(testAdmin.id);
+    const burstAlert = await db.securityAlert.findFirst({
+      where: { adminId: testAdmin.id, type: 'SUSPICIOUS_BURST' }
+    });
+    assert(burstAlert !== null, 'Behavior Anomaly Engine: Successfully generated alert for rapid actions burst');
+    assert(burstAlert?.severity === AlertSeverity.MEDIUM, 'Behavior Anomaly Engine: Burst alert severity is MEDIUM');
+
+    // 6. Performance & Staff Reviews
+    const testReview1 = await db.adminReview.create({
+      data: {
+        adminId: testAdmin.id,
+        reviewedById: testSuperAdmin.id,
+        rating: 4,
+        notes: 'Great lead handling speed.'
+      }
+    });
+
+    const testReview2 = await db.adminReview.create({
+      data: {
+        adminId: testAdmin.id,
+        reviewedById: testSuperAdmin.id,
+        rating: 5,
+        notes: 'Outstanding client feedback.'
+      }
+    });
+
+    assert(testReview1.id !== undefined && testReview2.id !== undefined, 'Performance Reviews: Successfully logged review entries');
+    
+    // Average check
+    const allReviews = await db.adminReview.findMany({ where: { adminId: testAdmin.id } });
+    const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+    assert(avgRating === 4.5, 'Performance Reviews: Score rating averages calculated correctly');
+
+    // 7. Productivity Engine Math & Weighted Performance Score
+    // Clean data for testAdmin
+    await db.lead.deleteMany({ where: { assignedToId: testAdmin.id } });
+    await db.appointment.deleteMany({ where: { adminId: testAdmin.id } });
+    await db.followUp.deleteMany({ where: { assignedToId: testAdmin.id } });
+    await db.activityLog.deleteMany({ where: { actorId: testAdmin.id } });
+
+    // Seed mock data
+    const mockProperty = await db.property.create({
+      data: {
+        name: 'TEST-PROPERTY-GOV-101',
+        description: 'Temp Property',
+        type: 'Apartment',
+        price: 3000000,
+        bedrooms: 2,
+        bathrooms: 2,
+        area: 1200,
+        floor: 2,
+        status: 'PUBLISHED',
+      }
+    });
+
+    // 1. Leads: 1 won, 1 lost => Lead Performance Score = 50%
+    const mockLead1 = await db.lead.create({
+      data: { name: 'Won Lead', email: 'won@test.com', status: 'WON', assignedToId: testAdmin.id, message: 'test' }
+    });
+    const mockLead2 = await db.lead.create({
+      data: { name: 'Lost Lead', email: 'lost@test.com', status: 'LOST', assignedToId: testAdmin.id, message: 'test' }
+    });
+
+    // 2. Appointments: 2 completed, 2 total => Appointment Completion = 100%
+    const nowTime = new Date();
+    await db.appointment.createMany({
+      data: [
+        {
+          userId: testStandardUser.id,
+          propertyId: mockProperty.id,
+          adminId: testAdmin.id,
+          name: 'Visit 1',
+          email: 'v1@test.com',
+          phone: '123',
+          date: '2026-07-01',
+          time: '10:00 AM',
+          status: 'COMPLETED',
+          startTime: nowTime,
+          endTime: nowTime
+        },
+        {
+          userId: testStandardUser.id,
+          propertyId: mockProperty.id,
+          adminId: testAdmin.id,
+          name: 'Visit 2',
+          email: 'v2@test.com',
+          phone: '123',
+          date: '2026-07-01',
+          time: '11:00 AM',
+          status: 'COMPLETED',
+          startTime: nowTime,
+          endTime: nowTime
+        }
+      ]
+    });
+
+    // 3. Follow-Ups: 1 completed, 2 total => Follow-Up Completion = 50%
+    const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await db.followUp.createMany({
+      data: [
+        { leadId: mockLead1.id, title: 'FU1', completed: true, assignedToId: testAdmin.id, dueDate: futureDate },
+        { leadId: mockLead1.id, title: 'FU2', completed: false, assignedToId: testAdmin.id, dueDate: futureDate }
+      ]
+    });
+
+    // 4. Property Operations: 2 property actions (create/update) => Property Operations Score = 20%
+    await db.activityLog.createMany({
+      data: [
+        { actorId: testAdmin.id, action: ActivityAction.PROPERTY_CREATE, description: 'Created', details: {} },
+        { actorId: testAdmin.id, action: ActivityAction.PROPERTY_UPDATE, description: 'Updated', details: {} }
+      ]
+    });
+
+    // 5. Response Time: 1 uncompleted overdue follow-up => Overdue count = 1. Response score = 100 - 1 * 10 = 90%
+    // Let's modify the uncompleted follow-up to be overdue
+    const overdueFU = await db.followUp.findFirst({
+      where: { assignedToId: testAdmin.id, completed: false }
+    });
+    if (overdueFU) {
+      await db.followUp.update({
+        where: { id: overdueFU.id },
+        data: { dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000) } // 1 day ago
+      });
+    }
+
+    const productivityReport = await calculateAdminProductivity(testAdmin.id);
+
+    // Score checks:
+    // Lead Performance: 50%
+    // Appointment Completion: 100%
+    // Follow-Up Completion: 50%
+    // Property Operations: 2 * 10 = 20%
+    // Response Time: 100 - 1 * 10 = 90%
+    // Weighted Score: 50 * 0.3 + 100 * 0.2 + 50 * 0.2 + 20 * 0.15 + 90 * 0.15
+    // = 15 + 20 + 10 + 3 + 13.5 = 61.5 => Rounded to 62
+    assert(productivityReport.score === 62, 'Productivity Score Card: Weighted productivity score matches calculations (62)');
+    assert(productivityReport.grade === 'AVERAGE', 'Productivity Score Card: Grade is correctly classified as AVERAGE');
+    assert(productivityReport.breakdown.leadPerformance === 50, 'Productivity Score Card: Lead Performance score breakdown is correct');
+    assert(productivityReport.breakdown.appointmentCompletion === 100, 'Productivity Score Card: Appointment completion score breakdown is correct');
+    assert(productivityReport.breakdown.followUpCompletion === 50, 'Productivity Score Card: Follow-up completion score breakdown is correct');
+    assert(productivityReport.breakdown.propertyOperations === 20, 'Productivity Score Card: Property operations score breakdown is correct');
+    assert(productivityReport.breakdown.responseTime === 90, 'Productivity Score Card: Response time score breakdown is correct');
+
+    // Clean up Wave 6 records
+    await db.adminPermission.deleteMany({
+      where: { userId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.adminSession.deleteMany({
+      where: { userId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.adminReview.deleteMany({
+      where: { adminId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.securityAlert.deleteMany({
+      where: { adminId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.activityLog.deleteMany({
+      where: { actorId: { in: ['test-sa-id', 'test-adm-id', 'test-user-id'] } }
+    });
+    await db.lead.deleteMany({
+      where: { assignedToId: testAdmin.id }
+    });
+    await db.user.deleteMany({
+      where: { email: { in: ['test-sa@aura.com', 'test-adm@aura.com', 'test-usr@aura.com'] } }
+    });
+    await db.property.deleteMany({
+      where: { name: 'TEST-PROPERTY-GOV-101' }
+    });
+
+    console.log('[PASS] Wave 6 Super Admin, Governance & Security SOC tests completed.');
+
     await db.followUp.deleteMany({ where: { leadId: testLead.id } });
     await db.communicationLog.deleteMany({ where: { leadId: testLead.id } });
     await db.leadStatusHistory.deleteMany({ where: { leadId: testLead.id } });

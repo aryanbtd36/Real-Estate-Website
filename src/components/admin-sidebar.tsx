@@ -13,12 +13,16 @@ import {
   Home as HomeIcon,
   Mail,
   Clock,
-  BarChart2
+  BarChart2,
+  ShieldAlert,
+  Compass,
+  UserCheck
 } from 'lucide-react';
 
 export function AdminSidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const userRole = (session?.user as any)?.role;
 
   const navigationItems = [
     { href: '/admin', name: 'Dashboard stats', icon: LayoutDashboard, exact: true },
@@ -29,6 +33,14 @@ export function AdminSidebar() {
     { href: '/admin/inquiries', name: 'Concierge leads', icon: Mail, exact: false },
     { href: '/admin/audit-logs', name: 'Audit logs', icon: Clock, exact: false },
   ];
+
+  if (userRole === 'SUPER_ADMIN') {
+    navigationItems.push(
+      { href: '/admin/admins', name: 'Manage admins', icon: UserCheck, exact: false },
+      { href: '/admin/security', name: 'Security SOC', icon: ShieldAlert, exact: false },
+      { href: '/admin/super-admin', name: 'Executive center', icon: Compass, exact: false }
+    );
+  }
 
   const isActive = (item: typeof navigationItems[0]) => {
     if (item.exact) {

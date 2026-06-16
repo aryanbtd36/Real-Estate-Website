@@ -1,24 +1,21 @@
 import { db } from './db';
+import { UserRole } from '@prisma/client';
 
-/**
- * Resolves user role for initial database creation only.
- * Do NOT use this for runtime checks; query the database or RoleService instead.
- */
-export function resolveUserRole(email: string, dbRole?: string): string {
+export function resolveUserRole(email: string, dbRole?: string): UserRole {
   if (email.toLowerCase() === 'aryanmishra8113@gmail.com') {
-    return 'ADMIN';
+    return UserRole.SUPER_ADMIN;
   }
-  return dbRole || 'USER';
+  return (dbRole as UserRole) || UserRole.USER;
 }
 
 export const RoleService = {
   /**
    * Retrieves the user's role from the database.
-   * Ensures the initial administrator email is always resolved as ADMIN.
+   * Ensures the initial administrator email is always resolved as SUPER_ADMIN.
    */
-  async getUserRole(email: string): Promise<string> {
+  async getUserRole(email: string): Promise<UserRole> {
     if (email.toLowerCase() === 'aryanmishra8113@gmail.com') {
-      return 'ADMIN';
+      return UserRole.SUPER_ADMIN;
     }
 
     try {
@@ -26,18 +23,26 @@ export const RoleService = {
         where: { email },
         select: { role: true },
       });
-      return user?.role || 'USER';
+      return user?.role || UserRole.USER;
     } catch (error) {
       console.error('RoleService getUserRole error:', error);
-      return 'USER';
+      return UserRole.USER;
     }
   },
 
   /**
-   * Validates if the user has ADMIN privileges.
+   * Validates if the user has ADMIN or SUPER_ADMIN privileges.
    */
   async isAdmin(email: string): Promise<boolean> {
     const role = await this.getUserRole(email);
-    return role === 'ADMIN';
+    return role === 'ADMIN' || role === 'SUPER_ADMIN';
+  },
+
+  /**
+   * Validates if the user has SUPER_ADMIN privileges.
+   */
+  async isSuperAdmin(email: string): Promise<boolean> {
+    const role = await this.getUserRole(email);
+    return role === 'SUPER_ADMIN';
   },
 };

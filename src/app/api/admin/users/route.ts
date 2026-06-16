@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     const actorRole = (session?.user as any)?.role;
 
-    if (!session || actorRole !== 'ADMIN') {
+    if (!session || (actorRole !== 'ADMIN' && actorRole !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
     const actorId = (session?.user as any)?.id;
     const actorRole = (session?.user as any)?.role;
 
-    if (!session || actorRole !== 'ADMIN') {
+    if (!session || (actorRole !== 'ADMIN' && actorRole !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -170,6 +170,16 @@ export async function PUT(request: NextRequest) {
 
     if (!targetUser || targetUser.deletedAt !== null) {
       return NextResponse.json({ error: 'User not found or has been soft-deleted' }, { status: 404 });
+    }
+
+    // ADMIN cannot modify SUPER_ADMIN
+    if (targetUser.role === 'SUPER_ADMIN' && actorRole !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: Standard administrators cannot modify a Super Administrator.' }, { status: 403 });
+    }
+
+    // ADMIN cannot create/promote someone to SUPER_ADMIN
+    if (role === 'SUPER_ADMIN' && actorRole !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: Only Super Administrators can create or promote other Super Administrators.' }, { status: 403 });
     }
 
     const updateData: any = {};
@@ -219,7 +229,7 @@ export async function PUT(request: NextRequest) {
 
       // 2. Validate and track role changes
       if (role !== undefined) {
-        if (role !== 'USER' && role !== 'ADMIN') {
+        if (role !== 'USER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
           throw new Error('Invalid role value');
         }
         if (role !== targetUser.role) {

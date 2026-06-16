@@ -45,6 +45,19 @@ export const EVENTS = {
   FOLLOW_UP_COMPLETED: 'FOLLOW_UP_COMPLETED',
   FOLLOW_UP_OVERDUE: 'FOLLOW_UP_OVERDUE',
   COMMUNICATION_LOGGED: 'COMMUNICATION_LOGGED',
+
+  // Super Admin & Governance Events
+  ADMIN_CREATED: 'ADMIN_CREATED',
+  ADMIN_PROMOTED: 'ADMIN_PROMOTED',
+  ADMIN_REVOKED: 'ADMIN_REVOKED',
+  ADMIN_SUSPENDED: 'ADMIN_SUSPENDED',
+  ADMIN_RESTORED: 'ADMIN_RESTORED',
+  PERMISSION_GRANTED: 'PERMISSION_GRANTED',
+  PERMISSION_REVOKED: 'PERMISSION_REVOKED',
+  SESSION_CREATED: 'SESSION_CREATED',
+  SESSION_TERMINATED: 'SESSION_TERMINATED',
+  SECURITY_ALERT_CREATED: 'SECURITY_ALERT_CREATED',
+  ADMIN_REVIEW_CREATED: 'ADMIN_REVIEW_CREATED',
 };
 
 // --- Decoupled Side Effect Event Listeners ---
@@ -686,6 +699,96 @@ eventEmitter.on(
   EVENTS.FOLLOW_UP_AUTO_CREATED,
   safeListener(async ({ leadId, followUpId, title, assignedToId }: { leadId: string; followUpId: string; title: string; assignedToId: string }) => {
     // Side effect for auto created follow-ups if any
+  })
+);
+
+// 35. Admin Created/Promoted/Revoked/Suspended/Restored Listeners
+eventEmitter.on(
+  EVENTS.ADMIN_CREATED,
+  safeListener(async ({ actorId, targetUserId, targetEmail }: any) => {
+    // Already handled in routes, but can hook additional logging here
+  })
+);
+
+// 36. Permission Granted / Revoked Listeners
+eventEmitter.on(
+  EVENTS.PERMISSION_GRANTED,
+  safeListener(async ({ actorId, targetUserId, permissions }: any) => {
+    // Hook additional notifications if desired
+  })
+);
+
+// 37. Session Created Listener
+eventEmitter.on(
+  EVENTS.SESSION_CREATED,
+  safeListener(async ({ userId, ipAddress, browser, device, operatingSystem, country, city }: any) => {
+    await db.adminSession.create({
+      data: {
+        userId,
+        ipAddress: ipAddress || '127.0.0.1',
+        browser: browser || 'Chrome',
+        device: device || 'Desktop',
+        operatingSystem: operatingSystem || 'Windows',
+        country: country || 'India',
+        city: city || 'Lucknow',
+        isActive: true,
+      },
+    });
+
+    await ActivityService.log({
+      actorId: userId,
+      action: ActivityAction.SESSION_CREATED,
+      description: `New administrator session created from IP ${ipAddress || '127.0.0.1'} (${city || 'Lucknow'})`,
+      details: { ipAddress, browser, device, operatingSystem },
+    });
+  })
+);
+
+// 38. Session Terminated Listener
+eventEmitter.on(
+  EVENTS.SESSION_TERMINATED,
+  safeListener(async ({ sessionId, actorId }: any) => {
+    const session = await db.adminSession.findUnique({ where: { id: sessionId } });
+    if (!session || !session.isActive) return;
+
+    await db.$transaction(async (tx) => {
+      await tx.adminSession.update({
+        where: { id: sessionId },
+        data: { isActive: false, logoutAt: new Date() },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          actorId: actorId || session.userId,
+          targetUserId: session.userId,
+          action: 'SESSION_TERMINATED',
+          description: `Administrator session ${sessionId} was force-terminated`,
+          details: { sessionId },
+        },
+      });
+    }, { maxWait: 10000, timeout: 30000 });
+  })
+);
+
+// 39. Security Alert Created Listener
+eventEmitter.on(
+  EVENTS.SECURITY_ALERT_CREATED,
+  safeListener(async ({ alertId, adminId, severity, description }: any) => {
+    // Automatically log this as a critical system event
+    await ActivityService.log({
+      actorId: adminId || null,
+      action: 'SECURITY_ALERT',
+      description: `SECURITY ALERT [${severity}]: ${description}`,
+      details: { alertId, severity },
+    });
+  })
+);
+
+// 40. Admin Review Created Listener
+eventEmitter.on(
+  EVENTS.ADMIN_REVIEW_CREATED,
+  safeListener(async ({ actorId, targetUserId, rating }: any) => {
+    // Log review activity
   })
 );
 

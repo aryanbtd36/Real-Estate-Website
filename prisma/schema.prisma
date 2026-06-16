@@ -93,6 +93,20 @@ enum ActivityAction {
   FOLLOW_UP_OVERDUE
   COMMUNICATION_LOG
   MAP_CURRENT_LOCATION_USED
+
+  // Super Admin & Governance Actions
+  ADMIN_CREATED
+  ADMIN_PROMOTED
+  ADMIN_REVOKED
+  ADMIN_SUSPENDED
+  ADMIN_RESTORED
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  SESSION_CREATED
+  SESSION_TERMINATED
+  SECURITY_ALERT
+  ADMIN_REVIEW
+  EXPORT_DATA
 }
 
 enum NotificationType {
@@ -115,7 +129,7 @@ model User {
   email             String          @unique
   phone             String?
   password          String?
-  role              String          @default("USER") // "USER", "ADMIN"
+  role              UserRole        @default(USER)
   emailVerified     DateTime?
   status            UserStatus      @default(ACTIVE)
   lastLogin         DateTime?
@@ -160,6 +174,14 @@ model User {
   appointmentReschedules   AppointmentRescheduleHistory[]  @relation("RescheduleChangedByAdmin")
   appointmentOutcomes      AppointmentOutcomeHistory[]     @relation("OutcomeChangedByAdmin")
   appointmentCancellations AppointmentCancellationHistory[] @relation("CancellationChangedByAdmin")
+
+  // Governance & Wave 6 relations
+  adminPermissions     AdminPermission[] @relation("UserPermissions")
+  grantedPermissions   AdminPermission[] @relation("GrantedPermissions")
+  adminSessions        AdminSession[]
+  securityAlerts       SecurityAlert[]
+  reviewsReceived      AdminReview[]     @relation("AdminReviewed")
+  reviewsGiven         AdminReview[]     @relation("AdminReviewer")
 }
 
 model AuthToken {
@@ -556,4 +578,95 @@ model AppointmentCancellationHistory {
   createdAt     DateTime    @default(now())
 
   @@index([appointmentId])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Permission {
+  MANAGE_PROPERTIES
+  MANAGE_LEADS
+  MANAGE_APPOINTMENTS
+  MANAGE_USERS
+  VIEW_ANALYTICS
+  EXPORT_DATA
+  MANAGE_CONTENT
+  MANAGE_SETTINGS
+  MANAGE_ADMINS
+  VIEW_SECURITY
+  VIEW_AUDITS
+  VIEW_FINANCIALS
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model AdminPermission {
+  id          String     @id @default(uuid())
+  userId      String
+  permission  Permission
+  grantedById String?
+  createdAt   DateTime   @default(now())
+
+  user        User       @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy   User?      @relation("GrantedPermissions", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, permission])
+  @@index([userId])
+}
+
+model AdminSession {
+  id              String    @id @default(uuid())
+  userId          String
+  ipAddress       String?
+  browser         String?
+  device          String?
+  operatingSystem String?
+  country         String?
+  city            String?
+  loginAt         DateTime  @default(now())
+  lastActivityAt  DateTime  @default(now())
+  logoutAt        DateTime?
+  isActive        Boolean   @default(true)
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model SecurityAlert {
+  id          String        @id @default(uuid())
+  adminId     String?
+  admin       User?         @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  type        String
+  severity    AlertSeverity
+  description String
+  details     Json?
+  resolved    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  @@index([adminId])
+  @@index([resolved])
+}
+
+model AdminReview {
+  id           String      @id @default(uuid())
+  adminId      String
+  reviewedById String?
+  rating       Int
+  notes        String?
+  createdAt    DateTime    @default(now())
+
+  admin        User        @relation("AdminReviewed", fields: [adminId], references: [id], onDelete: Cascade)
+  reviewedBy   User?       @relation("AdminReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
 }
