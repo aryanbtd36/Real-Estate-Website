@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { formatCurrency } from '@/lib/currency';
 
 export async function GET(request: NextRequest) {
   try {
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
         id: p.id,
         entityType: 'property',
         title: p.name,
-        subtitle: `${p.type} in ${p.city || p.location || 'Unknown'} - $${p.price.toLocaleString()}`,
+        subtitle: `${p.type} in ${p.city || p.location || 'Unknown'} - ${formatCurrency(p.price)}`,
         status: p.status,
         createdAt: p.createdAt,
         relevance: score,

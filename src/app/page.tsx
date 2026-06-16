@@ -33,6 +33,8 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
+import { formatIndianRealEstatePrice } from '@/lib/currency';
+
 const PropertyViewMap = dynamic(() => import('@/components/property-view-map'), { ssr: false });
 
 interface Property {
@@ -43,6 +45,7 @@ interface Property {
   bedrooms: number;
   bathrooms?: number;
   area: number;
+  areaUnit?: string;
   floor: number;
   availability: string;
   images: string;
@@ -325,10 +328,11 @@ export default function Home() {
       // Create a mock penthouse/apartment details if none found in seeded properties for that floor
       setSelectedApartment({
         name: `Penthouse Suite ${activeFloor}01`,
-        location: 'Aura Tower, Manhattan',
+        location: 'Aura Tower, Hazratganj, Lucknow',
         price: 4500000 + activeFloor * 1200000,
         bedrooms: activeFloor > 6 ? 4 : 3,
         area: 2800 + activeFloor * 400,
+        areaUnit: 'Sq Ft',
         floor: activeFloor,
         availability: activeFloor === 5 ? 'SOLD' : 'AVAILABLE'
       });
@@ -482,12 +486,12 @@ export default function Home() {
                     className="w-full bg-black/60 border border-white/10 focus:border-[#D4AF37] p-3 rounded text-white text-xs outline-none transition-colors"
                   >
                     <option value="" className="bg-[#161616]">All Locations</option>
-                    <option value="Manhattan, NY" className="bg-[#161616]">Manhattan, NY</option>
-                    <option value="Malibu, CA" className="bg-[#161616]">Malibu, CA</option>
-                    <option value="Miami, FL" className="bg-[#161616]">Miami, FL</option>
-                    <option value="London, UK" className="bg-[#161616]">London, UK</option>
-                    <option value="Saint-Tropez, France" className="bg-[#161616]">Saint-Tropez, France</option>
-                    <option value="Kyoto, Japan" className="bg-[#161616]">Kyoto, Japan</option>
+                    <option value="Hazratganj, Lucknow" className="bg-[#161616]">Hazratganj, Lucknow</option>
+                    <option value="Gomti Nagar, Lucknow" className="bg-[#161616]">Gomti Nagar, Lucknow</option>
+                    <option value="Indira Nagar, Lucknow" className="bg-[#161616]">Indira Nagar, Lucknow</option>
+                    <option value="Aliganj, Lucknow" className="bg-[#161616]">Aliganj, Lucknow</option>
+                    <option value="Mahanagar, Lucknow" className="bg-[#161616]">Mahanagar, Lucknow</option>
+                    <option value="Jankipuram, Lucknow" className="bg-[#161616]">Jankipuram, Lucknow</option>
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -513,10 +517,11 @@ export default function Home() {
                     className="w-full bg-black/60 border border-white/10 focus:border-[#D4AF37] p-3 rounded text-white text-xs outline-none transition-colors"
                   >
                     <option value="" className="bg-[#161616]">No Limit</option>
-                    <option value="10000000" className="bg-[#161616]">Under $10M</option>
-                    <option value="15000000" className="bg-[#161616]">Under $15M</option>
-                    <option value="20000000" className="bg-[#161616]">Under $20M</option>
-                    <option value="30000000" className="bg-[#161616]">Under $30M</option>
+                    <option value="5000000" className="bg-[#161616]">Under ₹50 Lakh</option>
+                    <option value="10000000" className="bg-[#161616]">Under ₹1 Crore</option>
+                    <option value="15000000" className="bg-[#161616]">Under ₹1.5 Crore</option>
+                    <option value="20000000" className="bg-[#161616]">Under ₹2 Crore</option>
+                    <option value="30000000" className="bg-[#161616]">Under ₹3 Crore</option>
                   </select>
                 </div>
                 <button
@@ -551,7 +556,7 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-light text-white mb-1">The Aurelia Penthouse</h3>
               <p className="text-xs text-white/50 mb-4 flex items-center gap-1">
-                <MapPin size={12} className="text-[#D4AF37]" /> Manhattan, NY
+                <MapPin size={12} className="text-[#D4AF37]" /> Hazratganj, Lucknow
               </p>
               
               {/* Statistics Glass Cards inside right column */}
@@ -598,12 +603,12 @@ export default function Home() {
                   className="w-full bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none"
                 >
                   <option value="">All Locations</option>
-                  <option value="Manhattan, NY">Manhattan, NY</option>
-                  <option value="Malibu, CA">Malibu, CA</option>
-                  <option value="Miami, FL">Miami, FL</option>
-                  <option value="London, UK">London, UK</option>
-                  <option value="Saint-Tropez, France">Saint-Tropez, France</option>
-                  <option value="Kyoto, Japan">Kyoto, Japan</option>
+                  <option value="Hazratganj, Lucknow">Hazratganj, Lucknow</option>
+                  <option value="Gomti Nagar, Lucknow">Gomti Nagar, Lucknow</option>
+                  <option value="Indira Nagar, Lucknow">Indira Nagar, Lucknow</option>
+                  <option value="Aliganj, Lucknow">Aliganj, Lucknow</option>
+                  <option value="Mahanagar, Lucknow">Mahanagar, Lucknow</option>
+                  <option value="Jankipuram, Lucknow">Jankipuram, Lucknow</option>
                 </select>
               </div>
 
@@ -631,10 +636,11 @@ export default function Home() {
                   className="w-full bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none"
                 >
                   <option value="">No Limit</option>
-                  <option value="10000000">Under $10M</option>
-                  <option value="15000000">Under $15M</option>
-                  <option value="20000000">Under $20M</option>
-                  <option value="30000000">Under $30M</option>
+                  <option value="5000000">Under ₹50 Lakh</option>
+                  <option value="10000000">Under ₹1 Crore</option>
+                  <option value="15000000">Under ₹1.5 Crore</option>
+                  <option value="20000000">Under ₹2 Crore</option>
+                  <option value="30000000">Under ₹3 Crore</option>
                 </select>
               </div>
 
@@ -780,7 +786,7 @@ export default function Home() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Maximize2 size={14} className="text-[#D4AF37]" />
-                        <span>{property.area.toLocaleString()} Sq Ft</span>
+                        <span>{property.area.toLocaleString()} {property.areaUnit || 'Sq Ft'}</span>
                       </div>
                     </div>
 
@@ -788,7 +794,7 @@ export default function Home() {
                       <div>
                         <span className="text-[10px] uppercase tracking-widest text-white/40 block">Market Price</span>
                         <span className="text-xl font-semibold text-[#D4AF37]">
-                          ${(property.price / 1000000).toFixed(1)}M
+                          {formatIndianRealEstatePrice(property.price)}
                         </span>
                       </div>
 
@@ -852,7 +858,7 @@ export default function Home() {
                       <div>
                         <span className="text-[10px] uppercase tracking-widest text-white/40 block">Price</span>
                         <span className="text-lg font-semibold text-[#D4AF37] mt-1 block">
-                          ${(selectedApartment.price / 1000000).toFixed(2)}M
+                          {formatIndianRealEstatePrice(selectedApartment.price)}
                         </span>
                       </div>
                       <div>
@@ -864,7 +870,7 @@ export default function Home() {
                       <div>
                         <span className="text-[10px] uppercase tracking-widest text-white/40 block">Total Area</span>
                         <span className="text-lg text-white font-semibold mt-1 block">
-                          {selectedApartment.area.toLocaleString()} Sq Ft
+                          {selectedApartment.area.toLocaleString()} {selectedApartment.areaUnit || 'Sq Ft'}
                         </span>
                       </div>
                     </div>
@@ -963,7 +969,7 @@ export default function Home() {
             <div className="space-y-6 relative border-l border-white/10 pl-6 ml-3">
               {[
                 { year: '2015', title: 'Platform Launch', desc: 'Introduced next-generation high-end boutique property consultancy.' },
-                { year: '2019', title: 'Expansion to London & Tokyo', desc: 'Integrated bespoke international assets into our portfolio.' },
+                { year: '2019', title: 'Expansion to Noida & Varanasi', desc: 'Integrated premium real estate assets across Uttar Pradesh.' },
                 { year: '2023', title: '3D Virtual Interactive Launch', desc: 'Introduced full real-time structural interactive floor layout designs.' }
               ].map((milestone) => (
                 <div key={milestone.year} className="relative">
@@ -1272,10 +1278,10 @@ export default function Home() {
                   <MapPin size={18} />
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Metropolitan HQ</h4>
+                  <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Lucknow HQ</h4>
                   <p className="text-[11px] text-white/50 mt-0.5 leading-relaxed">
-                    745 Fifth Avenue, Penthouse Level<br />
-                    New York, NY 10151
+                    Shahnajaf Road, Hazratganj<br />
+                    Lucknow, UP 226001
                   </p>
                 </div>
               </div>
@@ -1287,8 +1293,8 @@ export default function Home() {
                 <div>
                   <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Client Support</h4>
                   <p className="text-[11px] text-white/50 mt-0.5 leading-relaxed">
-                    Tel: +1 (212) 555-9830<br />
-                    Mon - Sun: 09:00 AM - 08:00 PM EST
+                    Tel: +91 (522) 555-0199<br />
+                    Mon - Sun: 09:00 AM - 08:00 PM IST
                   </p>
                 </div>
               </div>
@@ -1324,7 +1330,7 @@ export default function Home() {
             <div className="z-10 flex justify-between items-start">
               <div>
                 <span className="text-[9px] uppercase tracking-widest text-[#D4AF37] block font-semibold">Interactive Locator</span>
-                <h4 className="text-lg font-light text-white mt-0.5">New York HQ</h4>
+                <h4 className="text-lg font-light text-white mt-0.5">Lucknow HQ</h4>
               </div>
               <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] uppercase tracking-wider text-white">
                 GPS Live
@@ -1335,8 +1341,8 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#D4AF37] animate-ping" />
                 <div>
-                  <span className="text-[11px] font-semibold block text-white">Fifth Avenue Office</span>
-                  <span className="text-[9px] text-white/45">745 5th Ave, Manhattan</span>
+                  <span className="text-[11px] font-semibold block text-white">Hazratganj Office</span>
+                  <span className="text-[9px] text-white/45">Shahnajaf Road, Hazratganj, Lucknow</span>
                 </div>
               </div>
               <a
@@ -1528,7 +1534,7 @@ export default function Home() {
                 <div>
                   <span className="text-[9px] uppercase tracking-widest text-white/40 block">Price</span>
                   <span className="text-sm font-semibold text-[#D4AF37] mt-1 block">
-                    ${(quickViewProperty.price / 1000000).toFixed(2)}M
+                    {formatIndianRealEstatePrice(quickViewProperty.price)}
                   </span>
                 </div>
                 <div>
@@ -1540,7 +1546,7 @@ export default function Home() {
                 <div>
                   <span className="text-[9px] uppercase tracking-widest text-white/40 block">Area</span>
                   <span className="text-sm text-white font-semibold mt-1 block">
-                    {quickViewProperty.area.toLocaleString()} Sq Ft
+                    {quickViewProperty.area.toLocaleString()} {quickViewProperty.areaUnit || 'Sq Ft'}
                   </span>
                 </div>
                 <div>
@@ -1715,7 +1721,7 @@ export default function Home() {
                     <div className="border-t border-white/5 pt-3 space-y-3 text-xs">
                       <div className="flex justify-between md:block">
                         <span className="md:hidden text-white/40 font-semibold uppercase tracking-widest text-[9px] mr-2">Price:</span>
-                        <span className="text-sm font-bold text-[#D4AF37]">${(p.price / 1000000).toFixed(1)}M</span>
+                        <span className="text-sm font-bold text-[#D4AF37]">{formatIndianRealEstatePrice(p.price)}</span>
                       </div>
                       <div className="flex justify-between md:block">
                         <span className="md:hidden text-white/40 font-semibold uppercase tracking-widest text-[9px] mr-2">Location:</span>
@@ -1731,7 +1737,7 @@ export default function Home() {
                       </div>
                       <div className="flex justify-between md:block">
                         <span className="md:hidden text-white/40 font-semibold uppercase tracking-widest text-[9px] mr-2">Area:</span>
-                        <span className="text-white/70">{p.area.toLocaleString()} Sq Ft</span>
+                        <span className="text-white/70">{p.area.toLocaleString()} {p.areaUnit || 'Sq Ft'}</span>
                       </div>
                       <div className="flex justify-between md:block">
                         <span className="md:hidden text-white/40 font-semibold uppercase tracking-widest text-[9px] mr-2">Status:</span>

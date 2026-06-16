@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Turnstile } from '@/components/turnstile';
+import { formatIndianRealEstatePrice } from '@/lib/currency';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -431,7 +432,7 @@ export default function DashboardPage() {
                         <div key={prop.id} className="bg-[#161616] border border-white/5 p-4 rounded-xl flex items-center justify-between">
                           <div className="max-w-[150px] sm:max-w-none">
                             <h4 className="text-sm font-medium text-white truncate">{prop.name}</h4>
-                            <span className="text-xs text-[#D4AF37]">${(prop.price / 1000000).toFixed(1)}M</span>
+                            <span className="text-xs text-[#D4AF37]">{formatIndianRealEstatePrice(prop.price)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button
@@ -506,7 +507,7 @@ export default function DashboardPage() {
                           <span className="text-[10px] text-white/50 block mt-0.5">{prop.location}</span>
                         </div>
                         <div className="flex justify-between items-center mt-4 pt-2 border-t border-white/5">
-                          <span className="text-xs font-bold text-[#D4AF37]">${(prop.price / 1000000).toFixed(1)}M</span>
+                          <span className="text-xs font-bold text-[#D4AF37]">{formatIndianRealEstatePrice(prop.price)}</span>
                           <Link href="/#properties" className="text-[10px] text-[#D4AF37] uppercase tracking-wider font-semibold hover:underline">Details &rarr;</Link>
                         </div>
                       </div>
@@ -560,12 +561,12 @@ export default function DashboardPage() {
 
                       <div className="grid grid-cols-2 gap-4 py-3 border-y border-white/5 text-xs text-white/60">
                         <span>{property.bedrooms} Rooms</span>
-                        <span>{property.area.toLocaleString()} Sq Ft</span>
+                        <span>{property.area.toLocaleString()} {property.areaUnit || 'Sq Ft'}</span>
                       </div>
 
                       <div className="flex justify-between items-center pt-2">
                         <span className="text-base font-semibold text-[#D4AF37]">
-                          ${(property.price / 1000000).toFixed(1)}M
+                          {formatIndianRealEstatePrice(property.price)}
                         </span>
                         <Link
                           href="/#properties"

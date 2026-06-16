@@ -97,13 +97,13 @@ export default function PropertyEditMap({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const defaultLat = latitude || -33.8688;
-    const defaultLng = longitude || 151.2093;
+    const defaultLat = latitude || 26.8467;
+    const defaultLng = longitude || 80.9462;
 
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
-        zoom: latitude && longitude ? 14 : 10,
+        zoom: latitude && longitude ? 14 : 13,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -338,6 +338,29 @@ export default function PropertyEditMap({
     onChangeBoundary(JSON.stringify(corners));
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Current location could not be determined.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude: lat, longitude: lng } = position.coords;
+        onChangeLocation(lat, lng);
+        if (mapRef.current) {
+          mapRef.current.setView([lat, lng], 15);
+        }
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          alert("Unable to access location. Please enable location permissions or enter coordinates manually.");
+        } else {
+          alert("Current location could not be determined.");
+        }
+      }
+    );
+  };
+
   // Actions: Secondary Zones CRUD
   const handleAddZone = () => {
     if (!newZoneName.trim()) return;
@@ -423,7 +446,7 @@ export default function PropertyEditMap({
                   value={latitude || ''}
                   onChange={(e) => onChangeLocation(parseFloat(e.target.value) || 0, longitude || 0)}
                   className="w-full bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
-                  placeholder="-33.8688"
+                  placeholder="26.8467"
                 />
               </div>
               <div className="space-y-1">
@@ -434,10 +457,17 @@ export default function PropertyEditMap({
                   value={longitude || ''}
                   onChange={(e) => onChangeLocation(latitude || 0, parseFloat(e.target.value) || 0)}
                   className="w-full bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
-                  placeholder="151.2093"
+                  placeholder="80.9462"
                 />
               </div>
             </div>
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              className="w-full py-2 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
+            >
+              <span>📍 Use My Current Location</span>
+            </button>
             <p className="text-[10px] text-white/40 italic">Type coordinates above or click directly on the map to drop the marker pin.</p>
           </div>
         )}
@@ -448,24 +478,33 @@ export default function PropertyEditMap({
               <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Polygon Drawing Mode</p>
               <p className="text-[10px] text-white/40 italic">Click spots on the map to define the perimeter outlines ({tempPoints.length} points).</p>
             </div>
-            {tempPoints.length > 0 && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleUndoPoint}
-                  className="px-3 py-1.5 border border-white/10 hover:border-white/20 text-white/60 text-[9px] uppercase font-bold rounded"
-                >
-                  Undo Point
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearBoundary}
-                  className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-black text-red-400 text-[9px] uppercase font-bold rounded transition-colors"
-                >
-                  Clear Boundary
-                </button>
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                className="px-3 py-1.5 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white text-[9px] uppercase font-bold rounded flex items-center gap-1 transition-colors"
+              >
+                <span>📍 Use Current Location as Property Center</span>
+              </button>
+              {tempPoints.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleUndoPoint}
+                    className="px-3 py-1.5 border border-white/10 hover:border-white/20 text-white/60 text-[9px] uppercase font-bold rounded"
+                  >
+                    Undo Point
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearBoundary}
+                    className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-black text-red-400 text-[9px] uppercase font-bold rounded transition-colors"
+                  >
+                    Clear Boundary
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -495,8 +534,8 @@ export default function PropertyEditMap({
         {activeTab === 'measurement' && (
           <div className="space-y-3">
             <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Measurement-Based Auto-generate square boundary</p>
-            <div className="flex gap-4">
-              <div className="flex-1 space-y-1">
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex-1 min-w-[200px] space-y-1">
                 <label className="text-[8px] uppercase tracking-wider text-white/35 block">Target Footprint Area (Sq Ft)</label>
                 <input
                   type="number"
@@ -506,13 +545,22 @@ export default function PropertyEditMap({
                   placeholder="5000"
                 />
               </div>
-              <button
-                type="button"
-                onClick={handleGenerateMeasurementBoundary}
-                className="self-end px-4 py-3 bg-[#D4AF37] hover:opacity-90 text-black text-[10px] font-bold uppercase tracking-wider rounded shrink-0"
-              >
-                Generate Square
-              </button>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  className="px-4 py-3 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded flex items-center gap-1 transition-colors"
+                >
+                  <span>📍 Use Current Location as Property Center</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateMeasurementBoundary}
+                  className="px-4 py-3 bg-[#D4AF37] hover:opacity-90 text-black text-[10px] font-bold uppercase tracking-wider rounded"
+                >
+                  Generate Square
+                </button>
+              </div>
             </div>
             <p className="text-[10px] text-white/40 italic">Automatically generates a square boundary polygon centered around the Pin coordinates matching the specified area.</p>
           </div>

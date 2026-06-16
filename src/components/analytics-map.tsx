@@ -32,15 +32,15 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Default coordinates: NY Manhattan center
-    const defaultLat = 40.7831;
-    const defaultLng = -73.9712;
+    // Default coordinates: Lucknow center
+    const defaultLat = 26.8467;
+    const defaultLng = 80.9462;
 
     // Initialize map
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
-        zoom: 2,
+        zoom: 12,
         scrollWheelZoom: false,
       });
 

@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
                 bedrooms: prop.bedrooms,
                 bathrooms: prop.bathrooms,
                 area: prop.area,
+                areaUnit: prop.areaUnit,
                 floor: prop.floor,
                 availability: prop.availability,
                 images: prop.images,

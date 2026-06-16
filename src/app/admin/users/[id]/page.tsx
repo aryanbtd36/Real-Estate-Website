@@ -29,6 +29,7 @@ import {
   BadgeCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatCurrency } from '@/lib/currency';
 
 interface UserOverview {
   id: string;
@@ -703,7 +704,7 @@ export default function UserProfilePage() {
                   <div key={sp.id} className="py-3 flex justify-between items-center gap-4">
                     <div>
                       <h4 className="text-xs font-semibold text-white">{sp.property.name}</h4>
-                      <p className="text-[10px] text-white/40 mt-0.5">{sp.property.type} &bull; ${sp.property.price.toLocaleString()}</p>
+                      <p className="text-[10px] text-white/40 mt-0.5">{sp.property.type} &bull; {formatCurrency(sp.property.price)}</p>
                     </div>
                     <span className="text-[10px] text-white/30 flex items-center gap-1">
                       <Clock size={10} />

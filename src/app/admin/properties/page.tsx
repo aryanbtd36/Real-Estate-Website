@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Dynamically import Leaflet components with SSR disabled to prevent window-undefined errors
 const PropertyEditMap = dynamic(() => import('@/components/property-edit-map'), { ssr: false });
+import { formatIndianRealEstatePrice } from '@/lib/currency';
 
 export default function AdminPropertiesPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -61,6 +62,7 @@ export default function AdminPropertiesPage() {
   const [bedrooms, setBedrooms] = useState('3');
   const [bathrooms, setBathrooms] = useState('2');
   const [area, setArea] = useState('');
+  const [areaUnit, setAreaUnit] = useState('Sq Ft');
   const [floor, setFloor] = useState('1');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -113,6 +115,7 @@ export default function AdminPropertiesPage() {
     setBedrooms('3');
     setBathrooms('2');
     setArea('');
+    setAreaUnit('Sq Ft');
     setFloor('1');
     setAddress('');
     setCity('');
@@ -142,6 +145,7 @@ export default function AdminPropertiesPage() {
     setBedrooms(prop.bedrooms.toString());
     setBathrooms((prop.bathrooms || 1).toString());
     setArea(prop.area.toString());
+    setAreaUnit(prop.areaUnit || 'Sq Ft');
     setFloor(prop.floor.toString());
     setAddress(prop.address || '');
     setCity(prop.city || '');
@@ -306,6 +310,7 @@ export default function AdminPropertiesPage() {
       bedrooms: parseInt(bedrooms),
       bathrooms: parseInt(bathrooms),
       area: parseFloat(area),
+      areaUnit,
       floor: parseInt(floor),
       location: locationText,
       address,
@@ -600,14 +605,14 @@ export default function AdminPropertiesPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Price ($)</label>
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Price (₹)</label>
                     <input
                       type="number"
                       required
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37] transition-colors"
-                      placeholder="12500000"
+                      placeholder="5000000"
                     />
                   </div>
                   <div className="flex items-center gap-3 pt-6">
@@ -628,7 +633,7 @@ export default function AdminPropertiesPage() {
                 <h4 className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37] border-l-2 border-[#D4AF37] pl-2">Specifications</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Area (Sq Ft)</label>
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Area</label>
                     <input
                       type="number"
                       required
@@ -637,6 +642,20 @@ export default function AdminPropertiesPage() {
                       className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
                       placeholder="5400"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Area Unit</label>
+                    <select
+                      value={areaUnit}
+                      onChange={(e) => setAreaUnit(e.target.value)}
+                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="Sq Ft">Sq Ft</option>
+                      <option value="Sq Yard">Sq Yard</option>
+                      <option value="Acre">Acre</option>
+                      <option value="Hectare">Hectare</option>
+                      <option value="Bigha">Bigha</option>
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest text-white/40 block">Bedrooms</label>
@@ -1118,11 +1137,11 @@ export default function AdminPropertiesPage() {
                           </td>
                           <td className="p-4 sm:p-6">
                             <span className="text-xs text-white/60 block">{prop.type}</span>
-                            <span className="text-sm text-[#D4AF37] font-semibold block mt-0.5">${(prop.price / 1000000).toFixed(2)}M</span>
+                            <span className="text-sm text-[#D4AF37] font-semibold block mt-0.5">{formatIndianRealEstatePrice(prop.price)}</span>
                           </td>
                           <td className="p-4 sm:p-6 text-xs text-white/70 space-y-0.5">
                             <div>{prop.bedrooms} Bed / {prop.bathrooms || 1} Bath</div>
-                            <div>{prop.area.toLocaleString()} Sq Ft • Floor {prop.floor}</div>
+                            <div>{prop.area.toLocaleString()} {prop.areaUnit || 'Sq Ft'} • Floor {prop.floor}</div>
                           </td>
                           <td className="p-4 sm:p-6">
                             <button

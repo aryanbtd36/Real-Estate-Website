@@ -27,14 +27,14 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const defaultLat = latitude || -33.8688; // Default Sydney or another major location
-    const defaultLng = longitude || 151.2093;
+    const defaultLat = latitude || 26.8467;
+    const defaultLng = longitude || 80.9462;
 
     // Initialize map
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
-        zoom: latitude && longitude ? 15 : 10,
+        zoom: latitude && longitude ? 15 : 13,
         scrollWheelZoom: false,
       });
 

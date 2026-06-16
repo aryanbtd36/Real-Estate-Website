@@ -182,6 +182,7 @@ model Property {
   bedrooms       Int
   bathrooms      Int             @default(1)
   area           Float           // in sq ft
+  areaUnit       String          @default("Sq Ft")
   floor          Int
   availability   String          @default("AVAILABLE") // "AVAILABLE", "SOLD", "RESERVED"
   images         String          @default("") // Comma-separated list for backwards compatibility

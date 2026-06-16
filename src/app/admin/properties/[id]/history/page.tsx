@@ -7,7 +7,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  DollarSign,
+  IndianRupee,
   FileText,
   Plus,
   Compass,
@@ -63,7 +63,7 @@ export default function PropertyHistoryPage() {
       case 'PROPERTY_PUBLISH': return <CheckCircle className="text-green-500" size={14} />;
       case 'PROPERTY_ARCHIVE': return <Archive className="text-red-400" size={14} />;
       case 'PROPERTY_RESTORE': return <RefreshCw className="text-yellow-400" size={14} />;
-      case 'PRICE_CHANGE': return <DollarSign className="text-amber-400" size={14} />;
+      case 'PRICE_CHANGE': return <IndianRupee className="text-amber-400" size={14} />;
       default: return <Activity className="text-white/50" size={14} />;
     }
   };

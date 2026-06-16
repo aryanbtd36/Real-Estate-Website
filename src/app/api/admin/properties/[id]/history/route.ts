@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { formatCurrency } from '@/lib/currency';
 
 export async function GET(
   req: NextRequest,
@@ -84,7 +85,7 @@ export async function GET(
         id: ph.id,
         type: 'PRICE_CHANGE',
         timestamp: ph.createdAt,
-        description: `Price changed from $${ph.oldPrice.toLocaleString()} to $${ph.newPrice.toLocaleString()}`,
+        description: `Price changed from ${formatCurrency(ph.oldPrice)} to ${formatCurrency(ph.newPrice)}`,
         actor: ph.changedBy ? { name: ph.changedBy.name, email: ph.changedBy.email } : null,
         details: { oldPrice: ph.oldPrice, newPrice: ph.newPrice }
       });

@@ -13,7 +13,7 @@ import {
   Mail,
   Clock,
   Activity,
-  DollarSign,
+  IndianRupee,
   Compass,
   MapPin,
   CheckCircle,
@@ -28,6 +28,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatIndianRealEstatePrice, formatCurrency } from '@/lib/currency';
 
 // Load Leaflet Map dynamically
 const AnalyticsMap = dynamic(() => import('@/components/analytics-map'), { ssr: false });
@@ -134,7 +135,7 @@ export default function AdminAnalyticsPage() {
     { id: 'properties', name: 'Property Insights', icon: Building },
     { id: 'operations', name: 'Operations & Tasks', icon: Calendar },
     { id: 'geography', name: 'Geographic Density', icon: Compass },
-    { id: 'revenue', name: 'Revenue & Forecasting', icon: DollarSign },
+    { id: 'revenue', name: 'Revenue & Forecasting (INR)', icon: IndianRupee },
   ] as const;
 
   return (
@@ -856,14 +857,14 @@ export default function AdminAnalyticsPage() {
               {/* Financial pipeline totals cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { label: 'Revenue Won', val: revenue?.wonRevenue, c: 'text-green-400', desc: 'Closed won deals value' },
-                  { label: 'Revenue Pipeline', val: revenue?.pipelineValue, c: 'text-[#D4AF37]', desc: 'Active advanced deals value' },
-                  { label: 'Potential Revenue', val: revenue?.potentialRevenue, c: 'text-blue-400', desc: 'All active inquiries value' },
-                  { label: 'Revenue Lost', val: revenue?.lostRevenue, c: 'text-red-400', desc: 'Closed lost deals value' },
+                  { label: 'Revenue Won (INR)', val: revenue?.wonRevenue, c: 'text-green-400', desc: 'Closed won deals value' },
+                  { label: 'Revenue Pipeline (INR)', val: revenue?.pipelineValue, c: 'text-[#D4AF37]', desc: 'Active advanced deals value' },
+                  { label: 'Potential Revenue (INR)', val: revenue?.potentialRevenue, c: 'text-blue-400', desc: 'All active inquiries value' },
+                  { label: 'Revenue Lost (INR)', val: revenue?.lostRevenue, c: 'text-red-400', desc: 'Closed lost deals value' },
                 ].map((card) => (
                   <div key={card.label} className="bg-[#161616] border border-white/5 rounded-xl p-6 space-y-2 hover:border-[#D4AF37]/25 transition-colors">
                     <span className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">{card.label}</span>
-                    <h3 className={`text-2xl font-semibold ${card.c}`}>${(card.val / 1000000).toFixed(2)}M</h3>
+                    <h3 className={`text-2xl font-semibold ${card.c}`}>{formatIndianRealEstatePrice(card.val || 0)}</h3>
                     <p className="text-[9px] text-white/40 pt-1 border-t border-white/5">{card.desc}</p>
                   </div>
                 ))}
@@ -882,7 +883,7 @@ export default function AdminAnalyticsPage() {
                     },
                     {
                       label: 'Expected Monthly Revenue',
-                      val: `$${(forecasting?.revenueForecast?.expectedMonthlyRevenue / 1000000).toFixed(2)}M`,
+                      val: formatIndianRealEstatePrice(forecasting?.revenueForecast?.expectedMonthlyRevenue || 0),
                       trend: forecasting?.revenueForecast?.trendDirection,
                       conf: forecasting?.revenueForecast?.confidence
                     },
@@ -927,7 +928,7 @@ export default function AdminAnalyticsPage() {
                               style={{ height: `${pct}%` }}
                             />
                             <div className="absolute inset-x-0 top-1 text-[9px] text-center text-white/55 font-mono">
-                              ${(pt.revenue / 1000000).toFixed(1)}M
+                              {formatIndianRealEstatePrice(pt.revenue)}
                             </div>
                           </div>
                           <span className="text-[9px] text-white/40 font-mono">{pt.label}</span>
@@ -948,7 +949,7 @@ export default function AdminAnalyticsPage() {
                         {revenue?.averages?.perSource?.map((row: any) => (
                           <div key={row.category} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">
                             <span className="text-white/60 uppercase tracking-widest text-[9px]">{row.category.replace('_', ' ')}</span>
-                            <span className="font-bold text-white font-mono">${(row.avgValue / 1000000).toFixed(2)}M</span>
+                            <span className="font-bold text-white font-mono">{formatIndianRealEstatePrice(row.avgValue)}</span>
                           </div>
                         ))}
                       </div>
@@ -961,7 +962,7 @@ export default function AdminAnalyticsPage() {
                         {revenue?.averages?.perAdmin?.map((row: any) => (
                           <div key={row.category} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">
                             <span className="text-white/60 truncate max-w-[90px]">{row.category}</span>
-                            <span className="font-bold text-white font-mono">${(row.avgValue / 1000000).toFixed(2)}M</span>
+                            <span className="font-bold text-white font-mono">{formatIndianRealEstatePrice(row.avgValue)}</span>
                           </div>
                         ))}
                       </div>
