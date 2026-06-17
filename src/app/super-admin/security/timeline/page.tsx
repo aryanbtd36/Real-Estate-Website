@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -19,7 +19,7 @@ import {
   FileText
 } from 'lucide-react';
 
-export default function SecurityTimelinePage() {
+function SecurityTimelineContent() {
   const searchParams = useSearchParams();
   const userIdParam = searchParams.get('userId');
   const sessionIdParam = searchParams.get('sessionId');
@@ -218,5 +218,17 @@ export default function SecurityTimelinePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SecurityTimelinePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-white">
+        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <SecurityTimelineContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function AdminSearchPage() {
+function AdminSearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -334,5 +334,17 @@ export default function AdminSearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminSearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <AdminSearchContent />
+    </Suspense>
   );
 }
