@@ -5,20 +5,27 @@ import Link from 'next/link';
 import {
   ShieldAlert,
   ShieldCheck,
+  ShieldX,
   AlertTriangle,
   RefreshCw,
   Users,
   Lock,
+  Compass,
   Download,
+  Calendar,
   Globe,
   FileText,
   Activity,
   ArrowRight,
   UserCheck,
-  Zap
+  Zap,
+  MapPin,
+  Flame,
+  Fingerprint
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export default function AdminSecuritySOCPage() {
+export default function SuperAdminSecuritySOCPage() {
   const [stats, setStats] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -33,7 +40,7 @@ export default function AdminSecuritySOCPage() {
   useEffect(() => {
     loadSocData();
     
-    // 30-second auto-refresh
+    // Set 30-second real-time auto-refresh
     refreshInterval.current = setInterval(() => {
       loadSocData(true);
     }, 30000);
@@ -58,19 +65,19 @@ export default function AdminSecuritySOCPage() {
         setEvents(await eventsRes.json());
       }
     } catch (err) {
-      console.error('[Admin SOC Load Error]', err);
+      console.error('[SOC Dashboard Load Error]', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const handleResolveAlert = async (alertId: string) => {
+  const handleResolveAlert = async (alertId: string, status = 'RESOLVED') => {
     try {
       const res = await fetch('/api/admin/security/alerts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ alertId, status: 'RESOLVED' })
+        body: JSON.stringify({ alertId, status })
       });
       if (res.ok) {
         loadSocData(true);
@@ -97,22 +104,23 @@ export default function AdminSecuritySOCPage() {
   }
 
   return (
-    <div className="bg-[#0A0A0A] text-white p-6 space-y-8 pb-16">
+    <div className="min-h-screen bg-[#0A0A0A] text-white p-6 space-y-8 pb-16">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 border-b border-white/5 pb-6">
         <div>
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold">
-            <Zap size={10} className="animate-pulse" /> SOC Dashboard • Auto Refresh Active
+            <Zap size={10} className="animate-pulse" /> Real-time 30s Auto Refresh Active
           </div>
           <h1 className="text-3xl font-light tracking-wide flex items-center gap-2 mt-1">
             <ShieldAlert className="text-red-500" size={28} />
-            Security Operations Center (SOC)
+            Enterprise SOC Control Port
           </h1>
           <p className="text-xs text-white/45 mt-1.5">
-            Real-time session logging, threat telemetry, and administrative operations audit logs.
+            Geosecurity impossible travel metrics, device intelligence state registries, and admin behavior intelligence.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Time Filter Tabs */}
           <div className="flex bg-black border border-white/10 rounded p-0.5">
             {[
               { id: '24h', label: '24H' },
@@ -134,13 +142,6 @@ export default function AdminSecuritySOCPage() {
             ))}
           </div>
 
-          <Link
-            href="/admin/security/sessions"
-            className="inline-flex items-center gap-1.5 py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] uppercase font-bold tracking-wider text-white"
-          >
-            Monitor sessions
-          </Link>
-
           <button
             onClick={() => loadSocData()}
             disabled={refreshing}
@@ -151,40 +152,46 @@ export default function AdminSecuritySOCPage() {
         </div>
       </div>
 
-      {/* Stats Widgets */}
+      {/* Top Level Summary Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Security Score Widget */}
         <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-b from-[#D4AF37]/5 to-transparent rounded-full blur-xl" />
           <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">Platform Security Score</span>
           <div className="flex items-baseline gap-2 mt-2">
             <div className="text-4xl font-extralight text-[#D4AF37]">{stats?.securityScore}</div>
             <div className="text-xs uppercase font-extrabold text-[#D4AF37]/65">{stats?.securityGrade}</div>
           </div>
-          <span className="text-[10px] text-white/30 block mt-2">Overall platform configuration health</span>
+          <span className="text-[10px] text-white/30 block mt-2">Aggregated risk, alerts, & MFA adoption rates</span>
         </div>
 
+        {/* Failed Logins Counter */}
         <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden">
           <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">Failed Logins ({timeFilter})</span>
           <div className="text-4xl font-extralight text-orange-400 mt-2">{stats?.failedLogins || 0}</div>
-          <span className="text-[10px] text-white/30 block mt-2">{stats?.lockedAccounts || 0} locked accounts</span>
+          <span className="text-[10px] text-white/30 block mt-2">{stats?.lockedAccounts || 0} accounts locked currently</span>
         </div>
 
+        {/* Active Alerts */}
         <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden">
           <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">Active Alerts</span>
           <div className="text-4xl font-extralight text-red-500 mt-2">{stats?.activeAlerts || 0}</div>
-          <span className="text-[10px] text-white/30 block mt-2">{stats?.openCriticalAlerts || 0} critical priority threats</span>
+          <span className="text-[10px] text-white/30 block mt-2">{stats?.openCriticalAlerts || 0} critical priority threats pending</span>
         </div>
 
+        {/* Geosecurity Anomaly Counters */}
         <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden">
           <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">Geosecurity Violations</span>
           <div className="text-4xl font-extralight text-amber-500 mt-2">
             {(stats?.locationChanges || 0) + (stats?.accountTakeovers || 0)}
           </div>
-          <span className="text-[10px] text-white/30 block mt-2">{stats?.accountTakeovers || 0} ATO anomalies flagged</span>
+          <span className="text-[10px] text-white/30 block mt-2">{stats?.accountTakeovers || 0} ATO high risk patterns detected</span>
         </div>
       </div>
 
-      {/* Middle Row */}
+      {/* Middle Row — Attacks, Distribution, Report builder */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Replay, CSRF, Rate Limit, ATO widget lists */}
         <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4 lg:col-span-2">
           <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">SOC Attack Prevention Counters</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -192,7 +199,7 @@ export default function AdminSecuritySOCPage() {
               { label: 'Replay Blocks', val: stats?.replayBlocks, icon: ShieldCheck, color: 'text-green-400' },
               { label: 'CSRF Blocks', val: stats?.csrfBlocks, icon: ShieldCheck, color: 'text-green-400' },
               { label: 'Rate Limits', val: stats?.rateLimitViolations, icon: ShieldCheck, color: 'text-yellow-400' },
-              { label: 'Brute Force Attempts', val: stats?.bruteForceAttempts, icon: ShieldCheck, color: 'text-red-400' }
+              { label: 'Brute Force Attempts', val: stats?.bruteForceAttempts, icon: Flame, color: 'text-red-400' }
             ].map((c, i) => (
               <div key={i} className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-1">
                 <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">{c.label}</span>
@@ -205,11 +212,13 @@ export default function AdminSecuritySOCPage() {
           </div>
 
           <div className="border-t border-white/5 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Risk Distribution */}
             <div>
               <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block mb-2">Session Risk Distribution</span>
               <div className="flex items-center gap-2">
                 {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((lvl) => {
                   const count = stats?.riskDistribution?.[lvl] || 0;
+                  const color = lvl === 'LOW' ? 'bg-green-500' : lvl === 'MEDIUM' ? 'bg-yellow-500' : lvl === 'HIGH' ? 'bg-orange-500' : 'bg-red-500';
                   return (
                     <div key={lvl} className="flex-1 bg-white/5 border border-white/10 rounded p-2 text-center">
                       <div className="text-xs font-mono font-bold text-white">{count}</div>
@@ -220,6 +229,7 @@ export default function AdminSecuritySOCPage() {
               </div>
             </div>
 
+            {/* Session Health Overview */}
             <div className="flex flex-col justify-end space-y-2">
               <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block">Active Sessions Health</span>
               <div className="text-xs flex justify-between border-b border-white/5 pb-1">
@@ -227,20 +237,21 @@ export default function AdminSecuritySOCPage() {
                 <span className="font-mono text-green-400">{stats?.activeSessions || 0}</span>
               </div>
               <div className="text-xs flex justify-between">
-                <span className="text-white/45">Suspicious sessions:</span>
+                <span className="text-white/45">Suspicious sessions active:</span>
                 <span className="font-mono text-red-400">{stats?.suspiciousSessions || 0}</span>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Security Reporting Widget */}
         <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
           <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60 flex items-center gap-1">
             <Download size={13} className="text-[#D4AF37]" />
             SOC Report Generator
           </h3>
-          <p className="text-[10px] text-white/40 font-light">
-            Generate and export security compliance reports.
+          <p className="text-[10px] text-white/40">
+            Export standard security compliance documents or raw activity logging histories instantly.
           </p>
           <div className="space-y-3 pt-2">
             <div>
@@ -252,10 +263,10 @@ export default function AdminSecuritySOCPage() {
               >
                 <option value="threat">Threat Detection Report</option>
                 <option value="risk">Risk Engine Audit Report</option>
-                <option value="geosecurity">GeoSecurity Report</option>
-                <option value="admin">Admin Activity Report</option>
-                <option value="incident">Security Incident Report</option>
-                <option value="session">Session Intelligence Report</option>
+                <option value="geosecurity">Impossible Travel & Location Report</option>
+                <option value="admin">Administrator Mutations Report</option>
+                <option value="incident">Critical Incident Audit Report</option>
+                <option value="session">Session Intelligence Lifecycle</option>
               </select>
             </div>
 
@@ -280,7 +291,7 @@ export default function AdminSecuritySOCPage() {
 
             <button
               onClick={handleDownloadReport}
-              className="w-full py-2 bg-[#D4AF37] hover:bg-[#C29E30] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors mt-2"
+              className="w-full py-2.5 bg-[#D4AF37] hover:bg-[#C29E30] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors mt-2"
             >
               Export Report
             </button>
@@ -288,64 +299,63 @@ export default function AdminSecuritySOCPage() {
         </div>
       </div>
 
-      {/* Security Alerts and Events list */}
+      {/* Alerts and Threat Event logs lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-6">
+        {/* Threat Alert Log */}
+        <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Security Threat Alert Log</h3>
-              <p className="text-[9px] text-white/40">Warnings generated automatically by behavior modules.</p>
+              <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Security Incidents Alerts Log</h3>
+              <p className="text-[9px] text-white/40">Warnings flagged for review.</p>
             </div>
-            <span className="text-[9px] text-white/45 bg-black/40 border border-white/5 px-2 py-0.5 rounded font-mono">
+            <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">
               {alerts.length} Total Alerts
             </span>
           </div>
 
-          <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
             {alerts.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-white/5 rounded-xl">
-                <ShieldCheck size={36} className="text-green-500/50 mx-auto mb-2" />
-                <p className="text-sm text-green-400">Zero active security alerts triggered. System health optimal.</p>
-              </div>
+              <div className="text-center py-12 text-white/30 text-xs">Zero security alerts triggered.</div>
             ) : (
               alerts.map((alert) => (
                 <div
                   key={alert.id}
-                  className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                  className={`p-3 rounded-xl border flex justify-between items-center gap-4 transition-all ${
                     alert.status === 'RESOLVED'
-                      ? 'border-white/5 bg-black/10 opacity-60'
-                      : alert.severity === 'CRITICAL'
-                      ? 'border-red-500/30 bg-red-500/[0.03]'
-                      : 'border-white/10 bg-[#1A1A1A]'
+                      ? 'border-white/5 bg-black/15 opacity-60'
+                      : 'border-red-500/20 bg-red-500/[0.02]'
                   }`}
                 >
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-white">{alert.description}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-semibold font-mono ${
-                        alert.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-white/5 text-white/50'
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-extrabold ${
+                        alert.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'
                       }`}>
                         {alert.severity}
                       </span>
                     </div>
-                    <p className="text-[10px] text-white/45 mt-1">{alert.type}</p>
-                    <div className="flex items-center gap-3 text-[10px] text-white/30 font-mono mt-2">
-                      <div>Triggered: {new Date(alert.createdAt).toLocaleString()}</div>
+                    <div className="flex items-center gap-2 text-[9px] text-white/30 font-mono mt-1">
+                      <div>Type: {alert.type || 'Anomaly'}</div>
+                      <div>•</div>
+                      <div>At: {new Date(alert.createdAt).toLocaleString()}</div>
                     </div>
                   </div>
 
-                  <div className="shrink-0 flex items-center gap-2">
-                    {alert.status !== 'RESOLVED' ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      href={`/super-admin/security/timeline?userId=${alert.adminId || ''}`}
+                      className="py-1 px-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold uppercase rounded"
+                    >
+                      Timeline
+                    </Link>
+                    {alert.status !== 'RESOLVED' && (
                       <button
                         onClick={() => handleResolveAlert(alert.id)}
-                        className="py-1.5 px-3 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/30 text-[10px] font-bold text-white hover:text-green-400 rounded uppercase tracking-wider transition-all"
+                        className="py-1 px-2 bg-green-500/10 hover:bg-green-500/25 border border-green-500/20 hover:border-green-500/40 text-[9px] font-bold text-green-400 rounded uppercase"
                       >
-                        Resolve alert
+                        Resolve
                       </button>
-                    ) : (
-                      <span className="text-[9px] uppercase tracking-widest text-green-500 font-bold bg-green-500/5 px-2 py-0.5 border border-green-500/20 rounded">
-                        Resolved
-                      </span>
                     )}
                   </div>
                 </div>
@@ -354,11 +364,11 @@ export default function AdminSecuritySOCPage() {
           </div>
         </div>
 
-        {/* Real-time security events feed */}
-        <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-6">
+        {/* Real-time Threat Event Feed */}
+        <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Security Telemetry Events Feed</h3>
+              <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Real-time Telemetry Event Feed</h3>
               <p className="text-[9px] text-white/40">Raw log trace of all security indicators.</p>
             </div>
             <span className="text-[9px] bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-0.5 rounded font-mono font-bold">
@@ -366,7 +376,7 @@ export default function AdminSecuritySOCPage() {
             </span>
           </div>
 
-          <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
             {events.length === 0 ? (
               <div className="text-center py-12 text-white/30 text-xs">No events logged in this window.</div>
             ) : (

@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
-import { LegacyPermission as Permission, SessionStatus, UserRole } from '@prisma/client';
+import { LegacyPermission as Permission, SessionStatus, UserRole, SecurityEventSeverity } from '@prisma/client';
 import { secureApiHandler } from '@/lib/security/api-security';
+import { RiskScoringEngine } from '@/lib/security/risk-engine';
 
 async function getStatsHandler(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -21,97 +22,137 @@ async function getStatsHandler(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden: Insufficient privileges' }, { status: 403 });
   }
 
-  // Parse time filter
   const { searchParams } = new URL(request.url);
-  const filter = searchParams.get('filter') || '24h'; // '24h', '7d', '30d'
+  const filter = searchParams.get('filter') || '24h'; // '24h', '7d', '30d', '90d'
   
   let hours = 24;
   if (filter === '7d') hours = 24 * 7;
   else if (filter === '30d') hours = 24 * 30;
+  else if (filter === '90d') hours = 24 * 90;
 
   const timeLimit = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-  // 1. Fetch counts
+  // 1. Core counters
   const [
-    activeSessionsCount,
-    suspiciousSessionsCount,
-    failedLoginsCount,
-    lockedAccountsCount,
-    totalAdminsCount,
-    mfaAdminsCount,
-    securityAlertsCount,
-    totalAlertsCount,
+    activeSessions,
+    suspiciousSessions,
+    expiredSessions,
+    revokedSessions,
+    failedLogins,
+    lockedAccounts,
+    totalAdmins,
+    mfaAdmins,
+    activeAlerts,
+    openCriticalAlerts,
+    allSessionsInPeriod,
+    replayBlocks,
+    csrfBlocks,
+    rateLimitViolations,
+    bruteForceAttempts,
+    exportAbuseAttempts,
+    locationChanges,
+    deviceChanges,
+    accountTakeovers,
   ] = await Promise.all([
-    // Active sessions
-    db.session.count({
-      where: { status: SessionStatus.ACTIVE },
-    }),
-    // Suspicious sessions
-    db.session.count({
-      where: { status: SessionStatus.SUSPICIOUS },
-    }),
-    // Failed logins via LoginAttempt
-    db.loginAttempt.count({
-      where: {
-        success: false,
-        createdAt: { gte: timeLimit },
-      },
-    }),
-    // Locked accounts
-    db.user.count({
-      where: {
-        accountLockedUntil: { gte: new Date() },
-      },
-    }),
-    // Total admins
-    db.user.count({
-      where: { role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] }, deletedAt: null },
-    }),
-    // MFA enabled admins
-    db.user.count({
-      where: { role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] }, mfaEnabled: true, deletedAt: null },
-    }),
-    // Active security alerts
-    db.securityAlert.count({
-      where: { resolved: false, createdAt: { gte: timeLimit } },
-    }),
-    // Total security alerts
-    db.securityAlert.count({
-      where: { createdAt: { gte: timeLimit } },
-    }),
+    db.session.count({ where: { status: SessionStatus.ACTIVE } }),
+    db.session.count({ where: { status: SessionStatus.SUSPICIOUS } }),
+    db.session.count({ where: { status: SessionStatus.EXPIRED, loginAt: { gte: timeLimit } } }),
+    db.session.count({ where: { status: SessionStatus.REVOKED, loginAt: { gte: timeLimit } } }),
+    db.loginAttempt.count({ where: { success: false, createdAt: { gte: timeLimit } } }),
+    db.user.count({ where: { accountLockedUntil: { gte: new Date() } } }),
+    db.user.count({ where: { role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] }, deletedAt: null } }),
+    db.user.count({ where: { role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] }, mfaEnabled: true, deletedAt: null } }),
+    db.securityAlert.count({ where: { status: 'OPEN', createdAt: { gte: timeLimit } } }),
+    db.securityAlert.count({ where: { status: 'OPEN', severity: SecurityEventSeverity.CRITICAL, createdAt: { gte: timeLimit } } }),
+    db.session.findMany({ where: { loginAt: { gte: timeLimit } }, select: { riskScore: true } }),
+    
+    // Attack and abuse counters
+    db.securityEvent.count({ where: { eventType: { in: ['REPLAY_ATTACK_BLOCKED', 'Replay Attack Blocked'] }, createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: { in: ['CSRF_ATTACK_BLOCKED', 'CSRF Attack Blocked'] }, createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: { in: ['RATE_LIMIT_TRIGGERED', 'Rate Limit Triggered'] }, createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'BRUTE_FORCE_ATTEMPT', createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'EXPORT_ABUSE', createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'LOCATION_ANOMALY', createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'NEW_DEVICE_LOGIN', createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'ACCOUNT_TAKEOVER_RISK', createdAt: { gte: timeLimit } } }),
   ]);
 
-  // Sensitive actions in the filter time window
-  const sensitiveActionsCount = await db.activityLog.count({
-    where: {
-      action: {
-        in: [
-          'PROPERTY_DELETE',
-          'USER_SUSPEND',
-          'ROLE_PROMOTE',
-          'ROLE_REVOKE',
-          'ADMIN_REVOKED',
-          'ADMIN_SUSPENDED',
-          'PERMISSION_GRANTED',
-          'PERMISSION_REVOKED',
-          'SESSION_TERMINATED'
-        ],
+  // 2. Compute Risk Distribution
+  const riskDistribution = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
+  for (const s of allSessionsInPeriod) {
+    const lvl = RiskScoringEngine.getLevel(s.riskScore);
+    riskDistribution[lvl]++;
+  }
+
+  // 3. Compute Platform Security Score
+  const mfaAdoption = totalAdmins > 0 ? (mfaAdmins / totalAdmins) * 100 : 0;
+  
+  let securityScore = 100;
+  securityScore -= Math.min(failedLogins * 2, 15);
+  securityScore -= Math.min(activeAlerts * 3, 20);
+  securityScore -= Math.min(openCriticalAlerts * 10, 30);
+  securityScore -= Math.min(suspiciousSessions * 5, 15);
+  
+  if (mfaAdoption < 50) securityScore -= 10;
+  else if (mfaAdoption < 80) securityScore -= 5;
+  
+  securityScore = Math.max(10, Math.min(securityScore, 100));
+
+  let securityGrade = 'EXCELLENT';
+  if (securityScore < 40) securityGrade = 'CRITICAL';
+  else if (securityScore < 60) securityGrade = 'WEAK';
+  else if (securityScore < 80) securityGrade = 'MODERATE';
+  else if (securityScore < 95) securityGrade = 'GOOD';
+
+  // 4. Fetch top administrator risk rankings
+  const admins = await db.user.findMany({
+    where: { role: { in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] }, deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      adminTrustProfile: {
+        select: {
+          adminRiskScore: true,
+          trustScore: true,
+        },
       },
-      createdAt: { gte: timeLimit },
     },
   });
 
-  const mfaAdoptionRate = totalAdminsCount > 0 ? (mfaAdminsCount / totalAdminsCount) * 100 : 0;
+  const adminRiskRankings = admins.map((adm) => ({
+    id: adm.id,
+    name: adm.name || adm.email,
+    email: adm.email,
+    role: adm.role,
+    riskScore: adm.adminTrustProfile?.adminRiskScore || 0,
+    trustScore: adm.adminTrustProfile?.trustScore || 100,
+  })).sort((a, b) => b.riskScore - a.riskScore);
 
   return NextResponse.json({
-    activeSessions: activeSessionsCount,
-    suspiciousSessions: suspiciousSessionsCount,
-    failedLogins: failedLoginsCount,
-    lockedAccounts: lockedAccountsCount,
-    mfaAdoption: Math.round(mfaAdoptionRate),
-    securityAlerts: securityAlertsCount,
-    totalAlerts: totalAlertsCount,
-    sensitiveActions: sensitiveActionsCount,
+    securityScore,
+    securityGrade,
+    activeSessions,
+    suspiciousSessions,
+    expiredSessions,
+    revokedSessions,
+    failedLogins,
+    lockedAccounts,
+    mfaAdoption: Math.round(mfaAdoption),
+    activeAlerts,
+    openCriticalAlerts,
+    riskDistribution,
+    replayBlocks,
+    csrfBlocks,
+    rateLimitViolations,
+    bruteForceAttempts,
+    exportAbuseAttempts,
+    locationChanges,
+    deviceChanges,
+    accountTakeovers,
+    adminRiskRankings,
+    sensitiveActions: 0, // compatibility
   });
 }
 

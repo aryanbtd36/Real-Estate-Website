@@ -1,7 +1,13 @@
 import { db } from '../db';
-import { Session, SessionStatus, SecurityEventSeverity } from '@prisma/client';
+import { Session, SessionStatus, SecurityEventSeverity, SecurityEventCategory } from '@prisma/client';
 import { SecurityEventLogger } from './event-logger';
 import crypto from 'crypto';
+
+import { DeviceIntelligenceService } from './device-intelligence';
+import { GeoSecurityEngine } from './geosecurity';
+import { BehavioralAnalyticsEngine } from './behavior-analytics';
+import { RiskScoringEngine } from './risk-engine';
+import { ThreatDetectionService } from './threat-detection';
 
 // Session config timeouts (in milliseconds)
 export const SESSION_CONFIG = {
@@ -87,52 +93,110 @@ export class SessionManager {
     const longitude = headersData.longitude !== undefined ? headersData.longitude : 80.9462;
     const asn = headersData.asn || 'AS0';
 
-    // Fetch existing active sessions to compute risk score
-    const existingSessions = await db.session.findMany({
-      where: { userId, status: SessionStatus.ACTIVE },
+    // 1. Device Intelligence Check
+    const { state: deviceState, riskDelta: deviceRisk } = await DeviceIntelligenceService.analyzeDevice(
+      userId,
+      email,
+      browser,
+      operatingSystem,
+      device,
+      asn,
+      country,
+      city
+    );
+
+    // 2. GeoSecurity Check
+    const { riskDelta: geoRisk, triggers: geoTriggers } = await GeoSecurityEngine.analyzeLocation(userId, email, {
+      country,
+      state,
+      city,
+      latitude,
+      longitude,
+      asn,
+      isp: 'unknown',
     });
 
-    // Risk assessment
-    let riskScore = 0;
-    const riskTriggers: string[] = [];
+    // 3. Behavioral Anomaly Check
+    const now = new Date();
+    const currentHour = now.getHours();
+    const { riskDelta: behaviorRisk, triggers: behaviorTriggers } = await BehavioralAnalyticsEngine.analyzeBehavior(
+      userId,
+      email,
+      currentHour,
+      country,
+      city,
+      device,
+      browser
+    );
 
-    if (existingSessions.length > 0) {
-      const isNewIP = !existingSessions.some((s) => s.ipAddress === ip);
-      const isNewBrowser = !existingSessions.some((s) => s.browser === browser);
-      const isNewDevice = !existingSessions.some((s) => s.device === device);
-      const isNewCountry = !existingSessions.some((s) => s.country === country);
-      const isNewCity = !existingSessions.some((s) => s.city === city);
-      const isNewASN = !existingSessions.some((s) => s.deviceFingerprint?.includes(asn)); // Fingerprint uses ASN comparison if saved
+    // 4. Fetch additional factors
+    const failedLoginsCount = await db.loginAttempt.count({
+      where: {
+        email,
+        success: false,
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
 
-      if (isNewIP) { riskScore += 20; riskTriggers.push('New IP Address'); }
-      if (isNewBrowser) { riskScore += 15; riskTriggers.push('New Browser'); }
-      if (isNewDevice) { riskScore += 15; riskTriggers.push('New Device'); }
-      if (isNewCountry) { riskScore += 50; riskTriggers.push('New Country'); }
-      if (isNewCity) { riskScore += 25; riskTriggers.push('New City'); }
-      if (isNewASN) { riskScore += 20; riskTriggers.push('New ASN'); }
+    const isImpossibleTravel = geoTriggers.includes('Impossible Travel');
+    const isNewDevice = deviceState === 'NEW';
+    const isNewCountry = geoTriggers.includes('Country Change');
 
-      riskScore = Math.min(riskScore, 100);
-    }
+    // Fetch user details for MFA status check
+    const userDb = await db.user.findUnique({
+      where: { id: userId },
+      select: { mfaEnabled: true },
+    });
 
+    // Detect Account Takeover
+    const isAccountTakeover = await ThreatDetectionService.checkAccountTakeover(
+      userId,
+      email,
+      isNewDevice,
+      isNewCountry,
+      ip
+    );
+
+    // Calculate final risk score
+    const riskResult = RiskScoringEngine.calculateScore({
+      failedLoginsCount,
+      isNewDevice,
+      isNewCountry,
+      isImpossibleTravel,
+      isBruteForce: failedLoginsCount >= 10,
+      isCredentialStuffing: false,
+      isAccountTakeover,
+      isTrustedDevice: deviceState === 'TRUSTED',
+      isMfaEnabled: !!userDb?.mfaEnabled,
+      isVerifiedSession: true,
+    });
+
+    const riskScore = riskResult.score;
     const initialStatus = riskScore >= 50 ? SessionStatus.SUSPICIOUS : SessionStatus.ACTIVE;
 
-    // Log security events for suspicious triggers
-    if (riskTriggers.length > 0) {
+    const riskTriggers = [...geoTriggers, ...behaviorTriggers];
+    if (isNewDevice) riskTriggers.push('New Device');
+
+    // Log security event for suspicious session if risk is elevated
+    if (riskScore >= 50) {
       await SecurityEventLogger.log({
         userId,
         userEmail: email,
-        ipAddress: ip,
-        userAgent: ua,
+        eventType: 'SUSPICIOUS_SESSION',
         action: 'Suspicious Session Detected',
-        severity: riskScore >= 50 ? SecurityEventSeverity.HIGH : SecurityEventSeverity.MEDIUM,
-        description: `Session opened with unusual factors: ${riskTriggers.join(', ')}. Calculated risk score: ${riskScore}`,
-        details: { riskScore, riskTriggers, ipAddress: ip },
+        category: SecurityEventCategory.SESSION,
+        severity: SecurityEventSeverity.HIGH,
+        title: 'Suspicious Session Flagged',
+        description: `Session opened with elevated risk factors. Risk Score: ${riskScore}. Triggers: ${riskTriggers.join(', ')}`,
+        metadata: { riskScore, riskTriggers, ipAddress: ip },
       });
     }
 
+    // Update behavior profile asynchronously
+    BehavioralAnalyticsEngine.updateProfile(userId).catch(console.error);
+
     // Set expiration times
     const limits = this.getTimeoutLimits(role);
-    const now = new Date();
     const expiresAt = new Date(now.getTime() + limits.ABSOLUTE);
 
     // Create session record

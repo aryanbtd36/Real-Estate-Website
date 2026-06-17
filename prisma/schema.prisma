@@ -193,7 +193,11 @@ model User {
   grantedPermissions   AdminPermission[] @relation("GrantedPermissions")
   adminSessions        AdminSession[]
   sessions             Session[]
-  securityAlerts       SecurityAlert[]
+  securityAlerts       SecurityAlert[]       @relation("AlertAdmin")
+  assignedAlerts       SecurityAlert[]       @relation("AlertAssignedTo")
+  deviceFingerprints   DeviceFingerprint[]
+  behaviorProfile      UserBehaviorProfile?
+  adminTrustProfile    AdminTrustProfile?
   reviewsReceived      AdminReview[]     @relation("AdminReviewed")
   reviewsGiven         AdminReview[]     @relation("AdminReviewer")
 
@@ -683,19 +687,36 @@ model AdminSession {
   @@index([isActive])
 }
 
+enum SecurityAlertStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  FALSE_POSITIVE
+}
+
 model SecurityAlert {
-  id          String        @id @default(uuid())
-  adminId     String?
-  admin       User?         @relation(fields: [adminId], references: [id], onDelete: SetNull)
-  type        String
-  severity    AlertSeverity
-  description String
-  details     Json?
-  resolved    Boolean       @default(false)
-  createdAt   DateTime      @default(now())
+  id            String              @id @default(uuid())
+  title         String              @default("Security Threat Alert")
+  description   String
+  severity      SecurityEventSeverity @default(HIGH)
+  status        SecurityAlertStatus @default(OPEN)
+  assignedToId  String?
+  assignedTo    User?               @relation("AlertAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  sourceEventId String?
+  sourceEvent   SecurityEvent?      @relation(fields: [sourceEventId], references: [id], onDelete: SetNull)
+  createdAt     DateTime            @default(now())
+
+  // Backward compatibility fields
+  adminId       String?
+  admin         User?               @relation("AlertAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  type          String?
+  details       Json?
+  resolved      Boolean             @default(false)
 
   @@index([adminId])
   @@index([resolved])
+  @@index([assignedToId])
+  @@index([sourceEventId])
 }
 
 model AdminReview {
@@ -849,20 +870,104 @@ enum SecurityEventSeverity {
   CRITICAL
 }
 
+enum SecurityEventCategory {
+  AUTHENTICATION
+  SESSION
+  ADMIN
+  PROPERTY
+  LEAD
+  ANALYTICS
+  SECURITY
+  COMPLIANCE
+  GOVERNANCE
+  EXPORT
+  SYSTEM
+}
+
 model SecurityEvent {
-  id          String                @id @default(uuid())
-  userId      String?
-  userEmail   String?
-  ipAddress   String?
-  userAgent   String?
-  action      String                
-  severity    SecurityEventSeverity
-  description String
-  details     Json?
-  createdAt   DateTime              @default(now())
+  id                String                @id @default(uuid())
+  eventType         String                @default("SYSTEM_EVENT")
+  severity          SecurityEventSeverity
+  category          SecurityEventCategory @default(SYSTEM)
+  title             String                @default("System Security Event")
+  description       String
+  userId            String?
+  userEmail         String?
+  userRole          String?
+  sessionId         String?
+  ipAddress         String?
+  country           String?
+  state             String?
+  city              String?
+  asn               String?
+  userAgent         String?
+  deviceFingerprint String?
+  riskScore         Float                 @default(0.0)
+  metadata          Json?
+  createdAt         DateTime              @default(now())
+
+  // Backward compatibility fields
+  action            String?
+  details           Json?
+
+  // Alert relation
+  alerts            SecurityAlert[]
 
   @@index([userId])
   @@index([createdAt])
+  @@index([eventType])
+  @@index([severity])
+  @@index([category])
+}
+
+enum DeviceState {
+  TRUSTED
+  KNOWN
+  NEW
+  SUSPICIOUS
+}
+
+model DeviceFingerprint {
+  id              String      @id @default(uuid())
+  userId          String
+  fingerprintHash String
+  browser         String?
+  os              String?
+  device          String?
+  country         String?
+  city            String?
+  state           DeviceState @default(NEW)
+  trusted         Boolean     @default(false)
+  firstSeen       DateTime    @default(now())
+  lastSeen        DateTime    @default(now())
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fingerprintHash])
+}
+
+model UserBehaviorProfile {
+  id                     String   @id @default(uuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  averageLoginTime       Float    @default(0.0)
+  typicalCountry         String?
+  typicalCity            String?
+  typicalDevice          String?
+  typicalBrowser         String?
+  typicalSessionDuration Float    @default(0.0)
+  typicalActivityPattern String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model AdminTrustProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminRiskScore Float    @default(0.0)
+  trustScore     Float    @default(100.0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 enum RateLimitThreshold {

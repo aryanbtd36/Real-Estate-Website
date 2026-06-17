@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
-import { LegacyPermission as Permission, UserRole } from '@prisma/client';
+import { LegacyPermission as Permission, SecurityAlertStatus, SecurityEventSeverity } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,9 +31,16 @@ export async function GET(request: NextRequest) {
             role: true,
           },
         },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 100,
     });
 
     return NextResponse.json(alerts);
@@ -60,15 +67,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alertId } = body;
+    const { alertId, status, assignedToId } = body;
 
     if (!alertId) {
       return NextResponse.json({ error: 'Alert ID is required' }, { status: 400 });
     }
 
+    const updateData: any = {};
+    if (status) {
+      updateData.status = status as SecurityAlertStatus;
+      updateData.resolved = status === SecurityAlertStatus.RESOLVED;
+    } else {
+      updateData.status = SecurityAlertStatus.RESOLVED;
+      updateData.resolved = true;
+    }
+
+    if (assignedToId !== undefined) {
+      updateData.assignedToId = assignedToId;
+    }
+
     const updatedAlert = await db.securityAlert.update({
       where: { id: alertId },
-      data: { resolved: true },
+      data: updateData,
     });
 
     return NextResponse.json({ success: true, alert: updatedAlert });
