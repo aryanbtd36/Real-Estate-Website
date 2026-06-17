@@ -104,10 +104,13 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') {
+      console.log(`[PAGE DIAGNOSTIC] Path: /admin/analytics, Status: unauthenticated`);
       router.push('/login');
     } else if (sessionStatus === 'authenticated') {
       const role = (session?.user as any)?.role;
-      if (role !== 'ADMIN') {
+      const isAuthorized = role === 'ADMIN' || role === 'SUPER_ADMIN';
+      console.log(`[PAGE DIAGNOSTIC] Path: /admin/analytics, Role: ${role}, Authorized: ${isAuthorized}`);
+      if (!isAuthorized) {
         router.push('/');
       } else {
         loadAllData();

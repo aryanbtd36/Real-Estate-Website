@@ -10,8 +10,10 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     const role = (session?.user as any)?.role;
+    const isAuthorized = session && (role === 'ADMIN' || role === 'SUPER_ADMIN');
+    console.log(`[API DIAGNOSTIC] Path: /api/admin/analytics/revenue, Role: ${role}, Authorized: ${!!isAuthorized}`);
 
-    if (!session || role !== 'ADMIN') {
+    if (!isAuthorized) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
