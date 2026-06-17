@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, UserStatus, Permission } from '@prisma/client';
+import { PrismaClient, UserRole, UserStatus, LegacyPermission as Permission } from '@prisma/client';
 
 export async function bootstrapGovernance(db: PrismaClient) {
   try {
@@ -198,6 +198,85 @@ export async function bootstrapGovernance(db: PrismaClient) {
           description: `Primary SA account restored. Repaired attributes: ${saRepairedFields.join(', ')}`,
         },
       });
+    }
+
+    // 3. Seed RBAC permissions and RolePermission mappings
+    console.log('[BOOTSTRAP] Seeding database-driven RBAC permissions...');
+    const permissionsToSeed = [
+      'ADMIN_PROMOTE',
+      'ADMIN_DEMOTE',
+      'VIEW_ANALYTICS',
+      'MANAGE_PROPERTIES',
+      'MANAGE_LEADS',
+      'MANAGE_APPOINTMENTS',
+      'MANAGE_USERS',
+      'VIEW_SECURITY',
+      'VIEW_AUDITS',
+      'VIEW_FINANCIALS',
+      'EXPORT_DATA',
+      'MANAGE_CONTENT',
+      'MANAGE_SETTINGS',
+      'MANAGE_ADMINS'
+    ];
+
+    for (const name of permissionsToSeed) {
+      await db.permission.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      });
+    }
+
+    const dbPermissions = await db.permission.findMany();
+    const permMap = dbPermissions.reduce((acc, curr) => {
+      acc[curr.name] = curr.id;
+      return acc;
+    }, {} as Record<string, string>);
+
+    const adminRolePermissions = [
+      'VIEW_ANALYTICS',
+      'MANAGE_PROPERTIES',
+      'MANAGE_LEADS',
+      'MANAGE_APPOINTMENTS',
+      'EXPORT_DATA'
+    ];
+
+    for (const permName of adminRolePermissions) {
+      const permissionId = permMap[permName];
+      if (permissionId) {
+        await db.rolePermission.upsert({
+          where: {
+            role_permissionId: {
+              role: UserRole.ADMIN,
+              permissionId,
+            },
+          },
+          update: {},
+          create: {
+            role: UserRole.ADMIN,
+            permissionId,
+          },
+        });
+      }
+    }
+
+    for (const permName of permissionsToSeed) {
+      const permissionId = permMap[permName];
+      if (permissionId) {
+        await db.rolePermission.upsert({
+          where: {
+            role_permissionId: {
+              role: UserRole.SUPER_ADMIN,
+              permissionId,
+            },
+          },
+          update: {},
+          create: {
+            role: UserRole.SUPER_ADMIN,
+            permissionId,
+          },
+        });
+      }
     }
 
     console.log('[BOOTSTRAP] Governance accounts verification complete.');

@@ -15,7 +15,21 @@ export default withAuth(
         const role = token?.role;
         const hasToken = !!token;
         console.log(`[MIDDLEWARE DIAGNOSTIC] Path: ${pathname}, Role: ${role}, HasToken: ${hasToken}`);
-        return hasToken;
+        
+        if (!hasToken) {
+          return false;
+        }
+
+        // Role-based restrictions
+        if (pathname.startsWith('/super-admin')) {
+          return role === 'SUPER_ADMIN';
+        }
+
+        if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+          return role === 'ADMIN' || role === 'SUPER_ADMIN';
+        }
+
+        return true;
       },
     },
   }
@@ -24,6 +38,9 @@ export default withAuth(
 export const config = {
   matcher: [
     '/admin/:path*',
+    '/super-admin/:path*',
     '/dashboard/:path*',
+    '/api/admin/:path*',
+    '/api/security/:path*',
   ],
 };

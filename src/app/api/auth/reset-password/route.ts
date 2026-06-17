@@ -24,13 +24,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required token or password fields' }, { status: 400 });
     }
 
-    // 2. Validate reset token via token service (expiration, used flag, and token type checked)
-    const user = await TokenService.validateAndUseToken(token, 'RESET_PASSWORD');
+    if (password.length > 128) {
+      return NextResponse.json({ error: 'Password must be at most 128 characters long.' }, { status: 400 });
+    }
+
+    const { validatePassword } = await import('@/lib/security/password-policy');
+    const policyResult = validatePassword(password);
+    if (!policyResult.isValid) {
+      return NextResponse.json({ error: policyResult.errors.join(' ') }, { status: 400 });
+    }
+
+    // 2. Validate reset token via the new token service, fallback to legacy TokenService
+    const { PasswordResetTokenService } = await import('@/lib/security/password-reset');
+    let user = await PasswordResetTokenService.validateAndUseToken(token);
+    if (!user) {
+      user = await TokenService.validateAndUseToken(token, 'RESET_PASSWORD');
+    }
+
     if (!user || user.deletedAt !== null) {
       return NextResponse.json(
         { error: 'Invalid or expired password reset link.' },
         { status: 400 }
       );
+    }
+
+    // Check history reuse
+    const { isPasswordInHistory, addPasswordToHistory } = await import('@/lib/security/password-history');
+    const inHistory = await isPasswordInHistory(user.id, password);
+    if (inHistory) {
+      return NextResponse.json({ error: 'Password cannot be one of your recent passwords.' }, { status: 400 });
+    }
+
+    // Add old password to history
+    if (user.password) {
+      await addPasswordToHistory(user.id, user.password);
     }
 
     // 3. Hash the new password with bcrypt
@@ -39,7 +66,10 @@ export async function POST(req: Request) {
     // 4. Update password in database
     await db.user.update({
       where: { id: user.id },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        passwordChangedAt: new Date(),
+      },
     });
 
     // Emit decoupled event

@@ -58,7 +58,24 @@ export async function PUT(req: Request) {
 
     const updateData: any = { name, phone, email };
     if (password) {
+      if (password.length > 128) {
+        return NextResponse.json({ error: 'Password must be at most 128 characters long.' }, { status: 400 });
+      }
+      const { validatePassword } = await import('@/lib/security/password-policy');
+      const policyResult = validatePassword(password);
+      if (!policyResult.isValid) {
+        return NextResponse.json({ error: policyResult.errors.join(' ') }, { status: 400 });
+      }
+      const { isPasswordInHistory, addPasswordToHistory } = await import('@/lib/security/password-history');
+      const inHistory = await isPasswordInHistory(userId, password);
+      if (inHistory) {
+        return NextResponse.json({ error: 'Password cannot be one of your recent passwords.' }, { status: 400 });
+      }
+      if (user.password) {
+        await addPasswordToHistory(userId, user.password);
+      }
       updateData.password = await bcrypt.hash(password, 10);
+      updateData.passwordChangedAt = new Date();
     }
 
     const updatedUser = await db.user.update({

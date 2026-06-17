@@ -260,6 +260,30 @@ export async function PUT(request: NextRequest) {
           throw new Error('Invalid role value');
         }
         if (role !== targetUser.role) {
+          const isPromotion = 
+            (targetUser.role === 'USER' && (role === 'ADMIN' || role === 'SUPER_ADMIN')) ||
+            (targetUser.role === 'ADMIN' && role === 'SUPER_ADMIN');
+
+          const isDemotion = 
+            (targetUser.role === 'SUPER_ADMIN' && (role === 'ADMIN' || role === 'USER')) ||
+            (targetUser.role === 'ADMIN' && role === 'USER');
+
+          const { hasPermission: hasDbPermission } = await import('@/lib/security/permissions');
+
+          if (isPromotion) {
+            const allowed = await hasDbPermission(actorId, 'ADMIN_PROMOTE');
+            if (!allowed) {
+              throw new Error('Forbidden: You do not have the ADMIN_PROMOTE permission.');
+            }
+          }
+
+          if (isDemotion) {
+            const allowed = await hasDbPermission(actorId, 'ADMIN_DEMOTE');
+            if (!allowed) {
+              throw new Error('Forbidden: You do not have the ADMIN_DEMOTE permission.');
+            }
+          }
+
           updateData.role = role;
 
           await tx.roleHistory.create({
@@ -271,11 +295,13 @@ export async function PUT(request: NextRequest) {
             },
           });
 
+          const actionType = isPromotion ? 'ADMIN_PROMOTED' : 'ADMIN_REVOKED';
+
           await tx.activityLog.create({
             data: {
               actorId,
               targetUserId: userId,
-              action: 'ROLE_HISTORY_CREATE',
+              action: actionType,
               description: `Created role history record for ${targetUser.email}: changed from ${targetUser.role} to ${role}`,
               details: { previousRole: targetUser.role, newRole: role },
             },

@@ -41,7 +41,7 @@ export default function LoginPage() {
           // Redirect OAuth-only accounts to Reset Password to configure a password first
           router.push(`/forgot-password?error=oauth-credentials-login&email=${encodeURIComponent(email)}`);
         } else {
-          setError('Invalid email or password.');
+          setError('Invalid credentials or account temporarily unavailable.');
         }
       } else {
         // Fetch session to determine role-based redirect

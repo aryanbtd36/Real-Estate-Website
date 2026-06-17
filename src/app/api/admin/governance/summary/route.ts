@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireFounderSuperAdmin } from '@/lib/permissions';
-import { UserRole, UserStatus, Permission } from '@prisma/client';
+import { UserRole, UserStatus, LegacyPermission as Permission } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {

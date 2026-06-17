@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
-import { Permission, UserRole, UserStatus } from '@prisma/client';
+import { LegacyPermission as Permission, UserRole, UserStatus } from '@prisma/client';
 import { eventEmitter, EVENTS } from '@/lib/events';
 
 export async function PUT(
@@ -71,6 +71,14 @@ export async function PUT(
     // PRIMARY_SUPER_ADMIN cannot modify or suspend FOUNDER_SUPER_ADMIN
     if (targetAdmin.isFounder && (session.user as any).isPrimarySA) {
       return NextResponse.json({ error: 'Forbidden: Primary Super Administrators cannot modify the Founder' }, { status: 403 });
+    }
+
+    if (action === 'REVOKE') {
+      const { hasPermission: hasDbPermission } = await import('@/lib/security/permissions');
+      const allowed = await hasDbPermission(callerId, 'ADMIN_DEMOTE');
+      if (!allowed) {
+        return NextResponse.json({ error: 'Forbidden: You do not have the ADMIN_DEMOTE permission.' }, { status: 403 });
+      }
     }
 
     if (!action || !['SUSPEND', 'RESTORE', 'REVOKE'].includes(action)) {

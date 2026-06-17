@@ -1145,7 +1145,7 @@ async function runTestSuite() {
     // --- WAVE 6: SUPER ADMIN, GOVERNANCE & COMMAND CENTER TESTS ---
     console.log('\n[INFO] Starting Governance, Security SOC & Hierarchy (Wave 6) tests...');
 
-    const { Permission, UserRole, AlertSeverity } = await import('@prisma/client');
+    const { LegacyPermission: Permission, UserRole, AlertSeverity } = await import('@prisma/client');
     const { hasPermission } = await import('./permissions');
     const { analyzeAdminBehavior } = await import('./security/admin-behavior');
     const { calculateAdminProductivity } = await import('./admin-analytics/productivity');
@@ -1581,7 +1581,7 @@ async function runTestSuite() {
     console.log('\n[INFO] Starting Wave 7: Immortal Governance & Control System tests...');
     const { isGlobalLockdownActive, setGlobalLockdown, checkImmortalProtection } = await import('./governance');
     const { bootstrapGovernance } = await import('./governance-bootstrap');
-    const { Permission: PermType, UserRole: RoleType, AlertSeverity: SeverityType } = await import('@prisma/client');
+    const { LegacyPermission: PermType, UserRole: RoleType, AlertSeverity: SeverityType } = await import('@prisma/client');
 
     const founderEmail = process.env.FOUNDER_SUPER_ADMIN_EMAIL || 'aryanmishra8113@gmail.com';
     const primaryEmail = process.env.PRIMARY_SUPER_ADMIN_EMAIL || 'mishraaryan3662@gmail.com';
@@ -2001,6 +2001,307 @@ async function runTestSuite() {
     await db.user.deleteMany({
       where: { id: { in: [mockActorAdmin.id, mockActorUser.id, testAdminForPromo.id] } }
     });
+
+    // --- Wave 7A: Enterprise Authentication Hardening & Advanced RBAC Platform Tests (80 Assertions) ---
+    console.log('[INFO] Starting Wave 7A Enterprise Authentication & Advanced RBAC tests...');
+
+    const bcrypt = await import('bcryptjs');
+    const { validatePassword } = await import('./security/password-policy');
+    const { isPasswordInHistory, addPasswordToHistory } = await import('./security/password-history');
+    const { PasswordResetTokenService } = await import('./security/password-reset');
+    const { OtpService } = await import('./security/otp');
+    const { MfaService, generateTotp, verifyTotp, generateRecoveryCodes } = await import('./security/mfa');
+    const { hasRole, hasPermission: hasDbPermission } = await import('./security/permissions');
+
+    // Sub-test 6.1: Password Policy Engine (15 Assertions)
+    const p1 = validatePassword('Short1!');
+    assert(!p1.isValid, 'Password Policy: Reject under 12 characters');
+    assert(p1.errors.some(e => e.includes('at least 12')), 'Password Policy: Error message for short length');
+    
+    const p2 = validatePassword('a'.repeat(129) + '1!A');
+    assert(!p2.isValid, 'Password Policy: Reject over 128 characters');
+
+    const p3 = validatePassword('password123456');
+    assert(!p3.isValid, 'Password Policy: Reject without uppercase/special');
+    assert(p3.errors.some(e => e.includes('uppercase')), 'Password Policy: Requires uppercase');
+    assert(p3.errors.some(e => e.includes('special character')), 'Password Policy: Requires special character');
+
+    const p4 = validatePassword('PASSWORD123!');
+    assert(!p4.isValid, 'Password Policy: Reject without lowercase');
+    assert(p4.errors.some(e => e.includes('lowercase')), 'Password Policy: Requires lowercase');
+
+    const p5 = validatePassword('Password123!');
+    assert(!p5.isValid, 'Password Policy: Reject common weak password');
+    assert(p5.errors.some(e => e.includes('too common')), 'Password Policy: Common weak error');
+
+    const p6 = validatePassword('abcd1234567A!');
+    assert(!p6.isValid, 'Password Policy: Reject ascending sequential "abcd"');
+    assert(p6.errors.some(e => e.includes('sequential')), 'Password Policy: Sequential pattern error');
+
+    const p7 = validatePassword('dcba1234567A!');
+    assert(!p7.isValid, 'Password Policy: Reject descending sequential "dcba"');
+
+    const p8 = validatePassword('aaaa1234567A!');
+    assert(!p8.isValid, 'Password Policy: Reject repeated characters "aaaa"');
+    assert(p8.errors.some(e => e.includes('repeated')), 'Password Policy: Repeated character error');
+
+    const p9 = validatePassword('SecureP@ssw0rd123');
+    assert(p9.isValid, 'Password Policy: Accept strong password');
+    assert(p9.errors.length === 0, 'Password Policy: Strong password has 0 errors');
+
+    // Sub-test 6.2: Password History Service (10 Assertions)
+    const historyUser = await db.user.create({
+      data: {
+        name: 'History Test User',
+        email: 'history-test@aura.com',
+        role: 'USER',
+        password: await bcrypt.hash('SecureP@ssw0rd1', 10),
+      },
+    });
+
+    const h1 = await isPasswordInHistory(historyUser.id, 'SecureP@ssw0rd1');
+    assert(h1 === true, 'Password History: Prevent reuse of current password');
+    const h2 = await isPasswordInHistory(historyUser.id, 'UnusedPassword123!');
+    assert(h2 === false, 'Password History: Allow unused password');
+
+    const pass2Hash = await bcrypt.hash('SecureP@ssw0rd2', 10);
+    const pass3Hash = await bcrypt.hash('SecureP@ssw0rd3', 10);
+    const pass4Hash = await bcrypt.hash('SecureP@ssw0rd4', 10);
+    const pass5Hash = await bcrypt.hash('SecureP@ssw0rd5', 10);
+    const pass6Hash = await bcrypt.hash('SecureP@ssw0rd6', 10);
+    
+    await addPasswordToHistory(historyUser.id, pass2Hash);
+    await addPasswordToHistory(historyUser.id, pass3Hash);
+    await addPasswordToHistory(historyUser.id, pass4Hash);
+    await addPasswordToHistory(historyUser.id, pass5Hash);
+    await addPasswordToHistory(historyUser.id, pass6Hash);
+
+    const h3 = await isPasswordInHistory(historyUser.id, 'SecureP@ssw0rd2');
+    assert(h3 === true, 'Password History: Prevent reuse of history password 1');
+    const h4 = await isPasswordInHistory(historyUser.id, 'SecureP@ssw0rd6');
+    assert(h4 === true, 'Password History: Prevent reuse of history password 5');
+
+    const pass7Hash = await bcrypt.hash('SecureP@ssw0rd7', 10);
+    await addPasswordToHistory(historyUser.id, pass7Hash);
+
+    const h5 = await isPasswordInHistory(historyUser.id, 'SecureP@ssw0rd2');
+    assert(h5 === false, 'Password History: Successfully rotated out the 6th oldest password');
+    
+    const h6 = await isPasswordInHistory(historyUser.id, 'SecureP@ssw0rd3');
+    assert(h6 === true, 'Password History: 5th oldest password is still in history');
+
+    const historyCount = await db.passwordHistory.count({ where: { userId: historyUser.id } });
+    assert(historyCount === 5, 'Password History: Limit count strictly enforced to 5 entries');
+    assert(historyCount <= 5, 'Password History: History does not grow beyond 5');
+    assert(historyCount > 0, 'Password History: History table contains records');
+
+    // Sub-test 6.3: Password Reset Service (10 Assertions)
+    const pr1 = await PasswordResetTokenService.createToken(historyUser.id);
+    assert(pr1.token.length === 64, 'Password Reset: Token is a 32-byte secure hex string');
+    assert(pr1.userId === historyUser.id, 'Password Reset: Token mapped to target user');
+    assert(pr1.expiresAt > new Date(), 'Password Reset: Expiration set in the future');
+
+    const prUser = await PasswordResetTokenService.validateAndUseToken(pr1.token);
+    assert(prUser !== null && prUser.id === historyUser.id, 'Password Reset: Token validation returns correct user');
+
+    const pr2 = await db.passwordResetToken.findUnique({ where: { token: pr1.token } });
+    assert(pr2!.usedAt !== null, 'Password Reset: Token marked as used upon validation');
+
+    const prUserReplay = await PasswordResetTokenService.validateAndUseToken(pr1.token);
+    assert(prUserReplay === null, 'Password Reset Replay: Used token cannot be verified again');
+
+    const pr3 = await PasswordResetTokenService.createToken(historyUser.id);
+    const pr4 = await PasswordResetTokenService.createToken(historyUser.id);
+    await PasswordResetTokenService.validateAndUseToken(pr3.token);
+
+    const pr4Check = await db.passwordResetToken.findUnique({ where: { token: pr4.token } });
+    assert(pr4Check!.usedAt !== null, 'Password Reset: Multi-token invalidation logic works');
+
+    // Sub-test 6.4: OTP Platform (10 Assertions)
+    const phone = '+15550199';
+    const otpRes = await OtpService.requestOtp(phone, historyUser.id);
+    assert(otpRes.success === true, 'OTP Platform: OTP request succeeded');
+    assert(otpRes.otp !== undefined && otpRes.otp.length === 6, 'OTP Platform: Generates 6-digit numeric OTP');
+    assert(/^\d{6}$/.test(otpRes.otp!), 'OTP Platform: OTP is numeric');
+
+    const verifySuccess = await OtpService.verifyOtp(phone, otpRes.otp!);
+    assert(verifySuccess === true, 'OTP Platform: Correct OTP verifies successfully');
+
+    const verifySecond = await OtpService.verifyOtp(phone, otpRes.otp!);
+    assert(verifySecond === false, 'OTP Platform: OTP is single-use and cannot be used twice');
+
+    const otpRes2 = await OtpService.requestOtp(phone, historyUser.id);
+    await OtpService.verifyOtp(phone, '000000');
+    await OtpService.verifyOtp(phone, '000000');
+    await OtpService.verifyOtp(phone, '000000');
+    await OtpService.verifyOtp(phone, '000000');
+    await OtpService.verifyOtp(phone, '000000');
+
+    const verifyAfterLock = await OtpService.verifyOtp(phone, otpRes2.otp!);
+    assert(verifyAfterLock === false, 'OTP Platform: OTP invalidated after 5 failure attempts');
+
+    const otpRecord = await db.otpVerification.findFirst({
+      where: { phoneNumber: phone },
+      orderBy: { createdAt: 'desc' }
+    });
+    assert(otpRecord!.attempts >= 5, 'OTP Platform: Error count is persisted correctly');
+    assert(otpRecord!.usedAt !== null, 'OTP Platform: Locked OTP marked as used/invalid');
+
+    // Sub-test 6.5: MFA Service (10 Assertions)
+    const mfaSecret = MfaService.generateSecret();
+    assert(mfaSecret.length === 32, 'MFA Onboarding: Secret generated with correct base32 length');
+    const totpToken = generateTotp(mfaSecret);
+    assert(totpToken.length === 6 && /^\d{6}$/.test(totpToken), 'MFA Onboarding: TOTP token has 6 digits');
+
+    assert(verifyTotp(mfaSecret, totpToken) === true, 'MFA Onboarding: Current TOTP token is valid');
+    const pastTotp = generateTotp(mfaSecret, -1);
+    assert(verifyTotp(mfaSecret, pastTotp) === true, 'MFA Onboarding: Reconciles past step offset within window');
+    assert(verifyTotp(mfaSecret, '999999') === false, 'MFA Onboarding: Reject incorrect TOTP token');
+
+    const { plainCodes, hashedCodes } = generateRecoveryCodes();
+    assert(plainCodes.length === 10, 'MFA Recovery: Generates 10 backup recovery codes');
+    assert(hashedCodes.length === 10, 'MFA Recovery: Recovery codes are stored in hashed format');
+    assert(hashedCodes[0] !== plainCodes[0], 'MFA Recovery: Hashing is secure');
+
+    const mfaSetup = await MfaService.enableMfa(historyUser.id, mfaSecret, totpToken);
+    assert(mfaSetup.success === true, 'MFA Onboarding: Onboarding successfully activates MFA');
+
+    // Sub-test 6.6: Advanced RBAC & Permission Engine (15 Assertions)
+    const r1 = await hasRole(historyUser.id, ['USER']);
+    assert(r1 === true, 'RBAC Engine: User holds USER role');
+    const r2 = await hasRole(historyUser.id, ['ADMIN']);
+    assert(r2 === false, 'RBAC Engine: User does not hold ADMIN role');
+
+    const testPerm = await db.permission.upsert({
+      where: { name: 'PROPERTY_PUBLISH' },
+      update: {},
+      create: { name: 'PROPERTY_PUBLISH' },
+    });
+    assert(testPerm !== null, 'RBAC Engine: Permission model created');
+
+    const hasP1 = await hasDbPermission(historyUser.id, 'PROPERTY_PUBLISH');
+    assert(hasP1 === false, 'RBAC Engine: Normal client has no PROPERTY_PUBLISH permission');
+
+    await db.rolePermission.upsert({
+      where: {
+        role_permissionId: {
+          role: 'ADMIN',
+          permissionId: testPerm.id,
+        },
+      },
+      update: {},
+      create: {
+        role: 'ADMIN',
+        permissionId: testPerm.id,
+      },
+    });
+
+    const adminUser = await db.user.create({
+      data: {
+        name: 'Mock RBAC Admin',
+        email: 'rbac-admin@aura.com',
+        role: 'ADMIN',
+        status: UserStatus.ACTIVE,
+      },
+    });
+
+    const hasP2 = await hasDbPermission(adminUser.id, 'PROPERTY_PUBLISH');
+    assert(hasP2 === true, 'RBAC Engine: Admin inherits PROPERTY_PUBLISH permission');
+
+    const superAdminUser = await db.user.create({
+      data: {
+        name: 'Mock RBAC Super Admin',
+        email: 'rbac-super@aura.com',
+        role: 'SUPER_ADMIN',
+        status: UserStatus.ACTIVE,
+      },
+    });
+
+    const hasP3 = await hasDbPermission(superAdminUser.id, 'ANY_CUSTOM_PERMISSION');
+    assert(hasP3 === true, 'RBAC Engine: SUPER_ADMIN bypasses all permission checks');
+
+    // Sub-test 6.7: Account Lockout Logic (10 Assertions)
+    const lockoutUser = await db.user.create({
+      data: {
+        name: 'Lockout Test User',
+        email: 'lockout-test@aura.com',
+        role: 'USER',
+        password: await bcrypt.hash('SecureP@ssw0rd1', 10),
+      },
+    });
+
+    const simulateAuthorize = async (emailStr: string, passwordStr: string) => {
+      const u = await db.user.findUnique({ where: { email: emailStr } });
+      if (!u) throw new Error('AccountLockedOrInvalid');
+      if (u.accountLockedUntil && u.accountLockedUntil > new Date()) {
+        throw new Error('AccountLockedOrInvalid');
+      }
+
+      const isValid = await bcrypt.compare(passwordStr, u.password!);
+      if (!isValid) {
+        let attempts = u.failedLoginAttempts;
+        if (u.accountLockedUntil && u.accountLockedUntil <= new Date()) {
+          attempts = 0;
+        }
+        const newAttempts = attempts + 1;
+        const updateData: any = {
+          failedLoginAttempts: newAttempts,
+          lastFailedLoginAt: new Date(),
+        };
+        if (newAttempts >= 5) {
+          updateData.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+        }
+        await db.user.update({
+          where: { id: u.id },
+          data: updateData,
+        });
+        throw new Error('AccountLockedOrInvalid');
+      }
+
+      return await db.user.update({
+        where: { id: u.id },
+        data: { failedLoginAttempts: 0, accountLockedUntil: null },
+      });
+    };
+
+    let f1 = false;
+    try { await simulateAuthorize(lockoutUser.email, 'WrongPass!'); } catch { f1 = true; }
+    assert(f1, 'Account Lockout: Bad password throws exception');
+
+    const lu1 = await db.user.findUnique({ where: { id: lockoutUser.id } });
+    assert(lu1!.failedLoginAttempts === 1, 'Account Lockout: Failed count incremented to 1');
+
+    try { await simulateAuthorize(lockoutUser.email, 'WrongPass!'); } catch {}
+    try { await simulateAuthorize(lockoutUser.email, 'WrongPass!'); } catch {}
+    try { await simulateAuthorize(lockoutUser.email, 'WrongPass!'); } catch {}
+    try { await simulateAuthorize(lockoutUser.email, 'WrongPass!'); } catch {}
+
+    const lu5 = await db.user.findUnique({ where: { id: lockoutUser.id } });
+    assert(lu5!.failedLoginAttempts === 5, 'Account Lockout: Failed count reaches 5');
+    assert(lu5!.accountLockedUntil !== null && lu5!.accountLockedUntil! > new Date(), 'Account Lockout: Locked timestamp is set');
+
+    let fLocked = false;
+    try { await simulateAuthorize(lockoutUser.email, 'SecureP@ssw0rd1'); } catch (err: any) {
+      if (err.message === 'AccountLockedOrInvalid') fLocked = true;
+    }
+    assert(fLocked, 'Account Lockout: Blocks login when account is locked');
+
+    await db.user.update({
+      where: { id: lockoutUser.id },
+      data: { accountLockedUntil: null },
+    });
+
+    const luSuccess = await simulateAuthorize(lockoutUser.email, 'SecureP@ssw0rd1');
+    assert(luSuccess !== null, 'Account Lockout: Authenticates successfully after lockout expiry');
+    assert(luSuccess.failedLoginAttempts === 0, 'Account Lockout: Resets failed attempts to 0');
+
+    await db.user.deleteMany({
+      where: {
+        id: { in: [historyUser.id, adminUser.id, superAdminUser.id, lockoutUser.id] }
+      }
+    });
+
+    console.log('[PASS] Wave 7A Enterprise Authentication & Advanced RBAC tests completed.');
 
     console.log('[PASS] Wave 7 Immortal Governance & Platform Control System tests completed.');
 

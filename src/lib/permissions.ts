@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from './auth';
 import { db } from './db';
-import { Permission, UserRole } from '@prisma/client';
+import { LegacyPermission as Permission, UserRole } from '@prisma/client';
 
 /**
  * Checks if a user has a specific permission or is a SUPER_ADMIN.

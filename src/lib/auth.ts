@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
+import { headers } from 'next/headers';
 import { db } from './db';
 import { RoleService, resolveUserRole } from './role';
 import { verifyTurnstile } from './turnstile';
@@ -27,6 +28,15 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        const reqHeaders = await headers();
+        const ip = reqHeaders.get('x-forwarded-for') || reqHeaders.get('x-real-ip') || '127.0.0.1';
+        const userAgent = reqHeaders.get('user-agent') || 'unknown';
+
+        // DoS password length check (length <= 128)
+        if (credentials.password.length > 128) {
+          throw new Error('AccountLockedOrInvalid');
+        }
+
         // 1. Verify Cloudflare Turnstile token
         const isTurnstileValid = await verifyTurnstile(credentials.turnstileToken);
         if (!isTurnstileValid) {
@@ -41,18 +51,90 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        // Helper to parse user agent
+        const parseUserAgent = (ua: string) => {
+          let browser = 'unknown';
+          let device = 'unknown';
+          const uaLower = ua.toLowerCase();
+          if (uaLower.includes('firefox')) browser = 'Firefox';
+          else if (uaLower.includes('chrome')) browser = 'Chrome';
+          else if (uaLower.includes('safari')) browser = 'Safari';
+          else if (uaLower.includes('edge')) browser = 'Edge';
+          else if (uaLower.includes('msie') || uaLower.includes('trident')) browser = 'IE';
+
+          if (uaLower.includes('mobile') || uaLower.includes('android') || uaLower.includes('iphone') || uaLower.includes('ipad')) {
+            device = 'Mobile';
+          } else {
+            device = 'Desktop';
+          }
+          return { browser, device };
+        };
+
+        const { browser, device } = parseUserAgent(userAgent);
+
         // 2. Fetch user from database
         const user = await db.user.findUnique({
           where: { email: credentials.email },
         });
 
         if (!user) {
-          return null;
+          // Record failed login attempt for non-existent user to prevent timing attack / track brute force
+          await db.loginAttempt.create({
+            data: {
+              email: credentials.email,
+              ipAddress: ip,
+              userAgent,
+              browser,
+              device,
+              success: false,
+            },
+          });
+          throw new Error('AccountLockedOrInvalid');
+        }
+
+        // Check lock status
+        if (user.accountLockedUntil && user.accountLockedUntil > new Date()) {
+          await db.loginAttempt.create({
+            data: {
+              email: credentials.email,
+              ipAddress: ip,
+              userAgent,
+              browser,
+              device,
+              success: false,
+            },
+          });
+          throw new Error('AccountLockedOrInvalid');
         }
 
         // Block soft-deleted users
         if (user.deletedAt) {
-          throw new Error('UserAccountDeleted');
+          await db.loginAttempt.create({
+            data: {
+              email: credentials.email,
+              ipAddress: ip,
+              userAgent,
+              browser,
+              device,
+              success: false,
+            },
+          });
+          throw new Error('AccountLockedOrInvalid');
+        }
+
+        // Block suspended users
+        if (user.status === 'SUSPENDED') {
+          await db.loginAttempt.create({
+            data: {
+              email: credentials.email,
+              ipAddress: ip,
+              userAgent,
+              browser,
+              device,
+              success: false,
+            },
+          });
+          throw new Error('AccountLockedOrInvalid');
         }
 
         // 3. Google OAuth Transition Check
@@ -79,7 +161,17 @@ export const authOptions: NextAuthOptions = {
             console.warn(
               `[SECURITY MONITOR] Plaintext password attempt rejected for non-legacy account: ${user.email}`
             );
-            throw new Error('Invalid credentials');
+            await db.loginAttempt.create({
+              data: {
+                email: credentials.email,
+                ipAddress: ip,
+                userAgent,
+                browser,
+                device,
+                success: false,
+              },
+            });
+            throw new Error('AccountLockedOrInvalid');
           }
 
           isValid = credentials.password === user.password;
@@ -96,8 +188,61 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (!isValid) {
-          return null;
+          // Handle failed login attempts
+          let attempts = user.failedLoginAttempts;
+          if (user.accountLockedUntil && user.accountLockedUntil <= new Date()) {
+            attempts = 0;
+          }
+          const newAttempts = attempts + 1;
+          const updateData: any = {
+            failedLoginAttempts: newAttempts,
+            lastFailedLoginAt: new Date(),
+          };
+          if (newAttempts >= 5) {
+            updateData.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 mins
+          }
+          await db.user.update({
+            where: { id: user.id },
+            data: updateData,
+          });
+
+          await db.loginAttempt.create({
+            data: {
+              email: credentials.email,
+              ipAddress: ip,
+              userAgent,
+              browser,
+              device,
+              success: false,
+            },
+          });
+          throw new Error('AccountLockedOrInvalid');
         }
+
+        // Reset failed login attempts on successful login
+        // Also record metadata: lastLoginAt, lastLoginIP, lastLoginDevice
+        await db.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: 0,
+            accountLockedUntil: null,
+            lastLoginAt: new Date(),
+            lastLoginIP: ip,
+            lastLoginDevice: userAgent,
+          },
+        });
+
+        // Record successful login
+        await db.loginAttempt.create({
+          data: {
+            email: credentials.email,
+            ipAddress: ip,
+            userAgent,
+            browser,
+            device,
+            success: true,
+          },
+        });
 
         return {
           id: user.id,

@@ -204,6 +204,24 @@ model User {
   promotedUsers        User[]            @relation("UserPromotions")
   promotedAt           DateTime?
   governanceLocked     Boolean           @default(false)
+
+  // Wave 7A Hardened Security Fields
+  passwordChangedAt     DateTime?
+  failedLoginAttempts   Int       @default(0)
+  lastFailedLoginAt     DateTime?
+  accountLockedUntil    DateTime?
+  mustChangePassword    Boolean   @default(false)
+  mfaEnabled            Boolean   @default(false)
+  mfaSecret             String?
+  mfaRecoveryCodes      String[]
+  lastLoginAt           DateTime?
+  lastLoginIP           String?
+  lastLoginDevice       String?
+  lastLoginCountry      String?
+
+  passwordHistories     PasswordHistory[]
+  passwordResetTokens   PasswordResetToken[]
+  otpVerifications      OtpVerification[]
 }
 
 model AuthToken {
@@ -608,7 +626,7 @@ enum UserRole {
   SUPER_ADMIN
 }
 
-enum Permission {
+enum LegacyPermission {
   MANAGE_PROPERTIES
   MANAGE_LEADS
   MANAGE_APPOINTMENTS
@@ -631,9 +649,9 @@ enum AlertSeverity {
 }
 
 model AdminPermission {
-  id          String     @id @default(uuid())
+  id          String           @id @default(uuid())
   userId      String
-  permission  Permission
+  permission  LegacyPermission
   grantedById String?
   createdAt   DateTime   @default(now())
 
@@ -711,4 +729,74 @@ model GovernanceHistory {
 model SystemSetting {
   key   String @id
   value String
+}
+
+model PasswordHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  hash      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  email     String
+  ipAddress String?
+  userAgent String?
+  browser   String?
+  device    String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  createdAt       DateTime         @default(now())
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  role         UserRole
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model OtpVerification {
+  id          String    @id @default(uuid())
+  userId      String?
+  phoneNumber String
+  otpHash     String
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phoneNumber])
+  @@index([createdAt])
 }

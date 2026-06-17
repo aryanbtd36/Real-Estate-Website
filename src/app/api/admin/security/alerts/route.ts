@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
-import { Permission, UserRole } from '@prisma/client';
+import { LegacyPermission as Permission, UserRole } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {

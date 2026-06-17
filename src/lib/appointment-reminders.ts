@@ -59,7 +59,7 @@ export async function sweepNoShows() {
       });
 
       return updated;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     // 4. Send Notification Alert to client
     await NotificationService.create({

@@ -24,6 +24,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    if (password.length > 128) {
+      return NextResponse.json({ error: 'Password must be at most 128 characters long.' }, { status: 400 });
+    }
+
+    const { validatePassword } = await import('@/lib/security/password-policy');
+    const policyResult = validatePassword(password);
+    if (!policyResult.isValid) {
+      return NextResponse.json({ error: policyResult.errors.join(' ') }, { status: 400 });
+    }
+
     const existing = await db.user.findUnique({
       where: { email },
     });
