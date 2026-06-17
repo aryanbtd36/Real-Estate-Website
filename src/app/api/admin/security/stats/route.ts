@@ -6,6 +6,9 @@ import { hasPermission } from '@/lib/permissions';
 import { LegacyPermission as Permission, SessionStatus, UserRole, SecurityEventSeverity } from '@prisma/client';
 import { secureApiHandler } from '@/lib/security/api-security';
 import { RiskScoringEngine } from '@/lib/security/risk-engine';
+import { getEventLoopLag, getEventLoopLagState } from '@/lib/security/resilience';
+import { runFullCodeAudit } from '@/lib/security/code-audit/ai-audit-reporter';
+import path from 'path';
 
 async function getStatsHandler(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -53,6 +56,10 @@ async function getStatsHandler(request: NextRequest) {
     locationChanges,
     deviceChanges,
     accountTakeovers,
+    xssFindings,
+    sstiFindings,
+    uploadThreats,
+    secretExposureFindings,
   ] = await Promise.all([
     db.session.count({ where: { status: SessionStatus.ACTIVE } }),
     db.session.count({ where: { status: SessionStatus.SUSPICIOUS } }),
@@ -75,6 +82,12 @@ async function getStatsHandler(request: NextRequest) {
     db.securityEvent.count({ where: { eventType: 'LOCATION_ANOMALY', createdAt: { gte: timeLimit } } }),
     db.securityEvent.count({ where: { eventType: 'NEW_DEVICE_LOGIN', createdAt: { gte: timeLimit } } }),
     db.securityEvent.count({ where: { eventType: 'ACCOUNT_TAKEOVER_RISK', createdAt: { gte: timeLimit } } }),
+
+    // Application security event counters
+    db.securityEvent.count({ where: { eventType: 'XSS_PAYLOAD_BLOCKED', createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'SSTI_ATTEMPT_BLOCKED', createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'MALICIOUS_UPLOAD_BLOCKED', createdAt: { gte: timeLimit } } }),
+    db.securityEvent.count({ where: { eventType: 'SECRET_EXPOSURE_DETECTED', createdAt: { gte: timeLimit } } }),
   ]);
 
   // 2. Compute Risk Distribution
@@ -130,6 +143,12 @@ async function getStatsHandler(request: NextRequest) {
     trustScore: adm.adminTrustProfile?.trustScore || 100,
   })).sort((a, b) => b.riskScore - a.riskScore);
 
+  // Run code audit dynamically to populate dashboard indicators
+  const auditResults = runFullCodeAudit(path.join(process.cwd(), 'src'));
+  const unsafeRegexCount = auditResults.reduce((acc, r) => acc + r.redosIssues.length, 0);
+  const totalSecretsFound = auditResults.reduce((acc, r) => acc + r.secretExposureIssues.length, 0);
+  const codeAuditStatus = auditResults.length === 0 ? 'PASSED' : 'WARNING';
+
   return NextResponse.json({
     securityScore,
     securityGrade,
@@ -153,6 +172,14 @@ async function getStatsHandler(request: NextRequest) {
     accountTakeovers,
     adminRiskRankings,
     sensitiveActions: 0, // compatibility
+    xssFindings,
+    sstiFindings,
+    unsafeRegexCount,
+    uploadThreats,
+    secretExposureFindings: secretExposureFindings + totalSecretsFound,
+    codeAuditStatus,
+    eventLoopLag: Math.round(getEventLoopLag() * 100) / 100,
+    runtimeHealth: getEventLoopLagState(),
   });
 }
 

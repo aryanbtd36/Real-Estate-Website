@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { v2 as cloudinary } from 'cloudinary';
+import crypto from 'crypto';
+import { SecurityEventLogger } from '@/lib/security/event-logger';
+import { SecurityEventSeverity, SecurityEventCategory } from '@prisma/client';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -26,25 +29,79 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate file type (Images, Videos, PDF Brochure)
-    const isValidImage = file.type.startsWith('image/');
-    const isValidVideo = file.type.startsWith('video/');
-    const isValidPDF = file.type === 'application/pdf';
+    const originalName = file.name || 'file';
+    
+    // 1. Path traversal defense
+    const hasPathTraversal = originalName.includes('..') || originalName.includes('/') || originalName.includes('\\');
+    
+    // 2. Double extension check
+    const dotCount = originalName.split('.').length - 1;
+    const hasDoubleExt = dotCount > 1;
 
-    if (!isValidImage && !isValidVideo && !isValidPDF) {
-      return NextResponse.json({ 
-        error: 'Invalid file format. Only images, videos (MP4/WEBM/MOV), and PDF brochures are supported.' 
-      }, { status: 400 });
-    }
+    // 3. Extension resolution and check
+    const lastDotIdx = originalName.lastIndexOf('.');
+    const ext = lastDotIdx !== -1 ? originalName.substring(lastDotIdx + 1).toLowerCase() : '';
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'mp4'];
+    const isAllowedExt = allowedExtensions.includes(ext);
+
+    // 4. Block list checking
+    const blockedExtensions = ['exe', 'dll', 'bat', 'cmd', 'ps1', 'php', 'js', 'sh', 'jar'];
+    const isBlockedExt = blockedExtensions.includes(ext);
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // 5. Magic Bytes verification
+    let isMagicValid = false;
+    if (buffer.length >= 4) {
+      const hex = buffer.toString('hex').toUpperCase();
+      if (ext === 'jpg' || ext === 'jpeg') {
+        isMagicValid = hex.startsWith('FFD8FF');
+      } else if (ext === 'png') {
+        isMagicValid = hex.startsWith('89504E470D0A1A0A');
+      } else if (ext === 'webp') {
+        isMagicValid = hex.startsWith('52494646') && hex.substring(16, 24) === '57454250';
+      } else if (ext === 'pdf') {
+        isMagicValid = hex.startsWith('25504446');
+      } else if (ext === 'mp4') {
+        isMagicValid = hex.substring(8, 16) === '66747970';
+      }
+    }
+
+    if (hasPathTraversal || hasDoubleExt || isBlockedExt || !isAllowedExt || !isMagicValid) {
+      // Log security event MALICIOUS_UPLOAD_BLOCKED
+      const callerId = (session?.user as any)?.id;
+      const callerEmail = session?.user?.email;
+      await SecurityEventLogger.log({
+        userId: callerId,
+        userEmail: callerEmail || undefined,
+        eventType: 'MALICIOUS_UPLOAD_BLOCKED',
+        severity: SecurityEventSeverity.HIGH,
+        category: SecurityEventCategory.SYSTEM,
+        title: 'Malicious File Upload Blocked',
+        description: `File upload blocked due to validation violation: Name=${originalName}, Size=${file.size}, PathTraversal=${hasPathTraversal}, DoubleExt=${hasDoubleExt}, AllowedExt=${isAllowedExt}, MagicBytesMatched=${isMagicValid}`,
+        metadata: { filename: originalName, ext, hasPathTraversal, hasDoubleExt, isAllowedExt, isMagicValid }
+      });
+
+      return NextResponse.json({ 
+        error: 'Invalid or malicious file detected. Upload aborted.' 
+      }, { status: 400 });
+    }
+
+    // 6. Filename sanitization & randomization
+    const cleanBaseName = originalName
+      .substring(0, lastDotIdx)
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .toLowerCase();
+    const randomSuffix = crypto.randomBytes(8).toString('hex');
+    const sanitizedFilename = `${cleanBaseName}_${randomSuffix}`;
 
     // Upload to Cloudinary using upload_stream with auto resource type detection
     const uploadResult = await new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'aura_estates',
+          public_id: sanitizedFilename,
           resource_type: 'auto',
         },
         (error, result) => {

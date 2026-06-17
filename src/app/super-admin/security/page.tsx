@@ -299,6 +299,76 @@ export default function SuperAdminSecuritySOCPage() {
         </div>
       </div>
 
+      {/* Application Security Section */}
+      <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6">
+        <div>
+          <h3 className="text-sm uppercase tracking-widest font-semibold text-[#D4AF37] flex items-center gap-2">
+            <ShieldCheck size={16} />
+            Application Security Hardening & Runtime Resilience
+          </h3>
+          <p className="text-[10px] text-white/45 mt-1">
+            Real-time status of XSS, SSTI defenses, ReDoS (regex safety checks), Cloudinary upload protection, and event loop metrics.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-1">
+            <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">XSS Payloads Blocked</span>
+            <div className="text-xl font-bold font-mono text-green-400">{stats?.xssFindings || 0}</div>
+          </div>
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-1">
+            <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">SSTI Attempts Blocked</span>
+            <div className="text-xl font-bold font-mono text-green-400">{stats?.sstiFindings || 0}</div>
+          </div>
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-1">
+            <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">Unsafe Regex Patterns</span>
+            <div className="text-xl font-bold font-mono text-yellow-400">{stats?.unsafeRegexCount || 0}</div>
+          </div>
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-1">
+            <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">Upload Threats Prevented</span>
+            <div className="text-xl font-bold font-mono text-green-400">{stats?.uploadThreats || 0}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-white/5 pt-4">
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">Secret Exposure Scan</span>
+              <span className="text-xs font-bold text-white mt-1 block">Leaked credentials: {stats?.secretExposureFindings || 0}</span>
+            </div>
+            <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
+              stats?.secretExposureFindings > 0 ? 'bg-red-950/20 text-red-400 border border-red-500/20' : 'bg-green-950/20 text-green-400 border border-green-500/20'
+            }`}>
+              {stats?.secretExposureFindings > 0 ? 'FAIL' : 'CLEAN'}
+            </span>
+          </div>
+
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">Static Code Audit Status</span>
+              <span className="text-xs font-bold text-white mt-1 block">Static check baseline status</span>
+            </div>
+            <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
+              stats?.codeAuditStatus === 'PASSED' ? 'bg-green-950/20 text-green-400 border border-green-500/20' : 'bg-yellow-950/20 text-yellow-400 border border-yellow-500/20'
+            }`}>
+              {stats?.codeAuditStatus || 'UNKNOWN'}
+            </span>
+          </div>
+
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">Event Loop Lag</span>
+              <span className="text-xs font-bold text-white mt-1 block">{stats?.eventLoopLag || 0} ms delay</span>
+            </div>
+            <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
+              stats?.runtimeHealth === 'HEALTHY' ? 'bg-green-950/20 text-green-400 border border-green-500/20' : 'bg-red-950/20 text-red-400 border border-red-500/20'
+            }`}>
+              {stats?.runtimeHealth || 'HEALTHY'}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Alerts and Threat Event logs lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Threat Alert Log */}

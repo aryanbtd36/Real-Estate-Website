@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { UserStatus } from '@prisma/client';
+import { UserStatus, SecurityEventSeverity, SecurityEventCategory } from '@prisma/client';
 import { calculateEngagementScore, getEngagementCategory } from '@/lib/engagement';
+import { SecurityEventLogger } from '@/lib/security/event-logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,6 +37,22 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+    });
+
+    const callerId = (session?.user as any)?.id;
+    const callerEmail = session?.user?.email;
+    const callerRole = (session?.user as any)?.role;
+
+    await SecurityEventLogger.log({
+      userId: callerId,
+      userEmail: callerEmail || undefined,
+      userRole: callerRole || undefined,
+      eventType: 'DATABASE_ACCESS_AUDIT',
+      severity: SecurityEventSeverity.LOW,
+      category: SecurityEventCategory.EXPORT,
+      title: 'Client Database Exported',
+      description: `Admin exported all ${usersRaw.length} user intelligence records to CSV format.`,
+      metadata: { recordCount: usersRaw.length }
     });
 
     // Fetch all leads count grouped by email to optimize and avoid N+1 queries

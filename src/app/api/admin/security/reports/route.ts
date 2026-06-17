@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
-import { LegacyPermission as Permission } from '@prisma/client';
+import { LegacyPermission as Permission, SecurityEventSeverity, SecurityEventCategory } from '@prisma/client';
 import { secureApiHandler } from '@/lib/security/api-security';
 import { SecurityReportGenerator } from '@/lib/security/reporting';
+import { SecurityEventLogger } from '@/lib/security/event-logger';
 
 async function generateReportHandler(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -33,6 +34,18 @@ async function generateReportHandler(request: NextRequest) {
 
   try {
     const report = await SecurityReportGenerator.generateReport(type, format, hours);
+
+    await SecurityEventLogger.log({
+      userId: callerId,
+      userEmail: session.user.email || undefined,
+      userRole: callerRole,
+      eventType: 'DATABASE_ACCESS_AUDIT',
+      severity: SecurityEventSeverity.LOW,
+      category: SecurityEventCategory.EXPORT,
+      title: 'Security Report Exported',
+      description: `User exported a security report: Type=${type}, Format=${format}, Period=${filter}.`,
+      metadata: { type, format, filter }
+    });
 
     const headers = new Headers();
     headers.set('Content-Type', 'text/csv; charset=utf-8');
