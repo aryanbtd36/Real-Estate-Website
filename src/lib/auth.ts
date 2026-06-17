@@ -304,23 +304,99 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token }) {
-      // Single source of truth for authorization: always check role in DB
+    async jwt({ token, user }) {
+      if (user) {
+        try {
+          const reqHeaders = await headers();
+          const ipAddress = reqHeaders.get('x-forwarded-for') || reqHeaders.get('x-real-ip') || '127.0.0.1';
+          const userAgent = reqHeaders.get('user-agent') || 'unknown';
+          const country = reqHeaders.get('x-vercel-ip-country') || 'IN';
+          const state = reqHeaders.get('x-vercel-ip-country-region') || 'UP';
+          const city = reqHeaders.get('x-vercel-ip-city') || 'Lucknow';
+          const latitude = parseFloat(reqHeaders.get('x-vercel-ip-latitude') || '26.8467');
+          const longitude = parseFloat(reqHeaders.get('x-vercel-ip-longitude') || '80.9462');
+          const asn = reqHeaders.get('x-vercel-ip-as-number') || 'AS0';
+
+          const dbUser = await db.user.findUnique({
+            where: { id: user.id },
+            select: { mfaEnabled: true }
+          });
+
+          const { SessionManager } = await import('./security/session-manager');
+          const session = await SessionManager.createSession(user.id, user.email!, (user as any).role, {
+            userAgent,
+            ipAddress,
+            country,
+            state,
+            city,
+            latitude,
+            longitude,
+            asn,
+          });
+
+          token.sessionId = session.id;
+          token.loginAt = session.loginAt.toISOString();
+          token.mfaEnabled = dbUser?.mfaEnabled || false;
+        } catch (err) {
+          console.error('NextAuth initial session creation failed:', err);
+        }
+      }
+
       if (token.email) {
         try {
           const dbUser = await db.user.findUnique({
             where: { email: token.email },
-            select: { id: true, phone: true, emailVerified: true, isFounder: true, isPrimarySA: true },
+            select: {
+              id: true,
+              phone: true,
+              emailVerified: true,
+              isFounder: true,
+              isPrimarySA: true,
+              role: true,
+              mfaEnabled: true,
+              passwordChangedAt: true
+            },
           });
 
           if (dbUser) {
-            // Resolving role dynamically from database to support real-time privilege validation
-            token.role = await RoleService.getUserRole(token.email);
+            const { SessionManager } = await import('./security/session-manager');
+
+            if (token.sessionId) {
+              const activeSession = await SessionManager.validateSession(token.sessionId as string);
+              if (!activeSession) {
+                return {};
+              }
+
+              let shouldRotate = false;
+              if (token.role && token.role !== dbUser.role) shouldRotate = true;
+              else if (token.mfaEnabled !== undefined && token.mfaEnabled !== dbUser.mfaEnabled) shouldRotate = true;
+              else if (token.isFounder !== undefined && token.isFounder !== dbUser.isFounder) shouldRotate = true;
+              else if (token.isPrimarySA !== undefined && token.isPrimarySA !== dbUser.isPrimarySA) shouldRotate = true;
+              else if (dbUser.passwordChangedAt && token.loginAt && new Date(dbUser.passwordChangedAt) > new Date(token.loginAt as string)) {
+                shouldRotate = true;
+              }
+
+              if (shouldRotate) {
+                try {
+                  const rotated = await SessionManager.rotateSession(token.sessionId as string);
+                  token.sessionId = rotated.id;
+                  token.loginAt = rotated.loginAt.toISOString();
+                } catch (rotErr) {
+                  console.error('Session rotation failed:', rotErr);
+                  return {};
+                }
+              }
+            }
+
+            token.role = dbUser.role;
             token.id = dbUser.id;
             token.phone = dbUser.phone;
             token.emailVerified = dbUser.emailVerified ? dbUser.emailVerified.toISOString() : null;
             token.isFounder = dbUser.isFounder;
             token.isPrimarySA = dbUser.isPrimarySA;
+            token.mfaEnabled = dbUser.mfaEnabled;
+          } else {
+            return {};
           }
         } catch (err) {
           console.error('NextAuth jwt callback error:', err);
@@ -336,6 +412,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).emailVerified = token.emailVerified;
         (session.user as any).isFounder = token.isFounder;
         (session.user as any).isPrimarySA = token.isPrimarySA;
+        (session.user as any).sessionId = token.sessionId;
       }
       return session;
     },

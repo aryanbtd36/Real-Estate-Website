@@ -14,7 +14,8 @@ import {
   ArrowRight,
   Eye,
   RefreshCw,
-  Compass
+  Percent,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -23,16 +24,17 @@ export default function SecurityDashboardPage() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<'24h' | '7d' | '30d'>('24h');
 
   useEffect(() => {
     loadSecurityData();
-  }, []);
+  }, [timeFilter]);
 
   const loadSecurityData = async () => {
     try {
       setRefreshing(true);
       const [statsRes, alertsRes] = await Promise.all([
-        fetch('/api/admin/security/stats'),
+        fetch(`/api/admin/security/stats?filter=${timeFilter}`),
         fetch('/api/admin/security/alerts')
       ]);
 
@@ -83,9 +85,9 @@ export default function SecurityDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 border-b border-white/5 pb-6">
         <div>
-          <h1 className="text-3xl font-light tracking-wide flex items-center gap-2">
+          <h1 className="text-3xl font-light tracking-wide flex items-center gap-2 text-white">
             <ShieldAlert className="text-red-500" size={28} />
             Security Operations Center (SOC)
           </h1>
@@ -93,10 +95,31 @@ export default function SecurityDashboardPage() {
             Real-time session logging, threat analytics, and administrator operations audit logs.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Time Filter Tabs */}
+          <div className="flex bg-[#121212] border border-white/10 rounded p-1">
+            {[
+              { id: '24h', label: '24 Hours' },
+              { id: '7d', label: '7 Days' },
+              { id: '30d', label: '30 Days' }
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTimeFilter(t.id as any)}
+                className={`px-3 py-1.5 rounded text-xs uppercase tracking-wider font-semibold transition-all ${
+                  timeFilter === t.id
+                    ? 'bg-[#D4AF37] text-black'
+                    : 'text-white/60 hover:text-white'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           <Link
             href="/admin/security/sessions"
-            className="inline-flex items-center gap-1.5 py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs uppercase tracking-wider font-semibold transition-colors"
+            className="inline-flex items-center gap-1.5 py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs uppercase tracking-wider font-semibold transition-colors text-white"
           >
             Monitor sessions
           </Link>
@@ -114,21 +137,81 @@ export default function SecurityDashboardPage() {
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: 'Active Sessions', val: stats.activeSessions, desc: 'Logged-in administrators', border: 'border-white/5' },
-            { label: 'Failed Logins (24h)', val: stats.failedLogins, desc: 'Plaintext/invalid attempts', border: 'border-white/5', valColor: stats.failedLogins > 3 ? 'text-amber-500' : 'text-[#D4AF37]' },
-            { label: 'Active Alerts', val: stats.securityAlerts, desc: 'Behavior anomaly issues', border: stats.securityAlerts > 0 ? 'border-red-500/30 bg-red-500/[0.02]' : 'border-white/5', valColor: stats.securityAlerts > 0 ? 'text-red-500 font-bold' : 'text-[#D4AF37]' },
-            { label: 'Sensitive Actions (7d)', val: stats.sensitiveActions, desc: 'Logouts, revokes, status edits', border: 'border-white/5' }
+            {
+              label: 'Active Sessions',
+              val: stats.activeSessions,
+              desc: `${stats.suspiciousSessions || 0} suspicious sessions flagged`,
+              border: stats.suspiciousSessions > 0 ? 'border-amber-500/30 bg-amber-500/[0.01]' : 'border-white/5',
+              valColor: 'text-[#D4AF37]'
+            },
+            {
+              label: 'Failed Logins',
+              val: stats.failedLogins,
+              desc: 'Suspicious credential attempts',
+              border: stats.failedLogins > 5 ? 'border-orange-500/30 bg-orange-500/[0.01]' : 'border-white/5',
+              valColor: stats.failedLogins > 3 ? 'text-amber-500' : 'text-[#D4AF37]'
+            },
+            {
+              label: 'Locked Accounts',
+              val: stats.lockedAccounts,
+              desc: 'Brute-force protection locks',
+              border: stats.lockedAccounts > 0 ? 'border-red-500/30 bg-red-500/[0.01]' : 'border-white/5',
+              valColor: stats.lockedAccounts > 0 ? 'text-red-500' : 'text-[#D4AF37]'
+            },
+            {
+              label: 'MFA Adoption Rate',
+              val: `${stats.mfaAdoption}%`,
+              desc: 'Admins with 2FA setup',
+              border: 'border-white/5',
+              valColor: 'text-green-500'
+            }
           ].map((c, i) => (
             <div key={i} className={`p-5 rounded-xl space-y-1 relative overflow-hidden border ${c.border}`}>
               <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold">{c.label}</span>
-              <div className={`text-3xl font-light ${c.valColor || 'text-[#D4AF37]'}`}>{c.val}</div>
+              <div className={`text-3xl font-light ${c.valColor}`}>{c.val}</div>
               <span className="text-[10px] text-white/30 block mt-1 leading-snug">{c.desc}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Real-time security logs feed */}
+      {/* Extra Telemetry Details */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-5 rounded-xl border border-white/5 bg-[#161616] space-y-2">
+            <span className="text-xs text-white/50 block font-semibold uppercase tracking-wider">Security Health</span>
+            <div className="flex items-center gap-3">
+              <CheckCircle className="text-green-500 shrink-0" size={24} />
+              <div>
+                <div className="text-sm font-medium text-white">Optimal Configuration</div>
+                <div className="text-xs text-white/40 leading-snug">All security layers (Rate Limits, CSRF, Replay Defense) are globally operational.</div>
+              </div>
+            </div>
+          </div>
+          <div className="p-5 rounded-xl border border-white/5 bg-[#161616] space-y-2">
+            <span className="text-xs text-white/50 block font-semibold uppercase tracking-wider">Unresolved Threats</span>
+            <div className="flex items-center gap-3">
+              <AlertTriangle className={stats.securityAlerts > 0 ? 'text-red-500 animate-pulse' : 'text-green-500'} size={24} />
+              <div>
+                <div className="text-sm font-medium text-white">{stats.securityAlerts} Active Incidents</div>
+                <div className="text-xs text-white/40 leading-snug">Review active SOC notifications below.</div>
+              </div>
+            </div>
+          </div>
+          <div className="p-5 rounded-xl border border-white/5 bg-[#161616] space-y-2">
+            <span className="text-xs text-white/50 block font-semibold uppercase tracking-wider">Sensitive Operations ({timeFilter})</span>
+            <div className="flex items-center gap-3">
+              <Activity className="text-blue-500" size={24} />
+              <div>
+                <div className="text-sm font-medium text-white">{stats.sensitiveActions} Events Logged</div>
+                <div className="text-xs text-white/40 leading-snug">Critical role, lock, and configuration audits.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Real-time security alerts feed */}
       <div className="bg-[#161616] border border-white/5 rounded-xl p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>

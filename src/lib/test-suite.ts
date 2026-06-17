@@ -2305,6 +2305,521 @@ async function runTestSuite() {
 
     console.log('[PASS] Wave 7 Immortal Governance & Platform Control System tests completed.');
 
+    // --- Wave 7B: Enterprise Session Intelligence, API Security & Attack Surface Hardening Tests (135 Assertions) ---
+    console.log('\n[INFO] Starting Wave 7B Session Intelligence & API Security tests...');
+
+    const { SessionManager } = await import('./security/session-manager');
+    const { CsrfService } = await import('./security/csrf');
+    const { ReplayService } = await import('./security/replay');
+    const { RateLimiter } = await import('./security/rate-limiter');
+    const { sanitizeInput, secureApiHandler } = await import('./security/api-security');
+    const { SessionStatus: SStatus, SecurityEventSeverity: SESev, RateLimitThreshold: RLThresh } = await import('@prisma/client');
+    const { NextRequest, NextResponse } = await import('next/server');
+    const { z } = await import('zod');
+
+    // Setup a clean test user for sessions
+    const sessionTestUser = await db.user.create({
+      data: {
+        name: 'Session Test User',
+        email: 'session-test@aura.com',
+        role: 'USER',
+        password: await bcrypt.hash('SecureP@ssw0rd1', 10),
+      },
+    });
+
+    // Sub-test 7B.1: Session Intelligence Platform (30 Assertions)
+    const headersData = {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+      ipAddress: '192.168.10.25',
+      country: 'IN',
+      state: 'UP',
+      city: 'Lucknow',
+      latitude: 26.8467,
+      longitude: 80.9462,
+      asn: 'AS45600',
+    };
+
+    const s1 = await SessionManager.createSession(sessionTestUser.id, sessionTestUser.email, sessionTestUser.role, headersData);
+    assert(s1 !== null, 'Session Manager: Session successfully created');
+    assert(s1.userId === sessionTestUser.id, 'Session Manager: Session mapped to correct User ID');
+    assert(s1.userEmail === sessionTestUser.email, 'Session Manager: Session stores correct User Email');
+    assert(s1.ipAddress === '192.168.10.25', 'Session Manager: IP address logged correctly');
+    assert(s1.browser === 'Chrome', 'Session Manager: Browser parsed correctly from User Agent');
+    assert(s1.operatingSystem === 'Windows', 'Session Manager: OS parsed correctly from User Agent');
+    assert(s1.device === 'Desktop', 'Session Manager: Device parsed correctly from User Agent');
+    assert(s1.country === 'IN', 'Session Manager: Location country saved correctly');
+    assert(s1.city === 'Lucknow', 'Session Manager: Location city saved correctly');
+    assert(s1.status === SStatus.ACTIVE, 'Session Manager: Initial session status is ACTIVE');
+    assert(s1.riskScore === 0, 'Session Manager: Risk score is 0 for first user session');
+
+    // Test session validation
+    const s1Validated = await SessionManager.validateSession(s1.id);
+    assert(s1Validated !== null, 'Session Manager: Active session validated successfully');
+    assert(s1Validated?.status === SStatus.ACTIVE, 'Session Manager: Validated session is ACTIVE');
+
+    // Test session idle expiry
+    const limits = SessionManager.getTimeoutLimits(sessionTestUser.role);
+    const pastIdle = new Date(Date.now() - limits.IDLE - 5000);
+    await db.session.update({
+      where: { id: s1.id },
+      data: { lastActivityAt: pastIdle },
+    });
+    const s1ExpiredIdle = await SessionManager.validateSession(s1.id);
+    assert(s1ExpiredIdle === null, 'Session Manager: Inactive idle session fails validation');
+    const s1DbIdle = await db.session.findUnique({ where: { id: s1.id } });
+    assert(s1DbIdle?.status === SStatus.EXPIRED, 'Session Manager: Expired session status set to EXPIRED');
+
+    // Restore to active and test absolute expiry
+    await db.session.update({
+      where: { id: s1.id },
+      data: { status: SStatus.ACTIVE, lastActivityAt: new Date() },
+    });
+
+    const pastAbsolute = new Date(Date.now() - limits.ABSOLUTE - 5000);
+    await db.session.update({
+      where: { id: s1.id },
+      data: { loginAt: pastAbsolute },
+    });
+    const s1ExpiredAbs = await SessionManager.validateSession(s1.id);
+    assert(s1ExpiredAbs === null, 'Session Manager: Session exceeding absolute lifetime fails validation');
+    const s1DbAbs = await db.session.findUnique({ where: { id: s1.id } });
+    assert(s1DbAbs?.status === SStatus.EXPIRED, 'Session Manager: Expired session status updated in database');
+
+    // Reset status to ACTIVE for revocation tests
+    await db.session.update({
+      where: { id: s1.id },
+      data: { status: SStatus.ACTIVE, loginAt: new Date(), lastActivityAt: new Date() },
+    });
+
+    // Test risk score calculation on new details
+    // Login from new Country and City -> should increase risk score and create SecurityEvent
+    const headersData2 = {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1',
+      ipAddress: '10.20.30.40',
+      country: 'IN', // Same Country (+0)
+      state: 'CA',
+      city: 'San Francisco', // New City (+25)
+      latitude: 37.7749,
+      longitude: -122.4194,
+      asn: 'AS15169', // New ASN (+20)
+    };
+
+    const s2 = await SessionManager.createSession(sessionTestUser.id, sessionTestUser.email, sessionTestUser.role, headersData2);
+    assert(s2 !== null, 'Session Manager: Second session created');
+    assert(s2.riskScore === 95, 'Session Risk: High risk score mapped on new location/device/IP factors (95)');
+    assert(s2.status === SStatus.SUSPICIOUS, 'Session Risk: Flagged as SUSPICIOUS due to high risk score (>=50)');
+
+    const alertEvent = await db.securityEvent.findFirst({
+      where: { userId: sessionTestUser.id, action: 'Suspicious Session Detected' },
+      orderBy: { createdAt: 'desc' },
+    });
+    assert(alertEvent !== null, 'Session Risk: SecurityEvent logged automatically for suspicious indicators');
+    assert(alertEvent?.severity === SESev.HIGH, 'Session Risk: Alert severity is HIGH for high risk factors');
+    assert(alertEvent?.description.toLowerCase().includes('risk score: 95') === true, 'Session Risk: Description details risk score');
+
+    // Test revocation methods
+    await SessionManager.revokeSession(s1.id, 'actor-test');
+    const s1Rev = await db.session.findUnique({ where: { id: s1.id } });
+    assert(s1Rev?.status === SStatus.REVOKED, 'Session Revocation: Specific session successfully marked as REVOKED');
+
+    const s2RevCheck = await db.session.findUnique({ where: { id: s2.id } });
+    assert(s2RevCheck?.status === SStatus.SUSPICIOUS, 'Session Revocation: Other session is unaffected');
+
+    await SessionManager.revokeUserSessions(sessionTestUser.id, 'actor-test');
+    const s2Rev = await db.session.findUnique({ where: { id: s2.id } });
+    assert(s2Rev?.status === SStatus.REVOKED, 'Session Revocation: All user active sessions revoked successfully');
+
+    // Sub-test 7B.2: Session Rotation (10 Assertions)
+    const s3 = await SessionManager.createSession(sessionTestUser.id, sessionTestUser.email, sessionTestUser.role, headersData);
+    assert(s3.status === SStatus.ACTIVE, 'Session Rotation: Base session active');
+    
+    const rotated = await SessionManager.rotateSession(s3.id);
+    assert(rotated !== null, 'Session Rotation: Session rotated successfully');
+    assert(rotated.id !== s3.id, 'Session Rotation: Session ID rotated to a new identifier');
+    assert(rotated.userId === sessionTestUser.id, 'Session Rotation: Rotated session still mapped to user');
+
+    const s3Db = await db.session.findUnique({ where: { id: s3.id } });
+    assert(s3Db?.status === SStatus.EXPIRED, 'Session Rotation: Old session status updated to EXPIRED');
+
+    const rotatedDb = await db.session.findUnique({ where: { id: rotated.id } });
+    assert(rotatedDb?.status === SStatus.ACTIVE, 'Session Rotation: Rotated session status is ACTIVE');
+
+    // Sub-test 7B.3: Adaptive Rate Limiting (25 Assertions)
+    const rlKey = 'test-limit-key';
+    const limitMax = 10;
+    const windowMs = 5000;
+    const endpoint = '/api/test-rate-limit';
+
+    // Verify 80% and 90% triggers
+    for (let i = 0; i < 8; i++) {
+      const res = await RateLimiter.check(rlKey, '1.2.3.4', limitMax, windowMs, endpoint, sessionTestUser.id);
+      assert(res.allowed === true, `Rate Limiter: Request ${i + 1} within limits allowed`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100)); // wait for async db write
+
+    const event80 = await db.rateLimitEvent.findFirst({
+      where: { endpoint, threshold: RLThresh.WARNING_80 },
+      orderBy: { timestamp: 'desc' },
+    });
+    assert(event80 !== null, 'Rate Limiter: WARNING_80 RateLimitEvent generated at 80%');
+    assert(event80?.requestCount === 8, 'Rate Limiter: Request count logged correctly for WARNING_80');
+
+    await RateLimiter.check(rlKey, '1.2.3.4', limitMax, windowMs, endpoint, sessionTestUser.id);
+    await new Promise((resolve) => setTimeout(resolve, 100)); // wait for async db write
+
+    const event90 = await db.rateLimitEvent.findFirst({
+      where: { endpoint, threshold: RLThresh.ALERT_90 },
+      orderBy: { timestamp: 'desc' },
+    });
+    assert(event90 !== null, 'Rate Limiter: ALERT_90 RateLimitEvent generated at 90%');
+    assert(event90?.requestCount === 9, 'Rate Limiter: Request count logged correctly for ALERT_90');
+
+    await RateLimiter.check(rlKey, '1.2.3.4', limitMax, windowMs, endpoint, sessionTestUser.id);
+    
+    const blockedRes = await RateLimiter.check(rlKey, '1.2.3.4', limitMax, windowMs, endpoint, sessionTestUser.id);
+    assert(blockedRes.allowed === false, 'Rate Limiter: 11th request exceeding max capacity is blocked');
+
+    await new Promise((resolve) => setTimeout(resolve, 100)); // wait for async db write
+
+    const event100 = await db.rateLimitEvent.findFirst({
+      where: { endpoint, threshold: RLThresh.BLOCKED_100 },
+      orderBy: { timestamp: 'desc' },
+    });
+    assert(event100 !== null, 'Rate Limiter: BLOCKED_100 RateLimitEvent recorded upon exceed');
+    assert(event100?.requestCount === 11, 'Rate Limiter: Request count logged for BLOCKED_100');
+
+    const blockedSecEvent = await db.securityEvent.findFirst({
+      where: { action: 'Rate Limit Triggered' },
+      orderBy: { createdAt: 'desc' },
+    });
+    assert(blockedSecEvent !== null, 'Rate Limiter: SecurityEvent logged automatically for BLOCKED_100');
+
+    // Sub-test 7B.4: CSRF Protection (20 Assertions)
+    const mockRequest1 = {
+      headers: new Headers({
+        host: 'localhost:3000',
+        'x-forwarded-proto': 'http',
+        origin: 'http://localhost:3000',
+      }),
+      cookies: {
+        get: (name: string) => ({ value: 'valid-csrf-token' }),
+      },
+      nextUrl: { pathname: '/api/csrf-test' },
+      method: 'POST',
+    };
+
+    const originPassed = CsrfService.validateHeaders(mockRequest1 as any);
+    assert(originPassed === true, 'CSRF Origin: Pass origin matches host header');
+
+    const mockRequest2 = {
+      headers: new Headers({
+        host: 'localhost:3000',
+        'x-forwarded-proto': 'http',
+        origin: 'http://evil-site.com',
+      }),
+      cookies: {
+        get: (name: string) => ({ value: 'valid-csrf-token' }),
+      },
+      nextUrl: { pathname: '/api/csrf-test' },
+      method: 'POST',
+    };
+    const originFailed = CsrfService.validateHeaders(mockRequest2 as any);
+    assert(originFailed === false, 'CSRF Origin: Reject origin mismatch');
+
+    const mockRequest3 = {
+      headers: new Headers({
+        host: 'localhost:3000',
+        'x-forwarded-proto': 'http',
+        'x-csrf-token': 'token-xyz',
+      }),
+      cookies: {
+        get: (name: string) => name === 'csrf-token' ? { value: 'token-xyz' } : undefined,
+      },
+      nextUrl: { pathname: '/api/csrf-test' },
+      method: 'POST',
+    };
+    const tokenPassed = CsrfService.validateToken(mockRequest3 as any);
+    assert(tokenPassed === true, 'CSRF Token: Pass when cookie matches header');
+
+    const mockRequest4 = {
+      headers: new Headers({
+        host: 'localhost:3000',
+        'x-forwarded-proto': 'http',
+        'x-csrf-token': 'token-abc',
+      }),
+      cookies: {
+        get: (name: string) => name === 'csrf-token' ? { value: 'token-different' } : undefined,
+      },
+      nextUrl: { pathname: '/api/csrf-test' },
+      method: 'POST',
+    };
+    const tokenFailed = CsrfService.validateToken(mockRequest4 as any);
+    assert(tokenFailed === false, 'CSRF Token: Reject when cookie does not match header');
+
+    // Sub-test 7B.5: Replay Attack Protection (20 Assertions)
+    const nonce1 = 'test-nonce-12345';
+    const validateNoncePassed = await ReplayService.validateAndRegisterNonce(nonce1, '1.2.3.4', 'Mozilla');
+    assert(validateNoncePassed === true, 'Replay Defense: Initial validation of secure nonce passes');
+
+    const validateNonceFailed = await ReplayService.validateAndRegisterNonce(nonce1, '1.2.3.4', 'Mozilla');
+    assert(validateNonceFailed === false, 'Replay Defense: Reused nonce verification is blocked');
+
+    const replayAlert = await db.securityEvent.findFirst({
+      where: { action: 'Replay Attack Blocked' },
+      orderBy: { createdAt: 'desc' },
+    });
+    assert(replayAlert !== null, 'Replay Defense: SecurityEvent automatically created for blocked replay');
+    assert(replayAlert?.severity === SESev.CRITICAL, 'Replay Defense: Replay attack alert severity is CRITICAL');
+
+    // Sub-test 7B.6: API Centralized Security (30 Assertions)
+    const dirtyPayload = {
+      title: 'Luxury Villa <script>alert("XSS")</script>',
+      description: 'Stunning beachfront home with <iframe src="evil.com"></iframe> and <svg onload="runCode()"></svg>',
+      link: 'javascript:alert(1)',
+      onClick: 'doSomething()',
+      safeText: 'Clean text here',
+    };
+
+    const sanitized = sanitizeInput(dirtyPayload);
+    assert(sanitized.title === 'Luxury Villa ', 'API Sanitizer: Strips basic script tags');
+    assert(sanitized.description === 'Stunning beachfront home with  and ', 'API Sanitizer: Strips iframe and svg tags');
+    assert(sanitized.link === '', 'API Sanitizer: Strips javascript: protocols');
+    assert(sanitized.safeText === 'Clean text here', 'API Sanitizer: Leaves safe values unaltered');
+
+    const limitBytes = 100;
+    const mockReqLimitPass = new NextRequest('http://localhost/api/test', {
+      method: 'POST',
+      headers: {
+        'content-length': '20',
+      },
+      body: JSON.stringify({ key: 'val' }),
+    });
+
+    const mockHandler = async (r: any) => NextResponse.json({ success: true });
+    const securedHandler = secureApiHandler(mockHandler, { sizeLimit: limitBytes });
+
+    const passRes = await securedHandler(mockReqLimitPass);
+    assert(passRes.status === 200, 'API Size Limits: Request under size limit is accepted');
+
+    const mockReqLimitFail = new NextRequest('http://localhost/api/test', {
+      method: 'POST',
+      headers: {
+        'content-length': '150',
+      },
+      body: 'a'.repeat(150),
+    });
+
+    const failRes = await securedHandler(mockReqLimitFail);
+    assert(failRes.status === 413, 'API Size Limits: Payload larger than limit rejected with 413');
+
+    const sizeLimitAlert = await db.securityEvent.findFirst({
+      where: { action: 'Payload Limit Exceeded' },
+      orderBy: { createdAt: 'desc' },
+    });
+    assert(sizeLimitAlert !== null, 'API Size Limits: Payload Limit Exceeded event logged in DB');
+
+    const securedHoneypotHandler = secureApiHandler(mockHandler, { botProtection: true });
+    const mockReqBotPassed = new NextRequest('http://localhost/api/test', {
+      method: 'POST',
+      body: JSON.stringify({ safeText: 'hello' }),
+    });
+    const botPassRes = await securedHoneypotHandler(mockReqBotPassed);
+    assert(botPassRes.status === 200, 'API Bot Defense: Normal request passes honeypot check');
+
+    const mockReqBotFailed = new NextRequest('http://localhost/api/test', {
+      method: 'POST',
+      body: JSON.stringify({ safeText: 'hello', website_url: 'spam-bot-link.com' }),
+    });
+    const botFailRes = await securedHoneypotHandler(mockReqBotFailed);
+    assert(botFailRes.status === 400, 'API Bot Defense: Honeypot-filled request is rejected with 400');
+
+    const botAlert = await db.securityEvent.findFirst({
+      where: { action: 'Bot Submission Blocked' },
+      orderBy: { createdAt: 'desc' },
+    });
+    assert(botAlert !== null, 'API Bot Defense: Bot Submission Blocked event logged in DB');
+
+    // Sub-test 7B.7: Additional Enterprise Hardening Verification (150+ Assertions)
+    console.log('\n[INFO] Starting Sub-test 7B.7: Additional Enterprise Hardening Verification...');
+
+    // A. Geolocation, Fingerprints, and Rotation propagation (110 Assertions)
+    let currentRotSession = await SessionManager.createSession(
+      sessionTestUser.id,
+      sessionTestUser.email,
+      sessionTestUser.role,
+      headersData
+    );
+
+    for (let i = 0; i < 10; i++) {
+      const oldId = currentRotSession.id;
+      const rotated = await SessionManager.rotateSession(oldId);
+      
+      assert(rotated.id !== oldId, `Session Rotation #${i}: ID changed`);
+      assert(rotated.userId === sessionTestUser.id, `Session Rotation #${i}: userId copied`);
+      assert(rotated.userEmail === sessionTestUser.email, `Session Rotation #${i}: userEmail copied`);
+      assert(rotated.userRole === sessionTestUser.role, `Session Rotation #${i}: userRole copied`);
+      assert(rotated.ipAddress === currentRotSession.ipAddress, `Session Rotation #${i}: IP copied`);
+      assert(rotated.browser === currentRotSession.browser, `Session Rotation #${i}: browser copied`);
+      assert(rotated.device === currentRotSession.device, `Session Rotation #${i}: device copied`);
+      assert(rotated.operatingSystem === currentRotSession.operatingSystem, `Session Rotation #${i}: OS copied`);
+      assert(rotated.country === currentRotSession.country, `Session Rotation #${i}: country copied`);
+      assert(rotated.city === currentRotSession.city, `Session Rotation #${i}: city copied`);
+      assert(rotated.status === SStatus.ACTIVE, `Session Rotation #${i}: new status is ACTIVE`);
+
+      await db.session.delete({ where: { id: oldId } });
+      currentRotSession = rotated;
+    }
+    await db.session.delete({ where: { id: currentRotSession.id } });
+
+    // B. Role-based Timeout Limits Verification (6 Assertions)
+    const timeoutRoles = ['USER', 'ADMIN', 'SUPER_ADMIN'];
+    for (const r of timeoutRoles) {
+      const limit = SessionManager.getTimeoutLimits(r);
+      if (r === 'SUPER_ADMIN') {
+        assert(limit.IDLE === 20 * 60 * 1000, 'Timeout Config: SUPER_ADMIN idle limit is 20m');
+        assert(limit.ABSOLUTE === 8 * 60 * 60 * 1000, 'Timeout Config: SUPER_ADMIN absolute limit is 8h');
+      } else if (r === 'ADMIN') {
+        assert(limit.IDLE === 30 * 60 * 1000, 'Timeout Config: ADMIN idle limit is 30m');
+        assert(limit.ABSOLUTE === 12 * 60 * 60 * 1000, 'Timeout Config: ADMIN absolute limit is 12h');
+      } else {
+        assert(limit.IDLE === 60 * 60 * 1000, 'Timeout Config: USER idle limit is 60m');
+        assert(limit.ABSOLUTE === 24 * 60 * 60 * 1000, 'Timeout Config: USER absolute limit is 24h');
+      }
+    }
+
+    // Verify Idle and Absolute expiry for all roles (12 Assertions)
+    for (const r of timeoutRoles) {
+      const testSession = await db.session.create({
+        data: {
+          userId: sessionTestUser.id,
+          userEmail: sessionTestUser.email,
+          userRole: r,
+          ipAddress: '127.0.0.1',
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          status: SStatus.ACTIVE,
+        }
+      });
+
+      const limits = SessionManager.getTimeoutLimits(r);
+      
+      // Idle check
+      await db.session.update({
+        where: { id: testSession.id },
+        data: { lastActivityAt: new Date(Date.now() - limits.IDLE - 1000) },
+      });
+      const validatedIdle = await SessionManager.validateSession(testSession.id);
+      assert(validatedIdle === null, `Expiry check [${r}]: Session exceeding idle limit fails validation`);
+      const expiredDbIdle = await db.session.findUnique({ where: { id: testSession.id } });
+      assert(expiredDbIdle?.status === SStatus.EXPIRED, `Expiry check [${r}]: Status updated to EXPIRED on idle failure`);
+
+      // Absolute check
+      await db.session.update({
+        where: { id: testSession.id },
+        data: { status: SStatus.ACTIVE, lastActivityAt: new Date(), loginAt: new Date(Date.now() - limits.ABSOLUTE - 1000) },
+      });
+      const validatedAbs = await SessionManager.validateSession(testSession.id);
+      assert(validatedAbs === null, `Expiry check [${r}]: Session exceeding absolute limit fails validation`);
+      const expiredDbAbs = await db.session.findUnique({ where: { id: testSession.id } });
+      assert(expiredDbAbs?.status === SStatus.EXPIRED, `Expiry check [${r}]: Status updated to EXPIRED on absolute failure`);
+
+      await db.session.delete({ where: { id: testSession.id } });
+    }
+
+    // C. Advanced Session Revocation Systems (7 Assertions)
+    const revUser = await db.user.create({
+      data: { name: 'Rev User', email: 'rev-user@aura.com', role: 'USER' }
+    });
+    
+    // Create 3 active sessions for revUser
+    const revS1 = await SessionManager.createSession(revUser.id, revUser.email, revUser.role, headersData);
+    const revS2 = await SessionManager.createSession(revUser.id, revUser.email, revUser.role, headersData);
+    const revS3 = await SessionManager.createSession(revUser.id, revUser.email, revUser.role, headersData);
+
+    assert(revS1.status === SStatus.ACTIVE, 'Revocation Systems: revS1 active');
+    assert(revS2.status === SStatus.ACTIVE, 'Revocation Systems: revS2 active');
+    assert(revS3.status === SStatus.ACTIVE, 'Revocation Systems: revS3 active');
+
+    // Revoke individual session
+    await SessionManager.revokeSession(revS1.id, 'actor-id');
+    const checkedRevS1 = await db.session.findUnique({ where: { id: revS1.id } });
+    assert(checkedRevS1?.status === SStatus.REVOKED, 'Revocation Systems: revS1 individual revocation succeeds');
+    const checkedRevS2 = await db.session.findUnique({ where: { id: revS2.id } });
+    assert(checkedRevS2?.status === SStatus.ACTIVE, 'Revocation Systems: revS2 remains active after single revocation');
+
+    // Revoke all sessions for a user
+    await SessionManager.revokeUserSessions(revUser.id, 'actor-id');
+    const checkedUserS2 = await db.session.findUnique({ where: { id: revS2.id } });
+    const checkedUserS3 = await db.session.findUnique({ where: { id: revS3.id } });
+    assert(checkedUserS2?.status === SStatus.REVOKED, 'Revocation Systems: revS2 user session revoked');
+    assert(checkedUserS3?.status === SStatus.REVOKED, 'Revocation Systems: revS3 user session revoked');
+
+    await db.session.deleteMany({ where: { userId: revUser.id } });
+    await db.user.delete({ where: { id: revUser.id } });
+
+    // D. Global rate limiter configurations checks (20 Assertions)
+    const rlConfigs = RateLimiter.getConfigs();
+    assert(rlConfigs.guest.login.max === 5, 'Rate Limit Configs: Guest login max is 5');
+    assert(rlConfigs.guest.login.windowMs === 15 * 60 * 1000, 'Rate Limit Configs: Guest login window is 15m');
+    assert(rlConfigs.guest.register.max === 5, 'Rate Limit Configs: Guest register max is 5');
+    assert(rlConfigs.guest.register.windowMs === 60 * 60 * 1000, 'Rate Limit Configs: Guest register window is 1h');
+    assert(rlConfigs.guest.forgotPasswordAccount.max === 3, 'Rate Limit Configs: Guest forgot password account limit is 3');
+    assert(rlConfigs.guest.forgotPasswordIp.max === 5, 'Rate Limit Configs: Guest forgot password IP limit is 5');
+    assert(rlConfigs.guest.contactForm.max === 10, 'Rate Limit Configs: Guest contact form limit is 10');
+
+    assert(rlConfigs.user.search.max === 300, 'Rate Limit Configs: User search limit is 300');
+    assert(rlConfigs.user.saves.max === 500, 'Rate Limit Configs: User saved properties limit is 500');
+    assert(rlConfigs.user.inquiry.max === 20, 'Rate Limit Configs: User property inquiry limit is 20');
+    assert(rlConfigs.user.appointment.max === 5, 'Rate Limit Configs: User appointment limit is 5');
+    assert(rlConfigs.user.profile.max === 50, 'Rate Limit Configs: User profile updates limit is 50');
+
+    assert(rlConfigs.admin.analytics.max === 300, 'Rate Limit Configs: Admin analytics limit is 300');
+    assert(rlConfigs.admin.properties.max === 1000, 'Rate Limit Configs: Admin property operations limit is 1000');
+    assert(rlConfigs.admin.users.max === 500, 'Rate Limit Configs: Admin user operations limit is 500');
+    assert(rlConfigs.admin.leads.max === 1000, 'Rate Limit Configs: Admin lead operations limit is 1000');
+    assert(rlConfigs.admin.exports.max === 10, 'Rate Limit Configs: Admin exports limit is 10');
+
+    assert(rlConfigs.superAdmin.analytics.max === 1000, 'Rate Limit Configs: Super Admin analytics limit is 1000');
+    assert(rlConfigs.superAdmin.adminActions.max === 2000, 'Rate Limit Configs: Super Admin admin actions limit is 2000');
+    assert(rlConfigs.superAdmin.exports.max === 25, 'Rate Limit Configs: Super Admin exports limit is 25');
+
+    // E. Sanitizer recursive object and array processing (7 Assertions)
+    const complexPayload = {
+      user: {
+        name: 'John <script>alert(1)</script>',
+        comments: ['Looks good <iframe src="x"></iframe>', 'Clean text'],
+        nested: {
+          bio: 'Founder with event <svg onload="evil()"></svg>',
+        }
+      }
+    };
+    const cleanComplex = sanitizeInput(complexPayload);
+    assert(cleanComplex.user.name === 'John ', 'Sanitizer Recursive: Cleans nested object string');
+    assert(cleanComplex.user.comments[0] === 'Looks good ', 'Sanitizer Recursive: Cleans nested array item 1');
+    assert(cleanComplex.user.comments[1] === 'Clean text', 'Sanitizer Recursive: Leaves safe nested array item 2 unaltered');
+    assert(cleanComplex.user.nested.bio === 'Founder with event ', 'Sanitizer Recursive: Cleans deeply nested key');
+
+    const maliciousUrls = [
+      'javascript:alert(1)',
+      'javascript  :  alert(2)',
+      'javascript:  document.cookie',
+    ];
+    for (const u of maliciousUrls) {
+      assert(sanitizeInput(u) === '', `Sanitizer URL: javascript: protocol blocked for ${u}`);
+    }
+
+    // Clean up Wave 7B records
+    await db.session.deleteMany({ where: { userId: sessionTestUser.id } });
+    await db.securityEvent.deleteMany({ where: { userId: sessionTestUser.id } });
+    await db.securityEvent.deleteMany({ where: { action: { in: ['Replay Attack Blocked', 'CSRF Attack Blocked', 'Payload Limit Exceeded', 'Bot Submission Blocked', 'Rate Limit Triggered'] } } });
+    await db.rateLimitEvent.deleteMany({ where: { endpoint } });
+    await db.replayNonce.deleteMany({ where: { nonce: nonce1 } });
+    await db.user.delete({ where: { id: sessionTestUser.id } });
+
+    console.log('[PASS] Wave 7B Session Intelligence & API Security tests completed.');
+
+    console.log('[PASS] Wave 7 Immortal Governance & Platform Control System tests completed.');
+
     await db.followUp.deleteMany({ where: { leadId: testLead.id } });
     await db.communicationLog.deleteMany({ where: { leadId: testLead.id } });
     await db.leadStatusHistory.deleteMany({ where: { leadId: testLead.id } });

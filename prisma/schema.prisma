@@ -192,6 +192,7 @@ model User {
   adminPermissions     AdminPermission[] @relation("UserPermissions")
   grantedPermissions   AdminPermission[] @relation("GrantedPermissions")
   adminSessions        AdminSession[]
+  sessions             Session[]
   securityAlerts       SecurityAlert[]
   reviewsReceived      AdminReview[]     @relation("AdminReviewed")
   reviewsGiven         AdminReview[]     @relation("AdminReviewer")
@@ -799,4 +800,95 @@ model OtpVerification {
 
   @@index([phoneNumber])
   @@index([createdAt])
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  LOCKED
+  SUSPICIOUS
+}
+
+model Session {
+  id                 String        @id @default(uuid())
+  userId             String
+  userEmail          String
+  userRole           String
+  ipAddress          String
+  country            String?
+  state              String?
+  city               String?
+  latitude           Float?
+  longitude          Float?
+  browser            String?
+  device             String?
+  operatingSystem     String?
+  userAgent          String?
+  loginAt            DateTime      @default(now())
+  lastActivityAt     DateTime      @default(now())
+  expiresAt          DateTime
+  status             SessionStatus @default(ACTIVE)
+  riskScore          Float         @default(0.0)
+  
+  // fingerprints
+  deviceFingerprint   String?
+  browserFingerprint  String?
+  ipFingerprint       String?
+
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum SecurityEventSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model SecurityEvent {
+  id          String                @id @default(uuid())
+  userId      String?
+  userEmail   String?
+  ipAddress   String?
+  userAgent   String?
+  action      String                
+  severity    SecurityEventSeverity
+  description String
+  details     Json?
+  createdAt   DateTime              @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum RateLimitThreshold {
+  WARNING_80
+  ALERT_90
+  BLOCKED_100
+}
+
+model RateLimitEvent {
+  id           String             @id @default(uuid())
+  userId       String?
+  ipAddress    String
+  endpoint     String
+  threshold    RateLimitThreshold
+  requestCount Int
+  timestamp    DateTime           @default(now())
+
+  @@index([ipAddress])
+  @@index([timestamp])
+}
+
+model ReplayNonce {
+  id        String   @id @default(uuid())
+  nonce     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([nonce])
 }

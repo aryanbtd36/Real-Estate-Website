@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     });
 
     if (existing) {
-      return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
+      return NextResponse.json({ success: true, message: 'Registration process initiated. Please check your email for confirmation.' });
     }
 
     // 2. Hash password using production-grade security

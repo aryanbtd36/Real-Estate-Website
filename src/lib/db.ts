@@ -14,6 +14,7 @@ const createPrismaClient = () => {
   const pool = new Pool({
     connectionString: connStr,
     ssl: sslVal,
+    max: 3, // Limit pool size to prevent EMAXCONNSESSION errors
   });
   const adapter = new PrismaPg(pool);
   const client = new PrismaClient({ adapter });
