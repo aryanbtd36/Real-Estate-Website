@@ -40,8 +40,8 @@ export default function SuperAdminDashboard() {
       if (statsRes.ok && alertsRes.ok && eventsRes.ok) {
         const stats = await statsRes.json();
         const alerts = await alertsRes.json();
-        const events = await eventsRes.json();
-        setData({ stats, alerts, events });
+        const eventsData = await eventsRes.json();
+        setData({ stats, alerts, events: eventsData.events || eventsData });
       }
     } catch (err) {
       console.error(err);

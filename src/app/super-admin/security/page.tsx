@@ -93,7 +93,8 @@ export default function SuperAdminSecuritySOCPage() {
         const sData = await statsRes.json();
         setStats(sData);
         setAlerts(await alertsRes.json());
-        setEvents(await eventsRes.json());
+        const eventsData = await eventsRes.json();
+        setEvents(eventsData.events || eventsData);
       }
 
       // 2. Tab-specific data fetching
@@ -315,7 +316,7 @@ export default function SuperAdminSecuritySOCPage() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
           >
-            {/* TAB 1: SOC Threat Console */}
+            {/* TAB 1: SOC Threat Console (Enhanced Wave 7C.1) */}
             {activeTab === 'soc' && (
               <div className="space-y-6">
                 {/* Stats Widgets */}
@@ -334,6 +335,14 @@ export default function SuperAdminSecuritySOCPage() {
                   <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
                     <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Active Alerts</span>
                     <div className="text-4xl font-extralight text-red-500 mt-2">{stats?.activeAlerts}</div>
+                    <div className="flex gap-1.5 mt-2">
+                      {stats?.alertResolutionStats && (
+                        <>
+                          <span className="text-[8px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded font-mono">{stats.alertResolutionStats.openCount} Open</span>
+                          <span className="text-[8px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded font-mono">{stats.alertResolutionStats.resolvedCount} Resolved</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                   <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
                     <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Open Findings</span>
@@ -341,9 +350,81 @@ export default function SuperAdminSecuritySOCPage() {
                   </div>
                 </div>
 
+                {/* SOC Intelligence Row: Event Trend + Top Types */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Events Per Hour Trend */}
+                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4 lg:col-span-2">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60 flex items-center gap-1.5">
+                        <Activity size={13} className="text-[#D4AF37]" />
+                        Event Activity Trend (Last 24H)
+                      </h3>
+                      <button
+                        onClick={handleDownloadReport}
+                        className="py-1 px-3 bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/20 rounded text-[9px] uppercase font-bold text-[#D4AF37] tracking-wider transition-all flex items-center gap-1"
+                      >
+                        <Download size={10} />
+                        Export
+                      </button>
+                    </div>
+                    <div className="flex items-end gap-[3px] h-[90px]">
+                      {(stats?.eventsPerHour || []).map((h: any, i: number) => {
+                        const maxVal = Math.max(1, ...(stats?.eventsPerHour || []).map((x: any) => x.count));
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center group relative">
+                            <div
+                              className="w-full bg-[#D4AF37]/30 hover:bg-[#D4AF37]/60 rounded-t transition-all min-h-[2px]"
+                              style={{ height: `${Math.max(2, (h.count / maxVal) * 80)}px` }}
+                            />
+                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-black border border-white/10 text-[8px] px-1.5 py-0.5 rounded text-white/80 whitespace-nowrap z-10 transition-opacity">
+                              {h.hour}: {h.count}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between text-[8px] text-white/25 font-mono">
+                      <span>{(stats?.eventsPerHour || [])[0]?.hour || '—'}</span>
+                      <span>NOW</span>
+                    </div>
+                  </div>
+
+                  {/* Top Event Types + Top Source IPs */}
+                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
+                    <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60 flex items-center gap-1.5">
+                      <TrendingUp size={13} className="text-[#D4AF37]" />
+                      SOC Intelligence
+                    </h3>
+                    <div className="space-y-1.5">
+                      <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold">Top Event Types</span>
+                      {(stats?.topEventTypes || []).map((t: any, i: number) => (
+                        <div key={i} className="flex justify-between items-center text-[10px]">
+                          <span className="text-white/70 truncate mr-2">{t.eventType}</span>
+                          <span className="font-mono text-[#D4AF37] font-bold shrink-0">{t.count}</span>
+                        </div>
+                      ))}
+                      {(!stats?.topEventTypes || stats.topEventTypes.length === 0) && (
+                        <div className="text-[10px] text-white/25">No events in window.</div>
+                      )}
+                    </div>
+                    <div className="space-y-1.5 border-t border-white/5 pt-3">
+                      <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold">Top Source IPs</span>
+                      {(stats?.topSourceIPs || []).map((ip: any, i: number) => (
+                        <div key={i} className="flex justify-between items-center text-[10px]">
+                          <span className="text-white/70 font-mono">{ip.ipAddress}</span>
+                          <span className="font-mono text-[#D4AF37] font-bold">{ip.count}</span>
+                        </div>
+                      ))}
+                      {(!stats?.topSourceIPs || stats.topSourceIPs.length === 0) && (
+                        <div className="text-[10px] text-white/25">No IP data.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Main SOC Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Left Column: Alerts & Counters */}
+                  {/* Left Column: Alerts with Lifecycle + Counters */}
                   <div className="lg:col-span-2 space-y-6">
                     <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
                       <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">SOC Attack Prevention Counters</h3>
@@ -365,52 +446,159 @@ export default function SuperAdminSecuritySOCPage() {
                       </div>
                     </div>
 
-                    {/* Security Alert Log */}
+                    {/* Security Alert Log with Lifecycle Management */}
                     <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Security Incidents Alerts Log</h3>
-                        <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">
-                          {alerts.length} Total Alerts
-                        </span>
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Security Incidents Alert Console</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded font-mono font-bold">
+                            {alerts.filter((a: any) => a.status === 'OPEN').length} OPEN
+                          </span>
+                          <span className="text-[9px] bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded font-mono font-bold">
+                            {alerts.filter((a: any) => a.status === 'INVESTIGATING').length} INVESTIGATING
+                          </span>
+                          <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">
+                            {alerts.length} Total
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                         {alerts.length === 0 ? (
                           <div className="text-center py-12 text-white/30 text-xs">Zero security alerts triggered.</div>
                         ) : (
                           alerts.map((alert) => (
                             <div
                               key={alert.id}
-                              className={`p-3 rounded-xl border flex justify-between items-center gap-4 transition-all ${
-                                alert.status === 'RESOLVED'
-                                  ? 'border-white/5 bg-black/15 opacity-60'
-                                  : 'border-red-500/20 bg-red-500/[0.02]'
+                              className={`p-3 rounded-xl border transition-all ${
+                                alert.status === 'RESOLVED' || alert.status === 'FALSE_POSITIVE'
+                                  ? 'border-white/5 bg-black/15 opacity-50'
+                                  : alert.severity === 'CRITICAL'
+                                  ? 'border-red-500/25 bg-red-500/[0.03]'
+                                  : alert.status === 'INVESTIGATING'
+                                  ? 'border-yellow-500/20 bg-yellow-500/[0.02]'
+                                  : 'border-white/10 bg-[#1A1A1A]'
                               }`}
                             >
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-semibold text-white">{alert.description}</span>
-                                  <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-extrabold ${
-                                    alert.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'
-                                  }`}>
-                                    {alert.severity}
-                                  </span>
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-semibold text-white truncate">{alert.description}</span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-extrabold ${
+                                      alert.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
+                                      alert.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
+                                      alert.severity === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
+                                      'bg-blue-500/20 text-blue-400'
+                                    }`}>
+                                      {alert.severity}
+                                    </span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-bold ${
+                                      alert.status === 'OPEN' ? 'bg-red-500/10 text-red-400' :
+                                      alert.status === 'INVESTIGATING' ? 'bg-yellow-500/10 text-yellow-400' :
+                                      alert.status === 'RESOLVED' ? 'bg-green-500/10 text-green-400' :
+                                      'bg-white/5 text-white/40'
+                                    }`}>
+                                      {alert.status}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[9px] text-white/30 font-mono mt-1 flex-wrap">
+                                    <div>Type: {alert.type || 'Anomaly'}</div>
+                                    <div>At: {new Date(alert.createdAt).toLocaleString()}</div>
+                                    {alert.assignedTo && (
+                                      <div className="text-yellow-400/60">Analyst: {alert.assignedTo.name || alert.assignedTo.email}</div>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-[9px] text-white/30 font-mono mt-1">
-                                  <div>Type: {alert.type || 'Anomaly'}</div>
-                                  <div>At: {new Date(alert.createdAt).toLocaleString()}</div>
-                                </div>
-                              </div>
 
-                              <div className="flex items-center gap-2 shrink-0">
-                                {alert.status !== 'RESOLVED' && (
-                                  <button
-                                    onClick={() => handleResolveAlert(alert.id)}
-                                    className="py-1 px-2.5 bg-green-500/10 hover:bg-green-500/25 border border-green-500/20 hover:border-green-500/40 text-[9px] font-bold text-green-400 rounded uppercase"
-                                  >
-                                    Resolve
-                                  </button>
-                                )}
+                                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                  {alert.status === 'OPEN' && (
+                                    <>
+                                      <button
+                                        onClick={async () => {
+                                          await fetch('/api/admin/security/alerts', {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ alertId: alert.id, action: 'acknowledge' })
+                                          });
+                                          loadAllData(true);
+                                        }}
+                                        className="py-1 px-2 bg-yellow-500/5 hover:bg-yellow-500/15 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 rounded uppercase transition-all"
+                                      >
+                                        <Eye size={9} className="inline mr-0.5" /> Investigate
+                                      </button>
+                                      {alert.severity !== 'CRITICAL' && (
+                                        <button
+                                          onClick={async () => {
+                                            const nextSeverity = alert.severity === 'LOW' ? 'MEDIUM' : alert.severity === 'MEDIUM' ? 'HIGH' : 'CRITICAL';
+                                            await fetch('/api/admin/security/alerts', {
+                                              method: 'PATCH',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ alertId: alert.id, action: 'escalate', newSeverity: nextSeverity })
+                                            });
+                                            loadAllData(true);
+                                          }}
+                                          className="py-1 px-2 bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 text-[9px] font-bold text-red-400 rounded uppercase transition-all"
+                                        >
+                                          Escalate
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleResolveAlert(alert.id)}
+                                        className="py-1 px-2 bg-green-500/5 hover:bg-green-500/15 border border-green-500/20 text-[9px] font-bold text-green-400 rounded uppercase transition-all"
+                                      >
+                                        Resolve
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          await fetch('/api/admin/security/alerts', {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ alertId: alert.id, action: 'false_positive' })
+                                          });
+                                          loadAllData(true);
+                                        }}
+                                        className="py-1 px-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold text-white/40 rounded uppercase transition-all"
+                                      >
+                                        <XCircle size={9} className="inline mr-0.5" /> FP
+                                      </button>
+                                    </>
+                                  )}
+                                  {alert.status === 'INVESTIGATING' && (
+                                    <>
+                                      <button
+                                        onClick={async () => {
+                                          await fetch('/api/admin/security/alerts', {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ alertId: alert.id, action: 'resolve', notes: 'Resolved after investigation' })
+                                          });
+                                          loadAllData(true);
+                                        }}
+                                        className="py-1 px-2 bg-green-500/5 hover:bg-green-500/15 border border-green-500/20 text-[9px] font-bold text-green-400 rounded uppercase transition-all"
+                                      >
+                                        <CheckCircle size={9} className="inline mr-0.5" /> Resolve
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          await fetch('/api/admin/security/alerts', {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ alertId: alert.id, action: 'false_positive', notes: 'False positive after investigation' })
+                                          });
+                                          loadAllData(true);
+                                        }}
+                                        className="py-1 px-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold text-white/40 rounded uppercase transition-all"
+                                      >
+                                        False +
+                                      </button>
+                                    </>
+                                  )}
+                                  {(alert.status === 'RESOLVED' || alert.status === 'FALSE_POSITIVE') && (
+                                    <span className="text-[8px] uppercase tracking-widest text-green-500/60 font-bold bg-green-500/5 px-2 py-0.5 border border-green-500/10 rounded">
+                                      {alert.status === 'FALSE_POSITIVE' ? 'False Positive' : 'Closed'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           ))
@@ -434,13 +622,23 @@ export default function SuperAdminSecuritySOCPage() {
                           <div key={e.id} className="p-3 bg-black/35 border border-white/5 rounded-xl space-y-2">
                             <div className="flex justify-between items-center">
                               <span className="text-xs font-semibold text-[#D4AF37]">{e.title}</span>
-                              <span className="text-[8px] bg-white/5 px-2 py-0.5 border border-white/10 rounded font-mono text-white/50">
-                                {e.category}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className={`px-1 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
+                                  e.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
+                                  e.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
+                                  e.severity === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {e.severity}
+                                </span>
+                                <span className="text-[8px] bg-white/5 px-2 py-0.5 border border-white/10 rounded font-mono text-white/50">
+                                  {e.category}
+                                </span>
+                              </div>
                             </div>
                             <p className="text-[10px] text-white/70">{e.description}</p>
                             <div className="flex justify-between items-center text-[9px] text-white/30 font-mono">
-                              <div>IP: {e.ipAddress || '127.0.0.1'}</div>
+                              <div>IP: {e.ipAddress || '127.0.0.1'}{e.userId ? ` • User: ${e.userEmail || e.userId.slice(0, 8)}` : ''}</div>
                               <div>{new Date(e.createdAt).toLocaleTimeString()}</div>
                             </div>
                           </div>

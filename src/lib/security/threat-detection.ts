@@ -351,4 +351,159 @@ export class ThreatDetectionService {
     }
     return false;
   }
+
+  /**
+   * Acknowledge an alert — transitions OPEN → INVESTIGATING and assigns an analyst.
+   */
+  static async acknowledgeAlert(alertId: string, assignedToId: string): Promise<any> {
+    try {
+      const alert = await db.securityAlert.findUnique({ where: { id: alertId } });
+      if (!alert) return null;
+
+      const updated = await db.securityAlert.update({
+        where: { id: alertId },
+        data: {
+          status: SecurityAlertStatus.INVESTIGATING,
+          assignedToId,
+        },
+      });
+
+      // Log audit trail
+      await SecurityEventLogger.log({
+        userId: assignedToId,
+        eventType: 'ALERT_ACKNOWLEDGED',
+        category: SecurityEventCategory.SECURITY,
+        severity: SecurityEventSeverity.LOW,
+        title: 'Alert Acknowledged',
+        description: `Alert ${alertId} acknowledged and assigned for investigation.`,
+        metadata: { alertId, assignedToId, previousStatus: alert.status },
+      });
+
+      return updated;
+    } catch (err) {
+      console.error('[ThreatDetectionService.acknowledgeAlert Error]', err);
+      return null;
+    }
+  }
+
+  /**
+   * Resolve an alert — transitions status to RESOLVED, sets resolved flag.
+   */
+  static async resolveAlert(alertId: string, notes: string, resolvedById: string): Promise<any> {
+    try {
+      const alert = await db.securityAlert.findUnique({ where: { id: alertId } });
+      if (!alert) return null;
+
+      const updated = await db.securityAlert.update({
+        where: { id: alertId },
+        data: {
+          status: SecurityAlertStatus.RESOLVED,
+          resolved: true,
+          details: alert.details
+            ? { ...(alert.details as any), resolutionNotes: notes, resolvedById }
+            : { resolutionNotes: notes, resolvedById },
+        },
+      });
+
+      await SecurityEventLogger.log({
+        userId: resolvedById,
+        eventType: 'ALERT_RESOLVED',
+        category: SecurityEventCategory.SECURITY,
+        severity: SecurityEventSeverity.LOW,
+        title: 'Alert Resolved',
+        description: `Alert ${alertId} resolved. Notes: ${notes}`,
+        metadata: { alertId, resolvedById, notes, previousStatus: alert.status },
+      });
+
+      return updated;
+    } catch (err) {
+      console.error('[ThreatDetectionService.resolveAlert Error]', err);
+      return null;
+    }
+  }
+
+  /**
+   * Mark an alert as false positive.
+   */
+  static async markFalsePositive(alertId: string, notes: string, markedById: string): Promise<any> {
+    try {
+      const alert = await db.securityAlert.findUnique({ where: { id: alertId } });
+      if (!alert) return null;
+
+      const updated = await db.securityAlert.update({
+        where: { id: alertId },
+        data: {
+          status: SecurityAlertStatus.FALSE_POSITIVE,
+          resolved: true,
+          details: alert.details
+            ? { ...(alert.details as any), falsePositiveNotes: notes, markedById }
+            : { falsePositiveNotes: notes, markedById },
+        },
+      });
+
+      await SecurityEventLogger.log({
+        userId: markedById,
+        eventType: 'ALERT_FALSE_POSITIVE',
+        category: SecurityEventCategory.SECURITY,
+        severity: SecurityEventSeverity.LOW,
+        title: 'Alert Marked as False Positive',
+        description: `Alert ${alertId} marked as false positive. Notes: ${notes}`,
+        metadata: { alertId, markedById, notes },
+      });
+
+      return updated;
+    } catch (err) {
+      console.error('[ThreatDetectionService.markFalsePositive Error]', err);
+      return null;
+    }
+  }
+
+  /**
+   * Escalate alert severity and notify Super Admins.
+   */
+  static async escalateAlert(alertId: string, newSeverity: SecurityEventSeverity): Promise<any> {
+    try {
+      const alert = await db.securityAlert.findUnique({ where: { id: alertId } });
+      if (!alert) return null;
+
+      const updated = await db.securityAlert.update({
+        where: { id: alertId },
+        data: { severity: newSeverity },
+      });
+
+      await SecurityEventLogger.log({
+        eventType: 'ALERT_ESCALATED',
+        category: SecurityEventCategory.SECURITY,
+        severity: newSeverity,
+        title: 'Alert Severity Escalated',
+        description: `Alert ${alertId} escalated from ${alert.severity} to ${newSeverity}.`,
+        metadata: { alertId, previousSeverity: alert.severity, newSeverity },
+      });
+
+      // Notify Super Admins on escalation
+      try {
+        const superAdmins = await db.user.findMany({
+          where: { role: UserRole.SUPER_ADMIN, deletedAt: null },
+          select: { id: true },
+        });
+
+        for (const sa of superAdmins) {
+          await NotificationService.create({
+            userId: sa.id,
+            title: `ALERT ESCALATED: ${newSeverity}`,
+            message: `Alert "${alert.title}" escalated from ${alert.severity} to ${newSeverity}.`,
+            type: NotificationType.SECURITY,
+            link: '/super-admin/security',
+          });
+        }
+      } catch (notifyErr) {
+        console.error('[ThreatDetectionService.escalateAlert] Notification error:', notifyErr);
+      }
+
+      return updated;
+    } catch (err) {
+      console.error('[ThreatDetectionService.escalateAlert Error]', err);
+      return null;
+    }
+  }
 }

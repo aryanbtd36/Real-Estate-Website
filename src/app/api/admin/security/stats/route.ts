@@ -172,6 +172,66 @@ async function getStatsHandler(request: NextRequest) {
     db.securityFinding.count({ where: { severity: FindingSeverity.LOW, status: FindingStatus.OPEN } }),
   ]);
 
+  // 3. SOC-specific metrics (Wave 7C.1)
+  // 3a. Events per hour trend (last 24h)
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentEvents = await db.securityEvent.findMany({
+    where: { createdAt: { gte: twentyFourHoursAgo } },
+    select: { createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const eventsPerHour: { hour: string; count: number }[] = [];
+  for (let i = 23; i >= 0; i--) {
+    const hourStart = new Date(Date.now() - i * 60 * 60 * 1000);
+    const hourEnd = new Date(Date.now() - (i - 1) * 60 * 60 * 1000);
+    const hourLabel = hourStart.toISOString().slice(11, 13) + ':00';
+    const count = recentEvents.filter(
+      (e) => e.createdAt >= hourStart && e.createdAt < hourEnd
+    ).length;
+    eventsPerHour.push({ hour: hourLabel, count });
+  }
+
+  // 3b. Top 5 event types by count
+  const topEventTypesRaw = await db.securityEvent.groupBy({
+    by: ['eventType'],
+    where: { createdAt: { gte: timeLimit } },
+    _count: { id: true },
+    orderBy: { _count: { id: 'desc' } },
+    take: 5,
+  });
+  const topEventTypes = topEventTypesRaw.map((r) => ({
+    eventType: r.eventType,
+    count: r._count.id,
+  }));
+
+  // 3c. Top 5 source IPs
+  const topSourceIPsRaw = await db.securityEvent.groupBy({
+    by: ['ipAddress'],
+    where: { createdAt: { gte: timeLimit }, ipAddress: { not: null } },
+    _count: { id: true },
+    orderBy: { _count: { id: 'desc' } },
+    take: 5,
+  });
+  const topSourceIPs = topSourceIPsRaw.map((r) => ({
+    ipAddress: r.ipAddress || 'unknown',
+    count: r._count.id,
+  }));
+
+  // 3d. Alert resolution stats
+  const resolvedAlerts = await db.securityAlert.findMany({
+    where: { status: 'RESOLVED', createdAt: { gte: timeLimit } },
+    select: { createdAt: true },
+  });
+  const openAlertsCount = await db.securityAlert.count({
+    where: { status: 'OPEN' },
+  });
+  const alertResolutionStats = {
+    resolvedCount: resolvedAlerts.length,
+    openCount: openAlertsCount,
+    avgResolutionTimeMs: 0, // Placeholder — would need resolvedAt timestamp for true calculation
+  };
+
   return NextResponse.json({
     securityScore: posture.overallScore, // Overwritten by dynamic scorer
     securityGrade: posture.overallScore >= 90 ? 'EXCELLENT' : posture.overallScore >= 70 ? 'GOOD' : 'CRITICAL',
@@ -214,9 +274,16 @@ async function getStatsHandler(request: NextRequest) {
       low: lowFindings,
       total: criticalFindings + highFindings + mediumFindings + lowFindings,
     },
+
+    // SOC metrics (Wave 7C.1)
+    eventsPerHour,
+    topEventTypes,
+    topSourceIPs,
+    alertResolutionStats,
   });
 }
 
 export const GET = secureApiHandler(getStatsHandler, {
   rateLimit: { max: 100, windowMs: 60 * 1000, keyPrefix: 'admin-security-stats' },
 });
+

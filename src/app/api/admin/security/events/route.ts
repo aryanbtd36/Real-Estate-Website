@@ -26,6 +26,7 @@ async function getEventsHandler(request: NextRequest) {
   const category = searchParams.get('category');
   const search = searchParams.get('search') || '';
   const limit = parseInt(searchParams.get('limit') || '50', 10);
+  const offset = parseInt(searchParams.get('offset') || '0', 10);
   const filter = searchParams.get('filter') || '24h';
 
   let hours = 24;
@@ -56,13 +57,17 @@ async function getEventsHandler(request: NextRequest) {
   }
 
   try {
-    const events = await db.securityEvent.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
+    const [events, totalCount] = await Promise.all([
+      db.securityEvent.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      db.securityEvent.count({ where: whereClause }),
+    ]);
 
-    return NextResponse.json(events);
+    return NextResponse.json({ events, totalCount });
   } catch (error) {
     console.error('[API Security Events GET] Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -72,3 +77,4 @@ async function getEventsHandler(request: NextRequest) {
 export const GET = secureApiHandler(getEventsHandler, {
   rateLimit: { max: 100, windowMs: 60 * 1000, keyPrefix: 'admin-security-events' },
 });
+

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-18T05:57:14.115Z",
+  "timestamp": "2026-06-18T18:41:51.080Z",
   "scores": {
     "authentication": 100,
     "authorization": 100,
@@ -12,7 +12,7 @@
     "infrastructure": 100,
     "overallScore": 88,
     "status": "WARNING",
-    "trend": "UP"
+    "trend": "STABLE"
   },
   "controls": [
     {
@@ -98,6 +98,46 @@
   ],
   "permissions": [
     {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "MANAGE_PROPERTIES"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "MANAGE_LEADS"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "MANAGE_APPOINTMENTS"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "MANAGE_USERS"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "VIEW_ANALYTICS"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "EXPORT_DATA"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "MANAGE_CONTENT"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "MANAGE_SETTINGS"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "MANAGE_ADMINS"
+    },
+    {
+      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
+      "permission": "VIEW_SECURITY"
+    },
+    {
       "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
       "permission": "MANAGE_PROPERTIES"
     },
@@ -144,46 +184,6 @@
     {
       "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
       "permission": "VIEW_FINANCIALS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_PROPERTIES"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_LEADS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_APPOINTMENTS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_USERS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "VIEW_ANALYTICS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "EXPORT_DATA"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_CONTENT"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_SETTINGS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_ADMINS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "VIEW_SECURITY"
     },
     {
       "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
