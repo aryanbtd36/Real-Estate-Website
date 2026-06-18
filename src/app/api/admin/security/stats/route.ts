@@ -3,11 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
-import { LegacyPermission as Permission, SessionStatus, UserRole, SecurityEventSeverity } from '@prisma/client';
+import { LegacyPermission as Permission, SessionStatus, UserRole, SecurityEventSeverity, FindingSeverity, FindingStatus } from '@prisma/client';
 import { secureApiHandler } from '@/lib/security/api-security';
 import { RiskScoringEngine } from '@/lib/security/risk-engine';
 import { getEventLoopLag, getEventLoopLagState } from '@/lib/security/resilience';
 import { runFullCodeAudit } from '@/lib/security/code-audit/ai-audit-reporter';
+import { SecurityControlVerifier } from '@/lib/security/control-verifier';
+import { HeaderAuditor } from '@/lib/security/header-auditor';
+import { PostureScorer } from '@/lib/security/posture-scorer';
+import { BaselineRegressionSystem } from '@/lib/security/baseline-regression';
 import path from 'path';
 
 async function getStatsHandler(request: NextRequest) {
@@ -149,9 +153,28 @@ async function getStatsHandler(request: NextRequest) {
   const totalSecretsFound = auditResults.reduce((acc, r) => acc + r.secretExposureIssues.length, 0);
   const codeAuditStatus = auditResults.length === 0 ? 'PASSED' : 'WARNING';
 
+  // 1. Fetch real-time verified controls and posture details
+  const [controls, posture] = await Promise.all([
+    SecurityControlVerifier.verifyControls(),
+    PostureScorer.calculateScore(),
+  ]);
+
+  // Run drift detection in background or on GET to generate alerts automatically
+  await BaselineRegressionSystem.detectRegressions().catch((err) =>
+    console.error('[Stats Baseline Regression Error]', err)
+  );
+
+  // 2. Fetch security findings counts from database
+  const [criticalFindings, highFindings, mediumFindings, lowFindings] = await Promise.all([
+    db.securityFinding.count({ where: { severity: FindingSeverity.CRITICAL, status: FindingStatus.OPEN } }),
+    db.securityFinding.count({ where: { severity: FindingSeverity.HIGH, status: FindingStatus.OPEN } }),
+    db.securityFinding.count({ where: { severity: FindingSeverity.MEDIUM, status: FindingStatus.OPEN } }),
+    db.securityFinding.count({ where: { severity: FindingSeverity.LOW, status: FindingStatus.OPEN } }),
+  ]);
+
   return NextResponse.json({
-    securityScore,
-    securityGrade,
+    securityScore: posture.overallScore, // Overwritten by dynamic scorer
+    securityGrade: posture.overallScore >= 90 ? 'EXCELLENT' : posture.overallScore >= 70 ? 'GOOD' : 'CRITICAL',
     activeSessions,
     suspiciousSessions,
     expiredSessions,
@@ -180,6 +203,17 @@ async function getStatsHandler(request: NextRequest) {
     codeAuditStatus,
     eventLoopLag: Math.round(getEventLoopLag() * 100) / 100,
     runtimeHealth: getEventLoopLagState(),
+    
+    // Expanded posture management indicators
+    posture,
+    controls,
+    findings: {
+      critical: criticalFindings,
+      high: highFindings,
+      medium: mediumFindings,
+      low: lowFindings,
+      total: criticalFindings + highFindings + mediumFindings + lowFindings,
+    },
   });
 }
 

@@ -69,21 +69,13 @@ export async function bootstrapGovernance(db: PrismaClient) {
 
     if (missingPerms.length > 0) {
       console.log(`[BOOTSTRAP] Restoring ${missingPerms.length} missing permissions for Founder...`);
-      for (const perm of missingPerms) {
-        await db.adminPermission.upsert({
-          where: {
-            userId_permission: {
-              userId: founder.id,
-              permission: perm,
-            },
-          },
-          update: {},
-          create: {
-            userId: founder.id,
-            permission: perm,
-          },
-        });
-      }
+      await db.adminPermission.createMany({
+        data: missingPerms.map(perm => ({
+          userId: founder!.id,
+          permission: perm,
+        })),
+        skipDuplicates: true,
+      });
       founderRepaired = true;
       repairedFields.push('permissions_restored');
     }
@@ -169,21 +161,13 @@ export async function bootstrapGovernance(db: PrismaClient) {
 
     if (missingSAPerms.length > 0) {
       console.log(`[BOOTSTRAP] Restoring ${missingSAPerms.length} missing permissions for Primary SA...`);
-      for (const perm of missingSAPerms) {
-        await db.adminPermission.upsert({
-          where: {
-            userId_permission: {
-              userId: primarySA.id,
-              permission: perm,
-            },
-          },
-          update: {},
-          create: {
-            userId: primarySA.id,
-            permission: perm,
-          },
-        });
-      }
+      await db.adminPermission.createMany({
+        data: missingSAPerms.map(perm => ({
+          userId: primarySA!.id,
+          permission: perm,
+        })),
+        skipDuplicates: true,
+      });
       primarySARepaired = true;
       saRepairedFields.push('permissions_restored');
     }
@@ -219,11 +203,15 @@ export async function bootstrapGovernance(db: PrismaClient) {
       'MANAGE_ADMINS'
     ];
 
-    for (const name of permissionsToSeed) {
-      await db.permission.upsert({
-        where: { name },
-        update: {},
-        create: { name },
+    const existingDbPerms = await db.permission.findMany({
+      where: { name: { in: permissionsToSeed } }
+    });
+    const existingDbPermNames = new Set(existingDbPerms.map(p => p.name));
+    const missingDbPerms = permissionsToSeed.filter(name => !existingDbPermNames.has(name));
+    if (missingDbPerms.length > 0) {
+      await db.permission.createMany({
+        data: missingDbPerms.map(name => ({ name })),
+        skipDuplicates: true,
       });
     }
 
@@ -241,42 +229,42 @@ export async function bootstrapGovernance(db: PrismaClient) {
       'EXPORT_DATA'
     ];
 
+    const existingRolePerms = await db.rolePermission.findMany({
+      where: {
+        OR: [
+          { role: UserRole.ADMIN },
+          { role: UserRole.SUPER_ADMIN }
+        ]
+      }
+    });
+
+    const existingRolePermSet = new Set(
+      existingRolePerms.map(rp => `${rp.role}:${rp.permissionId}`)
+    );
+
+    const rolePermsToCreate: { role: UserRole; permissionId: string }[] = [];
+
+    // Admin permissions
     for (const permName of adminRolePermissions) {
       const permissionId = permMap[permName];
-      if (permissionId) {
-        await db.rolePermission.upsert({
-          where: {
-            role_permissionId: {
-              role: UserRole.ADMIN,
-              permissionId,
-            },
-          },
-          update: {},
-          create: {
-            role: UserRole.ADMIN,
-            permissionId,
-          },
-        });
+      if (permissionId && !existingRolePermSet.has(`${UserRole.ADMIN}:${permissionId}`)) {
+        rolePermsToCreate.push({ role: UserRole.ADMIN, permissionId });
       }
     }
 
+    // Super Admin permissions
     for (const permName of permissionsToSeed) {
       const permissionId = permMap[permName];
-      if (permissionId) {
-        await db.rolePermission.upsert({
-          where: {
-            role_permissionId: {
-              role: UserRole.SUPER_ADMIN,
-              permissionId,
-            },
-          },
-          update: {},
-          create: {
-            role: UserRole.SUPER_ADMIN,
-            permissionId,
-          },
-        });
+      if (permissionId && !existingRolePermSet.has(`${UserRole.SUPER_ADMIN}:${permissionId}`)) {
+        rolePermsToCreate.push({ role: UserRole.SUPER_ADMIN, permissionId });
       }
+    }
+
+    if (rolePermsToCreate.length > 0) {
+      await db.rolePermission.createMany({
+        data: rolePermsToCreate,
+        skipDuplicates: true,
+      });
     }
 
     console.log('[BOOTSTRAP] Governance accounts verification complete.');

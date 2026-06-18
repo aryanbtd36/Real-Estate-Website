@@ -27,6 +27,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      ".agents/**",
+      "sent_emails/**",
     ],
   },
 ];

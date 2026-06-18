@@ -997,3 +997,109 @@ model ReplayNonce {
 
   @@index([nonce])
 }
+
+model UserConsent {
+  id                     String   @id @default(uuid())
+  userId                 String
+  termsAccepted          Boolean
+  privacyPolicyAccepted  Boolean
+  timestamp              DateTime @default(now())
+  ipAddress              String
+  versionAccepted        String
+  createdAt              DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum PrivacyRequestType {
+  EXPORT
+  DOWNLOAD
+  DELETE
+}
+
+enum PrivacyRequestStatus {
+  PENDING
+  INVESTIGATING
+  COMPLETED
+  CANCELLED
+}
+
+model PrivacyRequest {
+  id          String               @id @default(uuid())
+  userId      String
+  requestType PrivacyRequestType
+  status      PrivacyRequestStatus @default(PENDING)
+  details     Json?
+  createdAt   DateTime             @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+}
+
+model DataAccessLog {
+  id             String   @id @default(uuid())
+  accessorId     String
+  accessorEmail  String
+  accessorRole   String
+  actionType     String   // "SENSITIVE_READ", "SENSITIVE_EXPORT", "BULK_OPERATION", "ADMIN_ACCESS"
+  targetModel    String
+  targetIds      String[]
+  description    String
+  justification  String
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  @@index([accessorId])
+  @@index([createdAt])
+}
+
+enum FindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FindingStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  FALSE_POSITIVE
+}
+
+enum FindingCategory {
+  AUTHENTICATION
+  AUTHORIZATION
+  SESSIONS
+  API_SECURITY
+  XSS
+  SSTI
+  REDOS
+  UPLOADS
+  SECRETS
+  DATABASE
+  COMPLIANCE
+  INFRASTRUCTURE
+  MONITORING
+}
+
+model SecurityFinding {
+  id          String          @id @default(uuid())
+  title       String
+  description String
+  severity    FindingSeverity
+  category    FindingCategory
+  status      FindingStatus   @default(OPEN)
+  source      String
+  detectedAt  DateTime        @default(now())
+  resolvedAt  DateTime?
+  notes       String?
+  createdBy   String?
+  updatedBy   String?
+
+  @@index([severity])
+  @@index([status])
+  @@index([category])
+}
+
