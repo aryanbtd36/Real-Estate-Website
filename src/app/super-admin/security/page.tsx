@@ -37,7 +37,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SuperAdminSecuritySOCPage() {
-  const [activeTab, setActiveTab] = useState<'soc' | 'posture' | 'controls' | 'findings' | 'headers' | 'compliance' | 'dr' | 'readiness' | 'baseline'>('soc');
+  const [activeTab, setActiveTab] = useState<'soc' | 'incidents' | 'posture' | 'controls' | 'findings' | 'headers' | 'compliance' | 'dr' | 'readiness' | 'baseline'>('soc');
   const [stats, setStats] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -48,6 +48,15 @@ export default function SuperAdminSecuritySOCPage() {
   const [governanceData, setGovernanceData] = useState<any>(null);
   const [readinessData, setReadinessData] = useState<any>(null);
   const [cspData, setCspData] = useState<any>(null);
+
+  // Wave 7C.2 Incidents Tab states
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [incidentMetrics, setIncidentMetrics] = useState<any>(null);
+  const [activeCampaign, setActiveCampaign] = useState<any>(null);
+  const [campaignSearchUser, setCampaignSearchUser] = useState('');
+  const [campaignSearchSession, setCampaignSearchSession] = useState('');
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [resolutionNotesInput, setResolutionNotesInput] = useState('');
   
   // Loading & Filtering states
   const [loading, setLoading] = useState(true);
@@ -82,11 +91,12 @@ export default function SuperAdminSecuritySOCPage() {
     try {
       if (!silent) setRefreshing(true);
 
-      // 1. Fetch core SOC stats
-      const [statsRes, alertsRes, eventsRes] = await Promise.all([
+      // 1. Fetch core SOC stats & incidents
+      const [statsRes, alertsRes, eventsRes, incidentsRes] = await Promise.all([
         fetch(`/api/admin/security/stats?filter=${timeFilter}`),
         fetch('/api/admin/security/alerts'),
-        fetch(`/api/admin/security/events?filter=${timeFilter}&limit=10`)
+        fetch(`/api/admin/security/events?filter=${timeFilter}&limit=10`),
+        fetch('/api/admin/security/incidents?metrics=true')
       ]);
 
       if (statsRes.ok && alertsRes.ok && eventsRes.ok) {
@@ -95,6 +105,12 @@ export default function SuperAdminSecuritySOCPage() {
         setAlerts(await alertsRes.json());
         const eventsData = await eventsRes.json();
         setEvents(eventsData.events || eventsData);
+      }
+
+      if (incidentsRes && incidentsRes.ok) {
+        const incData = await incidentsRes.json();
+        setIncidents(incData.incidents || []);
+        setIncidentMetrics(incData.metrics || null);
       }
 
       // 2. Tab-specific data fetching
@@ -274,6 +290,7 @@ export default function SuperAdminSecuritySOCPage() {
       <div className="border-b border-white/5 pb-0.5 overflow-x-auto flex gap-1 scrollbar-hide">
         {[
           { id: 'soc', label: 'SOC Threat Feed', icon: AlertIcon },
+          { id: 'incidents', label: 'Incident Command', icon: ShieldAlert },
           { id: 'posture', label: 'Security Posture', icon: TrendingUp },
           { id: 'controls', label: 'Verified Controls', icon: ShieldCheck },
           { id: 'findings', label: 'Findings Registry', icon: FileText },
@@ -637,12 +654,332 @@ export default function SuperAdminSecuritySOCPage() {
                               </div>
                             </div>
                             <p className="text-[10px] text-white/70">{e.description}</p>
-                            <div className="flex justify-between items-center text-[9px] text-white/30 font-mono">
-                              <div>IP: {e.ipAddress || '127.0.0.1'}{e.userId ? ` • User: ${e.userEmail || e.userId.slice(0, 8)}` : ''}</div>
-                              <div>{new Date(e.createdAt).toLocaleTimeString()}</div>
-                            </div>
                           </div>
                         ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 1B: Incident Command Center (Wave 7C.2) */}
+            {activeTab === 'incidents' && (
+              <div className="space-y-6">
+                {/* Executive Operational Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Open Incidents</span>
+                    <div className="text-4xl font-extralight text-red-500 mt-2">{incidentMetrics?.openIncidents || 0}</div>
+                    <span className="text-[8px] text-white/30 block mt-1">{incidentMetrics?.escalatedIncidents || 0} Critical</span>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Closed Incidents</span>
+                    <div className="text-4xl font-extralight text-green-400 mt-2">{incidentMetrics?.closedIncidents || 0}</div>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Mean Time To Detect</span>
+                    <div className="text-4xl font-extralight text-[#D4AF37] mt-2">
+                      {incidentMetrics?.meanTimeToDetectMinutes ? `${incidentMetrics.meanTimeToDetectMinutes.toFixed(1)}m` : '0m'}
+                    </div>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Mean Time To Resolve</span>
+                    <div className="text-4xl font-extralight text-[#D4AF37] mt-2">
+                      {incidentMetrics?.meanTimeToResolveMinutes ? `${incidentMetrics.meanTimeToResolveMinutes.toFixed(1)}m` : '0m'}
+                    </div>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">SOAR Playbooks</span>
+                    <div className="text-4xl font-extralight text-blue-400 mt-2">{incidentMetrics?.playbooksExecuted || 0}</div>
+                    <span className="text-[8px] text-white/30 block mt-1">{incidentMetrics?.alertsCorrelated || 0} Correlated</span>
+                  </div>
+                </div>
+
+                {/* Main incident response workspace */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column: Active queue list */}
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">SOC Active Incident Queue</h3>
+                        <span className="text-[9px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded font-mono font-bold">
+                          {incidents.filter(i => i.status !== 'RESOLVED' && i.status !== 'CLOSED').length} ACTIVE
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                        {incidents.length === 0 ? (
+                          <div className="text-center py-12 text-white/30 text-xs">No active security incidents in queue.</div>
+                        ) : (
+                          incidents.map((inc) => (
+                            <div
+                              key={inc.id}
+                              className={`p-4 rounded-xl border transition-all ${
+                                inc.status === 'RESOLVED' || inc.status === 'CLOSED'
+                                  ? 'border-white/5 bg-black/15 opacity-55'
+                                  : inc.severity === 'CRITICAL'
+                                  ? 'border-red-500/25 bg-red-500/[0.03]'
+                                  : 'border-white/10 bg-[#1A1A1A]'
+                              }`}
+                            >
+                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-bold text-white">{(inc.metadata as any)?.title || 'Security Incident'}</span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-extrabold ${
+                                      inc.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'
+                                    }`}>{inc.severity}</span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-bold ${
+                                      inc.status === 'OPEN' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'
+                                    }`}>{inc.status}</span>
+                                  </div>
+                                  <p className="text-[10px] text-white/70 leading-relaxed">{(inc.metadata as any)?.description || 'No description provided.'}</p>
+                                  <div className="text-[8px] text-white/30 font-mono flex items-center gap-3 flex-wrap">
+                                    <div>ID: {inc.id.slice(0, 8)}...</div>
+                                    <div>Created: {new Date(inc.createdAt).toLocaleString()}</div>
+                                    {inc.assignedTo ? (
+                                      <div className="text-yellow-400/80">Owner: {inc.assignedTo.name || inc.assignedTo.email}</div>
+                                    ) : (
+                                      <div className="text-white/40">Unassigned</div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-1.5 shrink-0 flex-wrap">
+                                  {!inc.assignedToId ? (
+                                    <button
+                                      onClick={async () => {
+                                        await fetch('/api/admin/security/incidents', {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ action: 'claim', incidentId: inc.id })
+                                        });
+                                        loadAllData(true);
+                                      }}
+                                      className="py-1 px-2.5 bg-yellow-500/5 hover:bg-yellow-500/15 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 rounded uppercase transition-all"
+                                    >
+                                      Claim
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={async () => {
+                                          await fetch('/api/admin/security/incidents', {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ action: 'unassign', incidentId: inc.id })
+                                          });
+                                          loadAllData(true);
+                                        }}
+                                        className="py-1 px-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold text-white/50 rounded uppercase transition-all"
+                                      >
+                                        Release
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          const nextAnalyst = prompt('Enter Analyst User ID to transfer incident:');
+                                          if (!nextAnalyst) return;
+                                          await fetch('/api/admin/security/incidents', {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ action: 'transfer', incidentId: inc.id, newAnalystId: nextAnalyst })
+                                          });
+                                          loadAllData(true);
+                                        }}
+                                        className="py-1 px-2 bg-blue-500/5 hover:bg-blue-500/15 border border-blue-500/20 text-[9px] font-bold text-blue-400 rounded uppercase transition-all"
+                                      >
+                                        Transfer
+                                      </button>
+                                    </>
+                                  )}
+                                  {inc.status !== 'RESOLVED' && inc.status !== 'CLOSED' && (
+                                    <button
+                                      onClick={async () => {
+                                        const notes = prompt('Enter resolution notes:');
+                                        if (notes === null) return;
+                                        await fetch('/api/admin/security/incidents', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ incidentId: inc.id, status: 'RESOLVED', notes })
+                                        });
+                                        loadAllData(true);
+                                      }}
+                                      className="py-1 px-2.5 bg-green-500/5 hover:bg-green-500/15 border border-green-500/20 text-[9px] font-bold text-green-400 rounded uppercase transition-all"
+                                    >
+                                      Resolve
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Playbooks & Campaign Reconstruction Viewer */}
+                  <div className="space-y-6">
+                    {/* Playbooks Section */}
+                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Manual Playbook Trigger</h3>
+                      <div className="space-y-3">
+                        <button
+                          onClick={async () => {
+                            const ip = prompt('Enter target IP address for Credential Stuffing Playbook:');
+                            if (!ip) return;
+                            await fetch('/api/admin/security/incidents', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'run_playbook', playbookName: 'credential_stuffing', ipAddress: ip })
+                            });
+                            alert('Credential Stuffing Playbook executed successfully');
+                            loadAllData(true);
+                          }}
+                          className="w-full text-left py-2.5 px-4 bg-black/40 border border-white/5 hover:border-[#D4AF37]/45 rounded-xl transition-all text-xs font-semibold text-white flex justify-between items-center"
+                        >
+                          <span>Credential Stuffing Playbook</span>
+                          <span className="text-[9px] text-[#D4AF37] font-bold">RUN</span>
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            const email = prompt('Enter user email:');
+                            const ip = prompt('Enter IP:');
+                            if (!email || !ip) return;
+                            await fetch('/api/admin/security/incidents', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'run_playbook', playbookName: 'brute_force', email, ipAddress: ip })
+                            });
+                            alert('Brute Force Playbook executed successfully');
+                            loadAllData(true);
+                          }}
+                          className="w-full text-left py-2.5 px-4 bg-black/40 border border-white/5 hover:border-[#D4AF37]/45 rounded-xl transition-all text-xs font-semibold text-white flex justify-between items-center"
+                        >
+                          <span>Brute Force Playbook</span>
+                          <span className="text-[9px] text-[#D4AF37] font-bold">RUN</span>
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            const sid = prompt('Enter session ID:');
+                            const uid = prompt('Enter user ID:');
+                            const email = prompt('Enter user email:');
+                            if (!sid || !uid || !email) return;
+                            await fetch('/api/admin/security/incidents', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'run_playbook', playbookName: 'session_hijacking', sessionId: sid, analystId: uid, email })
+                            });
+                            alert('Session Hijacking Playbook executed successfully');
+                            loadAllData(true);
+                          }}
+                          className="w-full text-left py-2.5 px-4 bg-black/40 border border-white/5 hover:border-[#D4AF37]/45 rounded-xl transition-all text-xs font-semibold text-white flex justify-between items-center"
+                        >
+                          <span>Session Hijacking Playbook</span>
+                          <span className="text-[9px] text-[#D4AF37] font-bold">RUN</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Campaign reconstruction */}
+                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">SOC Campaign Reconstruction</h3>
+                      <p className="text-[9px] text-white/40 leading-relaxed font-light font-mono">Filter by User ID or Session ID.</p>
+                      
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={campaignSearchUser}
+                          onChange={(e) => setCampaignSearchUser(e.target.value)}
+                          placeholder="Reconstruct by User ID..."
+                          className="w-full bg-black border border-white/10 rounded p-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+                        />
+                        <input
+                          type="text"
+                          value={campaignSearchSession}
+                          onChange={(e) => setCampaignSearchSession(e.target.value)}
+                          placeholder="Reconstruct by Session ID..."
+                          className="w-full bg-black border border-white/10 rounded p-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!campaignSearchUser && !campaignSearchSession) return;
+                            const res = await fetch(`/api/admin/security/campaign?userId=${campaignSearchUser}&sessionId=${campaignSearchSession}`);
+                            if (res.ok) {
+                              setActiveCampaign(await res.json());
+                            } else {
+                              alert('Campaign reconstruction failed.');
+                            }
+                          }}
+                          className="w-full py-2 bg-[#D4AF37] hover:bg-[#BBA030] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors"
+                        >
+                          Reconstruct Campaign
+                        </button>
+                      </div>
+
+                      {activeCampaign && (
+                        <div className="border-t border-white/5 pt-4 space-y-3">
+                          <h4 className="text-[10px] uppercase font-bold text-white/60">Chronological Attack Narrative</h4>
+                          <p className="text-[10px] text-white/80 bg-black/40 border border-white/5 p-3 rounded-lg leading-relaxed italic">
+                            "{activeCampaign.narrative}"
+                          </p>
+
+                          {activeCampaign.riskBreakdown && (
+                            <div className="space-y-2">
+                              <h4 className="text-[10px] uppercase font-bold text-white/60">Dynamic Risk Score Breakdown</h4>
+                              <div className="bg-black/40 border border-white/5 p-3 rounded-lg space-y-2 text-[10px]">
+                                {[
+                                  { label: 'Authentication Risk', value: activeCampaign.riskBreakdown.authenticationRisk, color: 'bg-red-500' },
+                                  { label: 'Session Risk', value: activeCampaign.riskBreakdown.sessionRisk, color: 'bg-orange-500' },
+                                  { label: 'Device Risk', value: activeCampaign.riskBreakdown.deviceRisk, color: 'bg-yellow-500' },
+                                  { label: 'Geo Risk', value: activeCampaign.riskBreakdown.geoRisk, color: 'bg-blue-500' },
+                                  { label: 'Behavior Risk', value: activeCampaign.riskBreakdown.behaviorRisk, color: 'bg-purple-500' },
+                                  { label: 'Threat Intel Risk', value: activeCampaign.riskBreakdown.threatIntelRisk, color: 'bg-pink-500' },
+                                  { label: 'Correlation Risk', value: activeCampaign.riskBreakdown.correlationRisk, color: 'bg-[#D4AF37]' },
+                                ].map((item, idx) => (
+                                  <div key={idx} className="space-y-1">
+                                    <div className="flex justify-between text-[8px] font-mono">
+                                      <span className="text-white/60">{item.label}</span>
+                                      <span className="text-white/80">{item.value}%</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full ${item.color} transition-all duration-500`}
+                                        style={{ width: `${item.value}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <h4 className="text-[10px] uppercase font-bold text-white/60">Campaign Timeline</h4>
+                          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                            {activeCampaign.timeline.map((item: any, idx: number) => (
+                              <div key={idx} className="p-2 bg-black/20 border border-white/5 rounded text-[9px] space-y-1">
+                                <div className="flex justify-between font-semibold">
+                                  <span className="text-white">{item.title}</span>
+                                  <span className={`px-1 py-0.2 rounded text-[7px] font-bold ${
+                                    item.phase === 'Initial Access' ? 'bg-blue-500/15 text-blue-400' :
+                                    item.phase === 'Escalation' ? 'bg-purple-500/15 text-purple-400' :
+                                    item.phase === 'Exports' ? 'bg-red-500/15 text-red-400' :
+                                    item.phase === 'Mitigation' ? 'bg-orange-500/15 text-orange-400' :
+                                    item.phase === 'Resolution' ? 'bg-green-500/15 text-green-400' :
+                                    'bg-white/5 text-white/60'
+                                  }`}>{item.phase}</span>
+                                </div>
+                                <p className="text-white/50">{item.description}</p>
+                                <div className="text-[7px] text-white/20 font-mono">
+                                  {new Date(item.timestamp).toLocaleString()}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>

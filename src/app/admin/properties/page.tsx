@@ -73,6 +73,8 @@ export default function AdminPropertiesPage() {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [country, setCountry] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [boundary, setBoundary] = useState<string | null>(null);
@@ -126,6 +128,8 @@ export default function AdminPropertiesPage() {
     setAddress('');
     setCity('');
     setState('');
+    setCountry('');
+    setPostalCode('');
     setLatitude(null);
     setLongitude(null);
     setBoundary(null);
@@ -156,6 +160,26 @@ export default function AdminPropertiesPage() {
     setAddress(prop.address || '');
     setCity(prop.city || '');
     setState(prop.state || '');
+    
+    // Try to extract country and postal code from location text
+    let initialCountry = '';
+    let initialPostalCode = '';
+    if (prop.location) {
+      const parts = prop.location.split(',').map((p: any) => p.trim());
+      if (parts.length >= 5) {
+        initialCountry = parts[parts.length - 1];
+        initialPostalCode = parts[parts.length - 2];
+      } else if (parts.length === 4) {
+        const last = parts[3];
+        if (/\d+/.test(last)) {
+          initialPostalCode = last;
+        } else {
+          initialCountry = last;
+        }
+      }
+    }
+    setCountry(initialCountry);
+    setPostalCode(initialPostalCode);
     setLatitude(prop.latitude);
     setLongitude(prop.longitude);
     setBoundary(prop.boundary);
@@ -304,7 +328,7 @@ export default function AdminPropertiesPage() {
     e.preventDefault();
     setFormLoading(true);
 
-    const locationText = `${address}${city ? `, ${city}` : ''}${state ? `, ${state}` : ''}`;
+    const locationText = `${address}${city ? `, ${city}` : ''}${state ? `, ${state}` : ''}${postalCode ? `, ${postalCode}` : ''}${country ? `, ${country}` : ''}`;
 
     const payload = {
       id: editingId,
@@ -804,8 +828,8 @@ export default function AdminPropertiesPage() {
               {/* Location & Map */}
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37] border-l-2 border-[#D4AF37] pl-2">Location & OpenStreetMap</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-6">
+                  <div className="space-y-2 sm:col-span-2">
                     <label className="text-[10px] uppercase tracking-widest text-white/40 block">Address</label>
                     <input
                       type="text"
@@ -838,6 +862,26 @@ export default function AdminPropertiesPage() {
                       placeholder="CA"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Country</label>
+                    <input
+                      type="text"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
+                      placeholder="United States"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Postal Code</label>
+                    <input
+                      type="text"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
+                      placeholder="90210"
+                    />
+                  </div>
                 </div>
 
                 {/* Leaflet Editor Component */}
@@ -853,6 +897,11 @@ export default function AdminPropertiesPage() {
                     }}
                     onChangeBoundary={setBoundary}
                     onChangeBoundaryZones={setBoundaryZones}
+                    onChangeAddress={setAddress}
+                    onChangeCity={setCity}
+                    onChangeState={setState}
+                    onChangeCountry={setCountry}
+                    onChangePostalCode={setPostalCode}
                   />
                 </div>
               </div>

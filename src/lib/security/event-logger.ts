@@ -15,6 +15,7 @@ export interface LogSecurityEventInput {
   deviceFingerprint?: string;
   riskScore?: number;
   metadata?: any;
+  incidentId?: string;
 
   // New fields
   eventType?: string;
@@ -113,6 +114,17 @@ export const EVENT_TYPES = {
   ALERT_RESOLVED: 'ALERT_RESOLVED',
   ALERT_ESCALATED: 'ALERT_ESCALATED',
   ALERT_FALSE_POSITIVE: 'ALERT_FALSE_POSITIVE',
+
+  // Incidents and automation (Wave 7C.2)
+  INCIDENT_CREATED: 'INCIDENT_CREATED',
+  INCIDENT_ASSIGNED: 'INCIDENT_ASSIGNED',
+  INCIDENT_TRANSFERRED: 'INCIDENT_TRANSFERRED',
+  INCIDENT_UNASSIGNED: 'INCIDENT_UNASSIGNED',
+  INCIDENT_CONTAINED: 'INCIDENT_CONTAINED',
+  INCIDENT_RESOLVED: 'INCIDENT_RESOLVED',
+  INCIDENT_CLOSED: 'INCIDENT_CLOSED',
+  PLAYBOOK_EXECUTED: 'PLAYBOOK_EXECUTED',
+  SESSION_HIJACKING_SUSPECTED: 'SESSION_HIJACKING_SUSPECTED',
 } as const;
 
 export class SecurityEventLogger {
@@ -136,7 +148,7 @@ export class SecurityEventLogger {
         const lowerEvent = eventType.toLowerCase();
         if (lowerEvent.includes('login') || lowerEvent.includes('auth') || lowerEvent.includes('otp') || lowerEvent.includes('password') || lowerEvent.includes('brute')) {
           category = SecurityEventCategory.AUTHENTICATION;
-        } else if (lowerEvent.includes('session')) {
+        } else if (lowerEvent.includes('session') || lowerEvent.includes('hijack')) {
           category = SecurityEventCategory.SESSION;
         } else if (lowerEvent.includes('admin')) {
           category = SecurityEventCategory.ADMIN;
@@ -148,6 +160,8 @@ export class SecurityEventLogger {
           category = SecurityEventCategory.EXPORT;
         } else if (lowerEvent.includes('governance') || lowerEvent.includes('founder') || lowerEvent.includes('immortal')) {
           category = SecurityEventCategory.GOVERNANCE;
+        } else if (lowerEvent.includes('incident') || lowerEvent.includes('playbook')) {
+          category = SecurityEventCategory.SECURITY;
         }
       }
 
@@ -173,8 +187,21 @@ export class SecurityEventLogger {
           metadata,
           action,
           details,
+          incidentId: input.incidentId || null,
         },
       });
+
+      if (createdEvent) {
+        import('./correlation/SecurityCorrelationEngine')
+          .then(({ SecurityCorrelationEngine }) => {
+            SecurityCorrelationEngine.analyzeEvent(createdEvent).catch((err) => {
+              console.error('[Correlation Engine Error]', err);
+            });
+          })
+          .catch((err) => {
+            console.error('[Dynamic Import of Correlation Engine Failed]', err);
+          });
+      }
 
       return createdEvent;
     } catch (err) {

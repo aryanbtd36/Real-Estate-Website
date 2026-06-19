@@ -177,21 +177,6 @@ export class SessionManager {
     const riskTriggers = [...geoTriggers, ...behaviorTriggers];
     if (isNewDevice) riskTriggers.push('New Device');
 
-    // Log security event for suspicious session if risk is elevated
-    if (riskScore >= 50) {
-      await SecurityEventLogger.log({
-        userId,
-        userEmail: email,
-        eventType: 'SUSPICIOUS_SESSION',
-        action: 'Suspicious Session Detected',
-        category: SecurityEventCategory.SESSION,
-        severity: SecurityEventSeverity.HIGH,
-        title: 'Suspicious Session Flagged',
-        description: `Session opened with elevated risk factors. Risk Score: ${riskScore}. Triggers: ${riskTriggers.join(', ')}`,
-        metadata: { riskScore, riskTriggers, ipAddress: ip },
-      });
-    }
-
     // Update behavior profile asynchronously
     BehavioralAnalyticsEngine.updateProfile(userId).catch(console.error);
 
@@ -226,12 +211,31 @@ export class SessionManager {
       },
     });
 
+    // Log security event for suspicious session if risk is elevated
+    if (riskScore >= 50) {
+      await SecurityEventLogger.log({
+        userId,
+        userEmail: email,
+        sessionId: session.id,
+        eventType: 'SUSPICIOUS_SESSION',
+        action: 'Suspicious Session Detected',
+        category: SecurityEventCategory.SESSION,
+        severity: SecurityEventSeverity.HIGH,
+        title: 'Suspicious Session Flagged',
+        description: `Session opened with elevated risk factors. Risk Score: ${riskScore}. Triggers: ${riskTriggers.join(', ')}`,
+        riskScore,
+        metadata: { riskScore, riskTriggers, ipAddress: ip },
+      });
+    }
+
     await SecurityEventLogger.log({
       userId,
       userEmail: email,
+      sessionId: session.id,
       ipAddress: ip,
       userAgent: ua,
       action: 'Login Success',
+      eventType: 'Login Success',
       severity: SecurityEventSeverity.LOW,
       description: `User ${email} successfully authenticated and session created: ${session.id}`,
       details: { sessionId: session.id, role },
@@ -353,6 +357,8 @@ export class SessionManager {
       ipAddress: oldSession.ipAddress,
       userAgent: oldSession.userAgent || undefined,
       action: 'Session Rotated',
+      eventType: 'Session Rotated',
+      sessionId: newSession.id,
       severity: SecurityEventSeverity.LOW,
       description: `Session identifier rotated from ${oldSessionId} to ${newSession.id}`,
       details: { oldSessionId, newSessionId: newSession.id },

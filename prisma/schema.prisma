@@ -195,6 +195,7 @@ model User {
   sessions             Session[]
   securityAlerts       SecurityAlert[]       @relation("AlertAdmin")
   assignedAlerts       SecurityAlert[]       @relation("AlertAssignedTo")
+  incidentsAssigned    Incident[]            @relation("IncidentAssignedTo")
   deviceFingerprints   DeviceFingerprint[]
   behaviorProfile      UserBehaviorProfile?
   adminTrustProfile    AdminTrustProfile?
@@ -713,10 +714,15 @@ model SecurityAlert {
   details       Json?
   resolved      Boolean             @default(false)
 
+  // Incident relation
+  incidentId    String?
+  incident      Incident?           @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
   @@index([adminId])
   @@index([resolved])
   @@index([assignedToId])
   @@index([sourceEventId])
+  @@index([incidentId])
 }
 
 model AdminReview {
@@ -913,11 +919,16 @@ model SecurityEvent {
   // Alert relation
   alerts            SecurityAlert[]
 
+  // Incident relation
+  incidentId        String?
+  incident          Incident?             @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
   @@index([userId])
   @@index([createdAt])
   @@index([eventType])
   @@index([severity])
   @@index([category])
+  @@index([incidentId])
 }
 
 enum DeviceState {
@@ -1101,5 +1112,54 @@ model SecurityFinding {
   @@index([severity])
   @@index([status])
   @@index([category])
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  CONTAINED
+  MITIGATED
+  RESOLVED
+  CLOSED
+}
+
+model Incident {
+  id                  String                @id @default(uuid())
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  severity            SecurityEventSeverity
+  category            SecurityEventCategory
+  status              IncidentStatus        @default(OPEN)
+  assignedToId        String?
+  assignedTo          User?                 @relation("IncidentAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignmentTimestamp DateTime?
+  resolutionNotes     String?
+  metadata            Json?                 // Stores transfer history and details
+
+  alerts              SecurityAlert[]
+  events              SecurityEvent[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+model ThreatIndicator {
+  id          String   @id @default(uuid())
+  type        String   // "IP" | "COUNTRY" | "VPN" | "TOR" | "PROXY"
+  value       String   // e.g., "192.168.1.1" or "CN"
+  riskScore   Int      // Risk score adjustment (e.g. +50, +40, etc.)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([type, value])
+}
+
+model SecurityAutomationMetric {
+  id                    String   @id @default(uuid())
+  key                   String   @unique
+  value                 Int      @default(0)
+  updatedAt             DateTime @updatedAt
 }
 

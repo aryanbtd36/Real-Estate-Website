@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { LocationIntelligenceService } from '@/lib/location/geocoding';
 
 // Fix Leaflet marker icon asset paths
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -26,6 +27,11 @@ interface PropertyEditMapProps {
   onChangeLocation: (lat: number, lng: number) => void;
   onChangeBoundary: (boundaryStr: string | null) => void;
   onChangeBoundaryZones?: (zonesStr: string | null) => void;
+  onChangeAddress?: (address: string) => void;
+  onChangeCity?: (city: string) => void;
+  onChangeState?: (state: string) => void;
+  onChangeCountry?: (country: string) => void;
+  onChangePostalCode?: (postalCode: string) => void;
 }
 
 export default function PropertyEditMap({
@@ -36,6 +42,11 @@ export default function PropertyEditMap({
   onChangeLocation,
   onChangeBoundary,
   onChangeBoundaryZones,
+  onChangeAddress,
+  onChangeCity,
+  onChangeState,
+  onChangeCountry,
+  onChangePostalCode,
 }: PropertyEditMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -72,6 +83,146 @@ export default function PropertyEditMap({
 
   // Measurement state (sq ft)
   const [sqFtArea, setSqFtArea] = useState('5000');
+
+  // Location Intelligence & Search Engine state
+  const [searchQueryText, setSearchQueryText] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'loading' | 'success' | 'error'; text: string } | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
+
+  // Load search history from localStorage
+  useEffect(() => {
+    const history = localStorage.getItem('aura_estates_search_history');
+    if (history) {
+      try {
+        setSearchHistory(JSON.parse(history));
+      } catch {}
+    }
+  }, []);
+
+  // Autocomplete suggestions search
+  useEffect(() => {
+    if (!searchQueryText.trim() || searchQueryText.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setLoadingSuggestions(true);
+        const results = await LocationIntelligenceService.geocodeAddress(searchQueryText);
+        setSuggestions(results);
+      } catch (err) {
+        console.error('Autocomplete fetch failed:', err);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQueryText]);
+
+  // Trigger geocoding query
+  const handleSearchLocation = async (queryToSearch?: string) => {
+    const q = queryToSearch || searchQueryText;
+    if (!q || !q.trim()) return;
+
+    const cleanQuery = q.trim();
+    setStatusMessage({ type: 'loading', text: 'Searching location...' });
+    setSuggestions([]);
+    setShowSuggestions(false);
+
+    try {
+      const results = await LocationIntelligenceService.geocodeAddress(cleanQuery);
+      if (results && results.length > 0) {
+        const result = results[0];
+        const lat = result.lat;
+        const lng = result.lng;
+
+        onChangeLocation(lat, lng);
+        if (mapRef.current) {
+          mapRef.current.flyTo([lat, lng], 16);
+        }
+
+        const road = result.address?.road || '';
+        const suburb = result.address?.suburb || '';
+        const streetAddress = road ? (suburb ? `${road}, ${suburb}` : road) : suburb;
+
+        if (onChangeAddress) onChangeAddress(streetAddress);
+        if (onChangeCity) onChangeCity(result.address?.city || '');
+        if (onChangeState) onChangeState(result.address?.state || '');
+        if (onChangeCountry) onChangeCountry(result.address?.country || '');
+        if (onChangePostalCode) onChangePostalCode(result.address?.postcode || '');
+
+        setSearchQueryText(result.displayName);
+
+        // Update history
+        setSearchHistory((prev) => {
+          const filtered = prev.filter((item) => item.toLowerCase() !== cleanQuery.toLowerCase());
+          const next = [cleanQuery, ...filtered].slice(0, 10);
+          localStorage.setItem('aura_estates_search_history', JSON.stringify(next));
+          return next;
+        });
+
+        setStatusMessage({ type: 'success', text: 'Location found successfully' });
+        setTimeout(() => setStatusMessage(null), 3000);
+      } else {
+        setStatusMessage({ type: 'error', text: 'No locations found. Try a more specific address.' });
+      }
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: 'Failed to search location.' });
+    }
+  };
+
+  // Trigger reverse geocoding to auto-fill details on map click / marker drag
+  const triggerReverseGeocode = async (lat: number, lng: number) => {
+    if (lastGeocodedCoords.current && lastGeocodedCoords.current.lat === lat && lastGeocodedCoords.current.lng === lng) {
+      return;
+    }
+    lastGeocodedCoords.current = { lat, lng };
+
+    try {
+      setStatusMessage({ type: 'loading', text: 'Fetching address...' });
+      const result = await LocationIntelligenceService.reverseGeocode(lat, lng);
+      if (result && result.address) {
+        const road = result.address.road || '';
+        const suburb = result.address.suburb || '';
+        const streetAddress = road ? (suburb ? `${road}, ${suburb}` : road) : suburb;
+
+        if (onChangeAddress) onChangeAddress(streetAddress);
+        if (onChangeCity) onChangeCity(result.address.city || '');
+        if (onChangeState) onChangeState(result.address.state || '');
+        if (onChangeCountry) onChangeCountry(result.address.country || '');
+        if (onChangePostalCode) onChangePostalCode(result.address.postcode || '');
+
+        setStatusMessage({ type: 'success', text: 'Address synchronized' });
+        setTimeout(() => setStatusMessage(null), 3000);
+      } else {
+        setStatusMessage({ type: 'error', text: 'No address found.' });
+      }
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: 'Failed to fetch address details.' });
+    }
+  };
+
+  // Jump Map to manual Coordinates
+  const handleGoToCoordinates = () => {
+    setValidationError(null);
+    const check = LocationIntelligenceService.validateCoordinates(latitude, longitude);
+    if (!check.valid) {
+      setValidationError(check.error || 'Invalid coordinates.');
+      return;
+    }
+
+    if (mapRef.current && latitude !== null && longitude !== null) {
+      mapRef.current.flyTo([latitude, longitude], 16);
+      triggerReverseGeocode(latitude, longitude);
+      setStatusMessage({ type: 'success', text: 'Coordinates updated' });
+      setTimeout(() => setStatusMessage(null), 3000);
+    }
+  };
 
   // Synchronize initial values from props once
   useEffect(() => {
@@ -183,6 +334,7 @@ export default function PropertyEditMap({
         });
       } else if (activeTab === 'pin') {
         onChangeLocation(lat, lng);
+        triggerReverseGeocode(lat, lng);
       }
     };
 
@@ -254,6 +406,7 @@ export default function PropertyEditMap({
         const marker = e.target;
         const position = marker.getLatLng();
         onChangeLocation(position.lat, position.lng);
+        triggerReverseGeocode(position.lat, position.lng);
       });
     }
 
@@ -542,8 +695,121 @@ export default function PropertyEditMap({
       <div className="p-4 bg-[#161616] border border-white/5 rounded-xl space-y-4">
         
         {activeTab === 'pin' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Center Pin Mode</p>
+
+            {/* Geocoding Search Panel */}
+            <div className="space-y-2 relative">
+              <label className="text-[8px] uppercase tracking-wider text-white/35 block">🔍 Search Location</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchQueryText}
+                  onChange={(e) => {
+                    setSearchQueryText(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
+                  className="flex-1 bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                  placeholder="Taj Mahal, Agra or Beverly Hills, CA"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSearchLocation()}
+                  className="px-4 py-2 bg-[#D4AF37] hover:opacity-90 text-black text-xs font-bold uppercase rounded tracking-wider"
+                >
+                  Search
+                </button>
+              </div>
+
+              {/* Status Message Banners */}
+              {statusMessage && (
+                <div className={`p-2 rounded text-[10px] uppercase font-bold flex items-center gap-2 border ${
+                  statusMessage.type === 'loading'
+                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 animate-pulse'
+                    : statusMessage.type === 'success'
+                    ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                    : 'bg-red-500/10 border-red-500/20 text-red-400'
+                }`}>
+                  {statusMessage.type === 'loading' && <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping inline-block" />}
+                  <span>{statusMessage.text}</span>
+                </div>
+              )}
+
+              {/* Suggestions autocomplete dropdown */}
+              {showSuggestions && (suggestions.length > 0 || loadingSuggestions) && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-[#0A0A0A] border border-white/10 rounded-lg shadow-2xl z-50 max-h-[200px] overflow-y-auto divide-y divide-white/5">
+                  {loadingSuggestions && (
+                    <div className="p-3 text-[10px] text-white/40 uppercase tracking-wider text-center">Searching suggestions...</div>
+                  )}
+                  {!loadingSuggestions && suggestions.map((item: any, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevent onBlur from hiding suggestions before click completes
+                        onChangeLocation(item.lat, item.lng);
+                        if (mapRef.current) {
+                          mapRef.current.flyTo([item.lat, item.lng], 16);
+                        }
+
+                        const road = item.address?.road || '';
+                        const suburb = item.address?.suburb || '';
+                        const streetAddress = road ? (suburb ? `${road}, ${suburb}` : road) : suburb;
+
+                        if (onChangeAddress) onChangeAddress(streetAddress);
+                        if (onChangeCity) onChangeCity(item.address?.city || '');
+                        if (onChangeState) onChangeState(item.address?.state || '');
+                        if (onChangeCountry) onChangeCountry(item.address?.country || '');
+                        if (onChangePostalCode) onChangePostalCode(item.address?.postcode || '');
+
+                        setSearchQueryText(item.displayName);
+                        setSuggestions([]);
+                        setShowSuggestions(false);
+
+                        // Save search to history
+                        setSearchHistory((prev) => {
+                          const filtered = prev.filter((h) => h.toLowerCase() !== item.displayName.toLowerCase());
+                          const next = [item.displayName, ...filtered].slice(0, 10);
+                          localStorage.setItem('aura_estates_search_history', JSON.stringify(next));
+                          return next;
+                        });
+
+                        setStatusMessage({ type: 'success', text: 'Location found successfully' });
+                        setTimeout(() => setStatusMessage(null), 3000);
+                      }}
+                      className="w-full text-left p-3 hover:bg-white/5 text-white/80 hover:text-white text-xs truncate block"
+                    >
+                      {item.displayName || (item.lat + ', ' + item.lng)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Search History Panel */}
+            {searchHistory.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-[8px] uppercase tracking-wider text-white/35 block">Recent Searches</label>
+                <div className="flex flex-wrap gap-1">
+                  {searchHistory.map((historyQuery, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setSearchQueryText(historyQuery);
+                        handleSearchLocation(historyQuery);
+                      }}
+                      className="px-2 py-1 bg-[#1A1A1A] hover:bg-white/5 border border-white/5 rounded text-[10px] text-white/50 hover:text-white transition-colors"
+                    >
+                      {historyQuery.length > 25 ? `${historyQuery.slice(0, 25)}...` : historyQuery}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[8px] uppercase tracking-wider text-white/35 block">Latitude</label>
@@ -568,14 +834,30 @@ export default function PropertyEditMap({
                 />
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleUseCurrentLocation}
-              className="w-full py-2 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
-            >
-              <span>📍 Use My Current Location</span>
-            </button>
-            <p className="text-[10px] text-white/40 italic">Type coordinates above or click directly on the map to drop the marker pin.</p>
+
+            {/* Coordinate Validation Error */}
+            {validationError && (
+              <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{validationError}</p>
+            )}
+
+            {/* Go To Coordinates Button */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleGoToCoordinates}
+                className="w-full py-2 bg-[#D4AF37]/80 hover:bg-[#D4AF37] text-black rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
+              >
+                <span>📍 GO TO COORDINATES</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                className="w-full py-2 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
+              >
+                <span>📍 Use My Current Location</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-white/40 italic">Type coordinates and click "Go to Coordinates", use address search, or click directly on the map.</p>
           </div>
         )}
 
