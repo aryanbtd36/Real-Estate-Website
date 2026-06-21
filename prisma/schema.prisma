@@ -1074,8 +1074,13 @@ enum FindingSeverity {
 
 enum FindingStatus {
   OPEN
-  INVESTIGATING
+  ACKNOWLEDGED
+  IN_PROGRESS
   RESOLVED
+  ACCEPTED_RISK
+  
+  // Retain for legacy compatibility
+  INVESTIGATING
   FALSE_POSITIVE
 }
 

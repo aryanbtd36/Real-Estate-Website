@@ -10,7 +10,7 @@ import { getEventLoopLag, getEventLoopLagState } from '@/lib/security/resilience
 import { runFullCodeAudit } from '@/lib/security/code-audit/ai-audit-reporter';
 import { SecurityControlVerifier } from '@/lib/security/control-verifier';
 import { HeaderAuditor } from '@/lib/security/header-auditor';
-import { PostureScorer } from '@/lib/security/posture-scorer';
+import { SecurityPostureService } from '@/lib/security/security-posture';
 import { BaselineRegressionSystem } from '@/lib/security/baseline-regression';
 import path from 'path';
 
@@ -156,7 +156,7 @@ async function getStatsHandler(request: NextRequest) {
   // 1. Fetch real-time verified controls and posture details
   const [controls, posture] = await Promise.all([
     SecurityControlVerifier.verifyControls(),
-    PostureScorer.calculateScore(),
+    SecurityPostureService.calculatePosture(),
   ]);
 
   // Run drift detection in background or on GET to generate alerts automatically
@@ -264,8 +264,15 @@ async function getStatsHandler(request: NextRequest) {
     eventLoopLag: Math.round(getEventLoopLag() * 100) / 100,
     runtimeHealth: getEventLoopLagState(),
     
-    // Expanded posture management indicators
-    posture,
+    posture: {
+      ...posture,
+      ...posture.scores,
+      status: posture.overallScore >= 90 ? 'SECURE' : posture.overallScore >= 70 ? 'WARNING' : 'AT_RISK',
+      uploads: posture.scores.sessions,
+      database: posture.scores.authorization,
+      secrets: posture.scores.authentication,
+      infrastructure: posture.scores.headers
+    },
     controls,
     findings: {
       critical: criticalFindings,

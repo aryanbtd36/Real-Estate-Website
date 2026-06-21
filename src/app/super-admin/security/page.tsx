@@ -57,6 +57,9 @@ export default function SuperAdminSecuritySOCPage() {
   const [governanceData, setGovernanceData] = useState<any>(null);
   const [readinessData, setReadinessData] = useState<any>(null);
   const [cspData, setCspData] = useState<any>(null);
+  const [activePostureSubTab, setActivePostureSubTab] = useState<'scores' | 'controls' | 'baseline' | 'headers' | 'dr'>('scores');
+  const [postureData, setPostureData] = useState<any>(null);
+  const [baselineData, setBaselineData] = useState<any>(null);
 
   // Wave 7C.2 Incidents Tab states
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -139,17 +142,21 @@ export default function SuperAdminSecuritySOCPage() {
       } else if (activeTab === 'readiness') {
         const readinessRes = await fetch('/api/admin/security/readiness');
         if (readinessRes.ok) setReadinessData(await readinessRes.json());
-      } else if (activeTab === 'headers') {
-        const cspRes = await fetch('/api/admin/security/csp');
-        if (cspRes.ok) setCspData(await cspRes.json());
-      } else if (activeTab === 'baseline') {
-        // Trigger verification checklist comparison
-        const baselineRes = await fetch('/api/admin/security/stats');
+      } else if (activeTab === 'posture') {
+        const [postureRes, baselineRes, cspRes] = await Promise.all([
+          fetch('/api/admin/security/posture'),
+          fetch('/api/admin/security/baseline-comparison'),
+          fetch('/api/admin/security/csp')
+        ]);
+        if (postureRes.ok) setPostureData(await postureRes.json());
         if (baselineRes.ok) {
-          const data = await baselineRes.json();
-          // Simulate comparative diffs from stats.drifts or construct manually
-          setDriftAlerts(data.posture?.trend === 'DOWN' ? [{ component: 'Overall Posture', parameter: 'Overall Score', expected: 97, actual: data.posture?.overallScore, severity: 'CRITICAL' }] : []);
+          const bData = await baselineRes.json();
+          setBaselineData(bData);
+          if (bData?.comparison?.drifts) {
+            setDriftAlerts(bData.comparison.drifts);
+          }
         }
+        if (cspRes.ok) setCspData(await cspRes.json());
       } else if (activeTab === 'executive') {
         const [metricsRes, playbooksRes, huntsRes, rulesRes, fpRes, actionsRes] = await Promise.all([
           fetch('/api/admin/security/soc-metrics'),
@@ -270,12 +277,12 @@ export default function SuperAdminSecuritySOCPage() {
   };
 
 
-  const handleResolveFinding = async (findingId: string, notesText = 'Resolved by Super Admin') => {
+  const handleUpdateFindingStatus = async (findingId: string, status: string, notesText = 'Status updated by Super Admin') => {
     try {
       const res = await fetch('/api/admin/security/findings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update', findingId, status: 'RESOLVED', notes: notesText })
+        body: JSON.stringify({ action: 'update', findingId, status, notes: notesText })
       });
       if (res.ok) {
         loadAllData(true);
@@ -283,6 +290,10 @@ export default function SuperAdminSecuritySOCPage() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleResolveFinding = async (findingId: string, notesText = 'Resolved by Super Admin') => {
+    await handleUpdateFindingStatus(findingId, 'RESOLVED', notesText);
   };
 
   const handleSaveRetention = async () => {
@@ -317,12 +328,19 @@ export default function SuperAdminSecuritySOCPage() {
   };
 
   const handleCaptureBaseline = async () => {
-    // Audit capture event
     try {
-      alert('Security baseline freeze configuration captured successfully. Detecting future regressions.');
-      loadAllData(true);
+      const res = await fetch('/api/admin/security/baseline-comparison', {
+        method: 'POST'
+      });
+      if (res.ok) {
+        alert('Security baseline configuration captured and frozen successfully.');
+        loadAllData(true);
+      } else {
+        alert('Failed to capture security baseline snapshot.');
+      }
     } catch (err) {
       console.error(err);
+      alert('Error freezing security baseline.');
     }
   };
 
@@ -392,41 +410,73 @@ export default function SuperAdminSecuritySOCPage() {
       </div>
 
       {/* Tabs Navigation Layout */}
-      <div className="border-b border-white/5 pb-0.5 overflow-x-auto flex gap-1 scrollbar-hide">
-        {[
-          { id: 'soc', label: 'SOC Threat Feed', icon: AlertIcon },
-          { id: 'incidents', label: 'Incident Command', icon: ShieldAlert },
-          { id: 'executive', label: 'Executive Insights & SOAR', icon: Zap },
-          { id: 'posture', label: 'Security Posture', icon: TrendingUp },
-          { id: 'controls', label: 'Verified Controls', icon: ShieldCheck },
-          { id: 'findings', label: 'Findings Registry', icon: FileText },
-          { id: 'headers', label: 'HTTP Header Audit', icon: Globe },
-          { id: 'compliance', label: 'GDPR & Governance', icon: Sliders },
-          { id: 'dr', label: 'Disaster Recovery', icon: History },
-          { id: 'readiness', label: 'Production Readiness', icon: CheckCircle },
-          { id: 'baseline', label: 'Baseline Drifts', icon: Lock }
-        ].map((t) => {
-          const Icon = t.icon;
-          const isActive = activeTab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => {
-                setActiveTab(t.id as any);
-                setLoading(true);
-                setTimeout(() => loadAllData(), 50);
-              }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg text-[10px] uppercase tracking-wider font-bold border-t border-x transition-all shrink-0 ${
-                isActive
-                  ? 'border-white/10 bg-[#121212] text-[#D4AF37]'
-                  : 'border-transparent text-white/50 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Icon size={12} />
-              {t.label}
-            </button>
-          );
-        })}
+      <div className="flex flex-col lg:flex-row gap-4 border-b border-white/5 pb-3">
+        {/* Operations Section */}
+        <div className="space-y-1">
+          <span className="text-[9px] uppercase tracking-widest text-[#D4AF37] font-semibold block px-2">Operations Command</span>
+          <div className="flex gap-1 overflow-x-auto">
+            {[
+              { id: 'soc', label: 'SOC Console', icon: AlertIcon },
+              { id: 'incidents', label: 'Incident Command', icon: ShieldAlert },
+              { id: 'executive', label: 'SOAR & Automations', icon: Zap },
+            ].map((t) => {
+              const Icon = t.icon;
+              const isActive = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setActiveTab(t.id as any);
+                    setLoading(true);
+                    setTimeout(() => loadAllData(), 50);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] uppercase tracking-wider font-bold transition-all shrink-0 ${
+                    isActive
+                      ? 'bg-[#D4AF37] text-black font-extrabold'
+                      : 'text-white/55 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon size={12} />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Governance & Posture Section */}
+        <div className="space-y-1 flex-1">
+          <span className="text-[9px] uppercase tracking-widest text-[#D4AF37] font-semibold block px-2">Governance & Posture</span>
+          <div className="flex gap-1 overflow-x-auto">
+            {[
+              { id: 'posture', label: 'Posture Center', icon: TrendingUp },
+              { id: 'findings', label: 'Findings Registry', icon: FileText },
+              { id: 'compliance', label: 'GDPR & Governance', icon: Sliders },
+              { id: 'readiness', label: 'Readiness Center', icon: CheckCircle },
+            ].map((t) => {
+              const Icon = t.icon;
+              const isActive = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setActiveTab(t.id as any);
+                    setLoading(true);
+                    setTimeout(() => loadAllData(), 50);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] uppercase tracking-wider font-bold transition-all shrink-0 ${
+                    isActive
+                      ? 'bg-[#D4AF37] text-black font-extrabold'
+                      : 'text-white/55 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon size={12} />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Tab Contents */}
@@ -1093,91 +1143,244 @@ export default function SuperAdminSecuritySOCPage() {
               </div>
             )}
 
-            {/* TAB 2: Security Posture & Scores */}
+            {/* TAB 2: Security Posture Center */}
             {activeTab === 'posture' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Score Summary */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 text-center lg:col-span-1 flex flex-col justify-center items-center">
-                  <span className="text-xs uppercase tracking-widest text-white/40 font-bold block font-mono">Overall Security posture</span>
-                  <div className="relative w-40 h-40 flex items-center justify-center mt-4">
-                    <svg className="w-full h-full transform -rotate-95" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,0.02)" strokeWidth="8" fill="transparent" />
-                      <circle cx="50" cy="50" r="42" stroke="#D4AF37" strokeWidth="8" fill="transparent"
-                              strokeDasharray="263.8" strokeDashoffset={263.8 - (263.8 * (stats?.posture?.overallScore || 97)) / 100} />
-                    </svg>
-                    <div className="absolute text-4xl font-extralight text-[#D4AF37]">{stats?.posture?.overallScore || 97}%</div>
-                  </div>
-                  <div className="mt-4 flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
-                      stats?.posture?.status === 'SECURE' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                    }`}>{stats?.posture?.status || 'SECURE'}</span>
-                    <span className="text-[10px] text-white/50 flex items-center gap-1">
-                      Trend: {stats?.posture?.trend === 'UP' ? <TrendingUp size={12} className="text-green-400" /> : <TrendingDown size={12} className="text-red-400" />}
-                      {stats?.posture?.trend || 'STABLE'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Score Components Breakdown */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-2">
-                  <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Posture Weight Categories</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[
-                      { name: 'Authentication Security', val: stats?.posture?.authentication, weight: '15%' },
-                      { name: 'Authorization Boundaries', val: stats?.posture?.authorization, weight: '15%' },
-                      { name: 'Active Sessions health', val: stats?.posture?.sessions, weight: '10%' },
-                      { name: 'Cloudinary Upload controls', val: stats?.posture?.uploads, weight: '10%' },
-                      { name: 'Database Auditing logs', val: stats?.posture?.database, weight: '10%' },
-                      { name: 'Secrets Exposure scanning', val: stats?.posture?.secrets, weight: '15%' },
-                      { name: 'SOC Threat monitoring', val: stats?.posture?.threatDetection, weight: '10%' },
-                      { name: 'GDPR Compliance features', val: stats?.posture?.compliance, weight: '7%' },
-                      { name: 'HTTP security headers (Infra)', val: stats?.posture?.infrastructure, weight: '8%' }
-                    ].map((comp, idx) => (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-white/70">
-                          <span>{comp.name} <span className="text-white/30 font-normal">({comp.weight})</span></span>
-                          <span className="font-mono text-[#D4AF37]">{comp.val || 100}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-black rounded overflow-hidden">
-                          <div className="h-full bg-[#D4AF37] rounded" style={{ width: `${comp.val || 100}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: Control Verification Grid */}
-            {activeTab === 'controls' && (
-              <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Verified Security Control Engine</h3>
-                    <p className="text-[10px] text-white/40 mt-1 font-light">Continual verification grid monitoring critical controls.</p>
-                  </div>
-                  <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2.5 py-0.5 rounded font-mono font-bold">ALL PASS</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {stats?.controls?.map((ctrl: any, idx: number) => (
-                    <div key={idx} className="bg-black/30 border border-white/5 p-4 rounded-xl space-y-2 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase tracking-wider text-white/70 font-semibold block">{ctrl.name}</span>
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
-                            ctrl.status === 'ACTIVE'
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/25'
-                              : ctrl.status === 'WARNING'
-                              ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/25'
-                              : 'bg-red-500/10 text-red-400 border border-red-500/25'
-                          }`}>{ctrl.status}</span>
-                        </div>
-                        <p className="text-[10px] text-white/40 mt-2 font-light">{ctrl.details || 'No trace errors logged.'}</p>
-                      </div>
-                    </div>
+              <div className="space-y-6">
+                {/* Posture Center Sub-Tabs Navigation */}
+                <div className="flex gap-2 border-b border-white/5 pb-2 overflow-x-auto">
+                  {[
+                    { id: 'scores', label: 'Overview & Scores' },
+                    { id: 'controls', label: '25 Verified Controls' },
+                    { id: 'baseline', label: 'Baseline Drifts' },
+                    { id: 'headers', label: 'HTTP Security Headers & CSP' },
+                    { id: 'dr', label: 'Disaster Recovery' }
+                  ].map((subTab) => (
+                    <button
+                      key={subTab.id}
+                      onClick={() => setActivePostureSubTab(subTab.id as any)}
+                      className={`px-3 py-1.5 rounded text-[9px] uppercase tracking-wider font-bold transition-all ${
+                        activePostureSubTab === subTab.id
+                          ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#D4AF37]'
+                          : 'text-white/40 hover:text-white bg-white/5 border border-transparent'
+                      }`}
+                    >
+                      {subTab.label}
+                    </button>
                   ))}
                 </div>
+
+                {/* Sub Tab: Overview & Scores */}
+                {activePostureSubTab === 'scores' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+                    {/* Score Summary */}
+                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 text-center lg:col-span-1 flex flex-col justify-center items-center">
+                      <span className="text-xs uppercase tracking-widest text-white/40 font-bold block font-mono">Overall Security Posture Score</span>
+                      <div className="relative w-40 h-40 flex items-center justify-center mt-4">
+                        <svg className="w-full h-full transform -rotate-95" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,0.02)" strokeWidth="8" fill="transparent" />
+                          <circle cx="50" cy="50" r="42" stroke="#D4AF37" strokeWidth="8" fill="transparent"
+                                  strokeDasharray="263.8" strokeDashoffset={263.8 - (263.8 * (postureData?.posture?.overallScore || stats?.posture?.overallScore || 97)) / 100} />
+                        </svg>
+                        <div className="absolute text-4xl font-extralight text-[#D4AF37]">{postureData?.posture?.overallScore || stats?.posture?.overallScore || 97}%</div>
+                      </div>
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
+                          (postureData?.posture?.overallScore || stats?.posture?.overallScore || 97) >= 90 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                        }`}>{postureData?.posture?.maturityRating || stats?.posture?.maturityRating || 'Production Ready'}</span>
+                        <span className="text-[10px] text-white/50 flex items-center gap-1 font-mono">
+                          Trend: {postureData?.posture?.trend || stats?.posture?.trend === 'UP' ? <TrendingUp size={12} className="text-green-400" /> : <TrendingDown size={12} className="text-red-400" />}
+                          {postureData?.posture?.trend || stats?.posture?.trend || 'STABLE'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Score Categories Breakdown */}
+                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-2">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Posture Weight Categories</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {[
+                          { name: 'Authentication Security', val: postureData?.posture?.scores?.authentication ?? stats?.posture?.authentication, weight: '15%' },
+                          { name: 'Authorization Boundaries', val: postureData?.posture?.scores?.authorization ?? stats?.posture?.authorization, weight: '15%' },
+                          { name: 'Multi-Factor Authentication', val: postureData?.posture?.scores?.mfa ?? stats?.posture?.mfa, weight: '10%' },
+                          { name: 'Active Sessions Health', val: postureData?.posture?.scores?.sessions ?? stats?.posture?.sessions, weight: '10%' },
+                          { name: 'SOC Threat Monitoring', val: postureData?.posture?.scores?.threatDetection ?? stats?.posture?.threatDetection, weight: '10%' },
+                          { name: 'SOC Security Operations', val: postureData?.posture?.scores?.soc ?? stats?.posture?.soc, weight: '10%' },
+                          { name: 'GDPR Compliance Features', val: postureData?.posture?.scores?.compliance ?? stats?.posture?.compliance, weight: '10%' },
+                          { name: 'Secure Response Headers', val: postureData?.posture?.scores?.headers ?? stats?.posture?.infrastructure, weight: '20%' }
+                        ].map((comp, idx) => (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-white/70">
+                              <span>{comp.name} <span className="text-white/30 font-normal">({comp.weight})</span></span>
+                              <span className="font-mono text-[#D4AF37]">{comp.val ?? 100}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-black rounded overflow-hidden">
+                              <div className="h-full bg-[#D4AF37] rounded" style={{ width: `${comp.val ?? 100}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub Tab: 25 Verified Controls Grid */}
+                {activePostureSubTab === 'controls' && (
+                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 animate-fadeIn">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Verified Security Control Engine</h3>
+                        <p className="text-[10px] text-white/40 mt-1 font-light">Continual verification grid monitoring critical controls.</p>
+                      </div>
+                      <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2.5 py-0.5 rounded font-mono font-bold">ALL PASS</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {(stats?.controls || []).map((ctrl: any, idx: number) => (
+                        <div key={idx} className="bg-black/30 border border-white/5 p-4 rounded-xl space-y-2 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] uppercase tracking-wider text-white/70 font-semibold block">{ctrl.name}</span>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
+                                ctrl.status === 'ACTIVE'
+                                  ? 'bg-green-500/10 text-green-400 border border-green-500/25'
+                                  : ctrl.status === 'WARNING'
+                                  ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/25'
+                                  : 'bg-red-500/10 text-red-400 border border-red-500/25'
+                              }`}>{ctrl.status}</span>
+                            </div>
+                            <p className="text-[10px] text-white/40 mt-2 font-light">{ctrl.details || 'No trace errors logged.'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub Tab: Baseline Drifts */}
+                {activePostureSubTab === 'baseline' && (
+                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 animate-fadeIn">
+                    <div className="flex justify-between items-center flex-wrap gap-4">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Security baseline freeze controls</h3>
+                        <p className="text-[10px] text-white/40 mt-1 font-light">Freeze configs to target future drifts or unauthorized role promotions.</p>
+                      </div>
+                      <button
+                        onClick={handleCaptureBaseline}
+                        className="py-2 px-4 bg-[#D4AF37] hover:bg-[#C29E30] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors"
+                      >
+                        Capture configuration snapshot
+                      </button>
+                    </div>
+
+                    <div className="border-t border-white/5 pt-4 space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs uppercase tracking-wider text-white/70 font-semibold">Current vs baseline comparison</h4>
+                        {baselineData?.comparison?.baselineTimestamp && (
+                          <span className="text-[9px] text-white/40 font-mono">Frozen on: {new Date(baselineData.comparison.baselineTimestamp).toLocaleString()}</span>
+                        )}
+                      </div>
+                      {driftAlerts.length === 0 ? (
+                        <div className="p-4 bg-green-500/5 border border-green-500/10 rounded-xl flex items-center gap-3">
+                          <ShieldCheck size={18} className="text-green-400 shrink-0" />
+                          <span className="text-xs text-green-300 font-light">Zero drift anomalies detected. Configuration matches baseline snapshot exactly.</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {driftAlerts.map((drift, idx) => (
+                            <div key={idx} className="p-4 bg-red-500/[0.02] border border-red-500/20 rounded-xl flex items-center justify-between">
+                              <div>
+                                <span className="text-xs font-semibold text-white">{drift.component}: {drift.parameter}</span>
+                                <div className="text-[10px] text-white/45 font-mono mt-1 leading-relaxed">
+                                  Expected baseline: {JSON.stringify(drift.expected)} • Current actual: {JSON.stringify(drift.actual)}
+                                  <div className="text-red-400 mt-0.5">{drift.description}</div>
+                                </div>
+                              </div>
+                              <span className="px-2 py-0.5 rounded text-[8px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-widest">{drift.severity}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub Tab: HTTP Security Headers & CSP */}
+                {activePostureSubTab === 'headers' && (
+                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 animate-fadeIn">
+                    <div>
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Secure Headers HTTP audit</h3>
+                      <p className="text-[10px] text-white/40 mt-1 font-light">Validates response headers against OWASP secure headers checklist.</p>
+                    </div>
+
+                    <div className="border border-white/5 rounded-xl overflow-hidden">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-black/60 text-[9px] uppercase tracking-wider text-white/55 border-b border-white/5 font-mono">
+                            <th className="p-4">Header Name</th>
+                            <th className="p-4">Status</th>
+                            <th className="p-4">Expected Value</th>
+                            <th className="p-4">Current Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(cspData?.headers || []).map((header: any, idx: number) => (
+                            <tr key={idx} className="border-b border-white/5 text-xs font-light hover:bg-white/[0.01]">
+                              <td className="p-4 font-semibold text-white/80">{header.headerName}</td>
+                              <td className="p-4">
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
+                                  header.status === 'PASS' ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-red-500/10 text-red-400 border border-red-500/25'
+                                }`}>{header.status}</span>
+                              </td>
+                              <td className="p-4 font-mono text-[10px] text-white/40 max-w-xs truncate" title={header.expectedValue}>{header.expectedValue}</td>
+                              <td className="p-4 font-mono text-[10px] text-white/60 max-w-xs truncate" title={header.currentValue}>{header.currentValue}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub Tab: Disaster Recovery */}
+                {activePostureSubTab === 'dr' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+                    {/* Objectives */}
+                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-1">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Recovery Time Objectives</h3>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
+                          <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">RPO (Recovery Point Objective)</span>
+                          <div className="text-2xl font-light text-[#D4AF37] mt-1">15 Minutes</div>
+                          <span className="text-[9px] text-white/30 block mt-1">Incremental snapshots backup threshold</span>
+                        </div>
+
+                        <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
+                          <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">RTO (Recovery Time Objective)</span>
+                          <div className="text-2xl font-light text-[#D4AF37] mt-1">1 Hour</div>
+                          <span className="text-[9px] text-white/30 block mt-1">Standard full restoration buffer limit</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Standby failovers */}
+                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-2">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Standby Failover Roadmaps</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                          { title: 'Database Failure', desc: 'Supabase Postgres connection outages. Failover triggers redirecting requests to cold restoration replica endpoints.' },
+                          { title: 'Cloudinary Outage', desc: 'Asset storage timeouts. Dynamic failover maps image paths to local server caches with visual placeholder falls.' },
+                          { title: 'Supabase Platform Down', desc: 'Authentication downtime. In-memory NextAuth token buffering is activated with read-only controls.' },
+                          { title: 'Email Service Failures', desc: 'Resend API outages. Mail payloads are written to database outbound tables and synced on recovery.' }
+                        ].map((proc, idx) => (
+                          <div key={idx} className="bg-black/30 border border-white/5 p-4 rounded-xl space-y-2">
+                            <span className="text-xs font-semibold text-white">{proc.title}</span>
+                            <p className="text-[10px] text-white/45 mt-1 font-light leading-relaxed">{proc.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1222,9 +1425,12 @@ export default function SuperAdminSecuritySOCPage() {
                       >
                         <option value="">All Statuses</option>
                         <option value="OPEN">Open</option>
-                        <option value="INVESTIGATING">Investigating</option>
+                        <option value="ACKNOWLEDGED">Acknowledged</option>
+                        <option value="IN_PROGRESS">In Progress</option>
                         <option value="RESOLVED">Resolved</option>
-                        <option value="FALSE_POSITIVE">False Positive</option>
+                        <option value="ACCEPTED_RISK">Accepted Risk</option>
+                        <option value="INVESTIGATING">Investigating (Legacy)</option>
+                        <option value="FALSE_POSITIVE">False Positive (Legacy)</option>
                       </select>
                     </div>
                   </div>
@@ -1241,22 +1447,63 @@ export default function SuperAdminSecuritySOCPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-semibold text-white">{finding.title}</span>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                finding.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'
+                                finding.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
+                                finding.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
+                                finding.severity === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-blue-500/20 text-blue-400'
                               }`}>{finding.severity}</span>
                               <span className="text-[8px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/40">{finding.category}</span>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                finding.status === 'RESOLVED' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                finding.status === 'ACKNOWLEDGED' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                                finding.status === 'IN_PROGRESS' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
+                                finding.status === 'ACCEPTED_RISK' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                                'bg-red-500/10 text-red-400 border border-red-500/20'
+                              }`}>{finding.status}</span>
                             </div>
                             <p className="text-[10px] text-white/60 mt-1 font-light">{finding.description}</p>
+                            {finding.notes && <p className="text-[9px] text-[#D4AF37]/75 mt-1 font-mono">Notes: {finding.notes}</p>}
                             <p className="text-[9px] text-white/30 font-mono mt-1">Source: {finding.source} • Detected: {new Date(finding.detectedAt).toLocaleDateString()}</p>
                           </div>
-                          <div className="shrink-0 flex gap-2">
-                            {finding.status !== 'RESOLVED' ? (
-                              <button
-                                onClick={() => handleResolveFinding(finding.id)}
-                                className="py-1 px-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-[9px] uppercase tracking-wider font-bold text-green-400 rounded"
-                              >
-                                Mark Resolved
-                              </button>
-                            ) : (
+                          <div className="shrink-0 flex gap-2 flex-wrap items-center">
+                            {finding.status !== 'RESOLVED' && (
+                              <>
+                                {finding.status === 'OPEN' && (
+                                  <button
+                                    onClick={() => handleUpdateFindingStatus(finding.id, 'ACKNOWLEDGED')}
+                                    className="py-1 px-2.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-[9px] uppercase tracking-wider font-bold text-blue-400 rounded transition-colors"
+                                  >
+                                    Acknowledge
+                                  </button>
+                                )}
+                                {(finding.status === 'OPEN' || finding.status === 'ACKNOWLEDGED') && (
+                                  <button
+                                    onClick={() => handleUpdateFindingStatus(finding.id, 'IN_PROGRESS')}
+                                    className="py-1 px-2.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-[9px] uppercase tracking-wider font-bold text-yellow-400 rounded transition-colors"
+                                  >
+                                    Start Progress
+                                  </button>
+                                )}
+                                {finding.status !== 'ACCEPTED_RISK' && (
+                                  <button
+                                    onClick={() => {
+                                      const reason = prompt('Enter business justification for accepting this risk:');
+                                      if (reason) handleUpdateFindingStatus(finding.id, 'ACCEPTED_RISK', `Accepted Risk: ${reason}`);
+                                    }}
+                                    className="py-1 px-2.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-[9px] uppercase tracking-wider font-bold text-purple-400 rounded transition-colors"
+                                  >
+                                    Accept Risk
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleResolveFinding(finding.id)}
+                                  className="py-1 px-2.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-[9px] uppercase tracking-wider font-bold text-green-400 rounded transition-colors"
+                                >
+                                  Resolve
+                                </button>
+                              </>
+                            )}
+                            {finding.status === 'RESOLVED' && (
                               <span className="text-[8px] font-bold uppercase tracking-wider text-green-400 bg-green-500/5 px-2 py-0.5 border border-green-500/20 rounded">RESOLVED</span>
                             )}
                           </div>
@@ -1264,43 +1511,6 @@ export default function SuperAdminSecuritySOCPage() {
                       ))
                     )}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 5: Header Audit & CSP */}
-            {activeTab === 'headers' && (
-              <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6">
-                <div>
-                  <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Secure Headers HTTP audit</h3>
-                  <p className="text-[10px] text-white/40 mt-1 font-light">Validates response headers against OWASP secure headers checklist.</p>
-                </div>
-
-                <div className="border border-white/5 rounded-xl overflow-hidden">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-black/60 text-[9px] uppercase tracking-wider text-white/55 border-b border-white/5 font-mono">
-                        <th className="p-4">Header Name</th>
-                        <th className="p-4">Status</th>
-                        <th className="p-4">Expected Value</th>
-                        <th className="p-4">Current Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cspData?.headers?.map((header: any, idx: number) => (
-                        <tr key={idx} className="border-b border-white/5 text-xs font-light hover:bg-white/[0.01]">
-                          <td className="p-4 font-semibold text-white/80">{header.headerName}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
-                              header.status === 'PASS' ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-red-500/10 text-red-400 border border-red-500/25'
-                            }`}>{header.status}</span>
-                          </td>
-                          <td className="p-4 font-mono text-[10px] text-white/40 max-w-xs truncate">{header.expectedValue}</td>
-                          <td className="p-4 font-mono text-[10px] text-white/60 max-w-xs truncate">{header.currentValue}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             )}
@@ -1426,47 +1636,6 @@ export default function SuperAdminSecuritySOCPage() {
               </div>
             )}
 
-            {/* TAB 7: Disaster Recovery Hub */}
-            {activeTab === 'dr' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: Objectives */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-1">
-                  <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Recovery Time Objectives</h3>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
-                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">RPO (Recovery Point Objective)</span>
-                      <div className="text-2xl font-light text-[#D4AF37] mt-1">15 Minutes</div>
-                      <span className="text-[9px] text-white/30 block mt-1">Incremental snapshots backup threshold</span>
-                    </div>
-
-                    <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
-                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">RTO (Recovery Time Objective)</span>
-                      <div className="text-2xl font-light text-[#D4AF37] mt-1">1 Hour</div>
-                      <span className="text-[9px] text-white/30 block mt-1">Standard full restoration buffer limit</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Emergency Procedures */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-2">
-                  <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Standby Failover Roadmaps</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { title: 'Database Failure', desc: 'Supabase Postgres connection outages. Failover triggers redirecting requests to cold restoration replica endpoints.' },
-                      { title: 'Cloudinary Outage', desc: 'Asset storage timeouts. Dynamic failover maps image paths to local server caches with visual placeholder falls.' },
-                      { title: 'Supabase Platform Down', desc: 'Authentication downtime. In-memory NextAuth token buffering is activated with read-only controls.' },
-                      { title: 'Email Service Failures', desc: 'Resend API outages. Mail payloads are written to database outbound tables and synced on recovery.' }
-                    ].map((proc, idx) => (
-                      <div key={idx} className="bg-black/30 border border-white/5 p-4 rounded-xl space-y-2">
-                        <span className="text-xs font-semibold text-white">{proc.title}</span>
-                        <p className="text-[10px] text-white/45 mt-1 font-light leading-relaxed">{proc.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* TAB 8: Production Readiness Center */}
             {activeTab === 'readiness' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1476,7 +1645,7 @@ export default function SuperAdminSecuritySOCPage() {
                   <div className="mt-4 flex items-center justify-center">
                     {readinessData?.report?.overallResult === 'READY' ? (
                       <div className="text-center space-y-2">
-                        <ShieldCheck size={56} className="text-green-400 mx-auto" />
+                        <ShieldCheck size={56} className="text-green-400 mx-auto animate-pulse" />
                         <div className="text-2xl font-light text-green-400">READY</div>
                       </div>
                     ) : readinessData?.report?.overallResult === 'CONDITIONALLY_READY' ? (
@@ -1491,7 +1660,7 @@ export default function SuperAdminSecuritySOCPage() {
                       </div>
                     )}
                   </div>
-                  <p className="text-[10px] text-white/45 max-w-xs mt-2 leading-relaxed">
+                  <p className="text-[10px] text-white/45 max-w-xs mt-2 leading-relaxed font-light">
                     Evaluates configuration checks, open severity issues, and database control validations.
                   </p>
                   <button
@@ -1539,48 +1708,6 @@ export default function SuperAdminSecuritySOCPage() {
                       <div className="text-xl font-bold text-yellow-500 mt-1">{readinessData?.report?.complianceGaps?.length || 0}</div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 9: Baseline Regression Panel */}
-            {activeTab === 'baseline' && (
-              <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6">
-                <div className="flex justify-between items-center flex-wrap gap-4">
-                  <div>
-                    <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Security baseline freeze controls</h3>
-                    <p className="text-[10px] text-white/40 mt-1 font-light">Freeze configs to target future drifts or unauthorized role promotions.</p>
-                  </div>
-                  <button
-                    onClick={handleCaptureBaseline}
-                    className="py-2 px-4 bg-[#D4AF37] hover:bg-[#C29E30] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors"
-                  >
-                    Capture configuration snapshot
-                  </button>
-                </div>
-
-                <div className="border-t border-white/5 pt-4 space-y-4">
-                  <h4 className="text-xs uppercase tracking-wider text-white/70 font-semibold">Current vs baseline comparison</h4>
-                  {driftAlerts.length === 0 ? (
-                    <div className="p-4 bg-green-500/5 border border-green-500/10 rounded-xl flex items-center gap-3">
-                      <ShieldCheck size={18} className="text-green-400 shrink-0" />
-                      <span className="text-xs text-green-300 font-light">Zero drift anomalies detected. Configuration matches baseline snapshot exactly.</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {driftAlerts.map((drift, idx) => (
-                        <div key={idx} className="p-4 bg-red-500/[0.02] border border-red-500/20 rounded-xl flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-semibold text-white">{drift.component}: {drift.parameter}</span>
-                            <div className="text-[10px] text-white/40 font-mono mt-1">
-                              Expected baseline: {drift.expected} • Current actual: {drift.actual}
-                            </div>
-                          </div>
-                          <span className="px-2 py-0.5 rounded text-[8px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-widest">{drift.severity}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             )}

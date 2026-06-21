@@ -1,46 +1,35 @@
 {
-  "timestamp": "2026-06-21T13:25:39.369Z",
+  "timestamp": "2026-06-21T19:36:36.340Z",
   "scores": {
     "authentication": 100,
     "authorization": 100,
+    "mfa": 100,
     "sessions": 100,
-    "uploads": 50,
-    "database": 100,
-    "secrets": 100,
-    "threatDetection": 40,
+    "threatDetection": 50,
+    "soc": 100,
     "compliance": 90,
-    "infrastructure": 100,
-    "overallScore": 88,
-    "status": "WARNING",
-    "trend": "STABLE"
+    "headers": 100
   },
+  "overallScore": 94,
   "controls": [
     {
-      "name": "Authentication Security",
+      "name": "Authentication",
       "status": "ACTIVE"
     },
     {
-      "name": "Authorization Security",
+      "name": "Authorization",
       "status": "ACTIVE"
     },
     {
-      "name": "Password Policy",
+      "name": "MFA",
       "status": "ACTIVE"
     },
     {
-      "name": "MFA Enforcement",
+      "name": "Password Security",
       "status": "ACTIVE"
     },
     {
-      "name": "Session Rotation",
-      "status": "ACTIVE"
-    },
-    {
-      "name": "Session Expiration",
-      "status": "ACTIVE"
-    },
-    {
-      "name": "Replay Protection",
+      "name": "Session Security",
       "status": "ACTIVE"
     },
     {
@@ -50,6 +39,38 @@
     {
       "name": "Rate Limiting",
       "status": "WARNING"
+    },
+    {
+      "name": "Threat Detection",
+      "status": "FAILED"
+    },
+    {
+      "name": "Threat Intelligence",
+      "status": "WARNING"
+    },
+    {
+      "name": "Incident Response",
+      "status": "ACTIVE"
+    },
+    {
+      "name": "Security Orchestration",
+      "status": "ACTIVE"
+    },
+    {
+      "name": "Threat Hunting",
+      "status": "ACTIVE"
+    },
+    {
+      "name": "Behavioral Analytics",
+      "status": "ACTIVE"
+    },
+    {
+      "name": "Geosecurity",
+      "status": "ACTIVE"
+    },
+    {
+      "name": "SOC Operations",
+      "status": "FAILED"
     },
     {
       "name": "XSS Protection",
@@ -64,7 +85,7 @@
       "status": "ACTIVE"
     },
     {
-      "name": "File Upload Security",
+      "name": "Upload Security",
       "status": "ACTIVE"
     },
     {
@@ -72,131 +93,30 @@
       "status": "ACTIVE"
     },
     {
-      "name": "Database Auditing",
-      "status": "ACTIVE"
-    },
-    {
-      "name": "SOC Monitoring",
-      "status": "FAILED"
-    },
-    {
-      "name": "Threat Detection",
-      "status": "FAILED"
-    },
-    {
-      "name": "Behavior Analytics",
-      "status": "ACTIVE"
-    },
-    {
-      "name": "Geosecurity",
-      "status": "ACTIVE"
-    },
-    {
-      "name": "Compliance Tracking",
+      "name": "Compliance",
       "status": "WARNING"
-    }
-  ],
-  "permissions": [
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_PROPERTIES"
     },
     {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_LEADS"
+      "name": "Governance",
+      "status": "ACTIVE"
     },
     {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_APPOINTMENTS"
+      "name": "Disaster Recovery",
+      "status": "ACTIVE"
     },
     {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_USERS"
+      "name": "Security Headers",
+      "status": "ACTIVE"
     },
     {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "VIEW_ANALYTICS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "EXPORT_DATA"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_CONTENT"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_SETTINGS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "MANAGE_ADMINS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "VIEW_SECURITY"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "MANAGE_PROPERTIES"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "MANAGE_LEADS"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "MANAGE_APPOINTMENTS"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "MANAGE_USERS"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "VIEW_ANALYTICS"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "EXPORT_DATA"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "MANAGE_CONTENT"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "MANAGE_SETTINGS"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "MANAGE_ADMINS"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "VIEW_SECURITY"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "VIEW_AUDITS"
-    },
-    {
-      "userId": "a53c10c4-afd4-4ed3-aada-eab791c48366",
-      "permission": "VIEW_FINANCIALS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "VIEW_AUDITS"
-    },
-    {
-      "userId": "ca28a4b1-18f8-4ac8-8853-14c5df8b9440",
-      "permission": "VIEW_FINANCIALS"
+      "name": "Content Security Policy",
+      "status": "ACTIVE"
     }
   ],
   "policies": {
     "passwordMaxAgeDays": 90,
     "inactivityTimeoutMinutes": 15,
     "mfaRequiredForAdmin": true
-  }
+  },
+  "capturedBy": "2d62c638-51db-4df8-907f-4afa27e29161"
 }
