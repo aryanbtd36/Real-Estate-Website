@@ -1163,3 +1163,204 @@ model SecurityAutomationMetric {
   updatedAt             DateTime @updatedAt
 }
 
+// --- WAVE 7C.3 SECURITY PLATFORM ENUMS ---
+
+enum PlaybookName {
+  LOGIN_ATTACK_RESPONSE
+  ACCOUNT_TAKEOVER_RESPONSE
+  SESSION_HIJACK_RESPONSE
+  CREDENTIAL_STUFFING_RESPONSE
+  BRUTE_FORCE_RESPONSE
+  HIGH_RISK_DEVICE_RESPONSE
+  THREAT_INTEL_MATCH_RESPONSE
+  INSIDER_THREAT_RESPONSE
+}
+
+enum PlaybookExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum RuleState {
+  DRAFT
+  TESTING
+  ACTIVE
+  DISABLED
+  DEPRECATED
+}
+
+enum DetectionCategory {
+  AUTHENTICATION
+  SESSION
+  DEVICE
+  BEHAVIOR
+  GEOLOCATION
+  THREAT_INTEL
+  INCIDENT
+  INSIDER_THREAT
+}
+
+enum ThreatHuntType {
+  ACCOUNT_TAKEOVER
+  SESSION_HIJACK
+  PRIVILEGE_ESCALATION
+  INSIDER_THREAT
+  GEO_ANOMALY
+  THREAT_INTEL
+}
+
+enum ResponseActionType {
+  FORCE_PASSWORD_RESET
+  REQUIRE_MFA
+  TEMPORARY_LOCKOUT
+  REVOKE_SESSION
+  ROTATE_SESSION
+  LOGOUT_ALL_DEVICES
+  MARK_SUSPICIOUS
+  REMOVE_TRUST
+  BLOCK_MALICIOUS_IP
+  BLOCK_TOR_NODE
+  BLOCK_PROXY_SOURCE
+}
+
+enum ResponseActionStatus {
+  SIMULATED
+  PENDING_APPROVAL
+  APPROVED
+  EXECUTED
+  FAILED
+}
+
+enum ResponseExecutionMode {
+  SIMULATION
+  APPROVAL_REQUIRED
+  AUTO_EXECUTE
+}
+
+enum FalsePositiveRecommendationType {
+  TUNE_RULE
+  LOWER_SEVERITY
+  INCREASE_THRESHOLD
+  DISABLE_RULE
+  KEEP_RULE
+}
+
+// --- WAVE 7C.3 MODELS ---
+
+model PlaybookExecution {
+  id              String                  @id @default(uuid())
+  playbookName    PlaybookName
+  trigger         String                  // Event or alert description that triggered this run
+  status          PlaybookExecutionStatus @default(PENDING)
+  executedAt      DateTime                @default(now())
+  durationMs      Int                     @default(0)
+  actionsExecuted String[]
+  failureReason   String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([playbookName])
+  @@index([executedAt])
+}
+
+model DetectionRuleConfig {
+  id                String            @id @default(uuid())
+  name              String            @unique
+  severity          SecurityEventSeverity @default(HIGH)
+  category          DetectionCategory
+  author            String            @default("SYSTEM")
+  state             RuleState         @default(ACTIVE)
+  version           String            @default("1.0.0")
+  thresholds        Json              // Stores configurable limits (e.g. failure count limits, windows size)
+  tuningSettings    Json?             // Custom regex filters or conditions exclusion tags
+  falsePositiveRate Float             @default(0.0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Performance Metrics
+  triggerCount      Int               @default(0)
+  truePositives     Int               @default(0)
+  falsePositives    Int               @default(0)
+  precision         Float             @default(1.0)
+  recall            Float             @default(1.0)
+  accuracy          Float             @default(1.0)
+
+  @@index([category])
+  @@index([state])
+}
+
+model SavedThreatHunt {
+  id           String         @id @default(uuid())
+  name         String         @unique // e.g. "Daily Authentication Hunt"
+  huntType     ThreatHuntType
+  queryDetails Json           // Filter criteria configuration
+  description  String?
+  scheduleCron String?        // Cron expression if scheduled
+  lastRunAt    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model ThreatHuntExecution {
+  id            String         @id @default(uuid())
+  huntName      String
+  huntType      ThreatHuntType
+  queryDetails  Json
+  executedAt    DateTime       @default(now())
+  durationMs    Int
+  findingsCount Int
+  riskScore     Float
+  summary       String?
+  findingsLink  Json?          // Linked operational outputs: e.g. { alertIds: [], incidentIds: [], campaignIds: [] }
+}
+
+model AutomatedResponseAction {
+  id            String                  @id @default(uuid())
+  actionType    ResponseActionType
+  targetId      String                  // Subject: userId, sessionId, or IP
+  executionMode ResponseExecutionMode
+  status        ResponseActionStatus    @default(PENDING_APPROVAL)
+  errorMessage  String?
+  metadata      Json?
+  
+  // Governance / Traceability parameters
+  requestedBy   String?                 // Trigger agent: e.g., "PLAYBOOK:BRUTE_FORCE_RESPONSE" or User ID
+  approvedBy    String?                 // User ID of the approving Super Admin
+  executedBy    String?                 // Execution agent: e.g. "SYSTEM" or User ID
+  
+  requestedAt   DateTime                @default(now())
+  approvedAt    DateTime?
+  executedAt    DateTime?
+
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model FalsePositiveRecommendation {
+  id               String                          @id @default(uuid())
+  ruleConfigId     String
+  ruleName         String
+  recommendation   FalsePositiveRecommendationType
+  reason           String
+  analyzedAlerts   Int
+  resolvedOutcomes Json                            // Breakdown of closed statuses: e.g. { falsePositives: 12, truePositives: 2 }
+  
+  // Lifecycle fields
+  accepted         Boolean                         @default(false)
+  rejected         Boolean                         @default(false)
+  implemented      Boolean                         @default(false)
+  implementedAt    DateTime?
+  history          Json?                           // Tracks state modification timeline log
+  effectivenessScore Float?                        // Decrease percentage in FP volume (computed post-implementation)
+
+  createdAt        DateTime                        @default(now())
+  updatedAt        DateTime                        @updatedAt
+}
+
+

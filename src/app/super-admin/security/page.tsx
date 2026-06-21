@@ -37,10 +37,19 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SuperAdminSecuritySOCPage() {
-  const [activeTab, setActiveTab] = useState<'soc' | 'incidents' | 'posture' | 'controls' | 'findings' | 'headers' | 'compliance' | 'dr' | 'readiness' | 'baseline'>('soc');
+  const [activeTab, setActiveTab] = useState<any>('soc');
   const [stats, setStats] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+
+  // New Wave 7C.3 States
+  const [executiveMetrics, setExecutiveMetrics] = useState<any>(null);
+  const [playbookExecs, setPlaybookExecs] = useState<any[]>([]);
+  const [threatHunts, setThreatHunts] = useState<any[]>([]);
+  const [detectionRules, setDetectionRules] = useState<any[]>([]);
+  const [fpRecs, setFpRecs] = useState<any[]>([]);
+  const [pendingActions, setPendingActions] = useState<any[]>([]);
+
   
   // Tab-specific states
   const [findingsData, setFindingsData] = useState<any>(null);
@@ -141,6 +150,21 @@ export default function SuperAdminSecuritySOCPage() {
           // Simulate comparative diffs from stats.drifts or construct manually
           setDriftAlerts(data.posture?.trend === 'DOWN' ? [{ component: 'Overall Posture', parameter: 'Overall Score', expected: 97, actual: data.posture?.overallScore, severity: 'CRITICAL' }] : []);
         }
+      } else if (activeTab === 'executive') {
+        const [metricsRes, playbooksRes, huntsRes, rulesRes, fpRes, actionsRes] = await Promise.all([
+          fetch('/api/admin/security/soc-metrics'),
+          fetch('/api/admin/security/playbooks'),
+          fetch('/api/admin/security/threat-hunting'),
+          fetch('/api/admin/security/detection-rules'),
+          fetch('/api/admin/security/false-positives'),
+          fetch('/api/admin/security/automated-responses')
+        ]);
+        if (metricsRes.ok) setExecutiveMetrics(await metricsRes.json());
+        if (playbooksRes.ok) setPlaybookExecs(await playbooksRes.json());
+        if (huntsRes.ok) setThreatHunts(await huntsRes.json());
+        if (rulesRes.ok) setDetectionRules(await rulesRes.json());
+        if (fpRes.ok) setFpRecs(await fpRes.json());
+        if (actionsRes.ok) setPendingActions(await actionsRes.json());
       }
     } catch (err) {
       console.error('[SOC Dashboard Load Error]', err);
@@ -164,6 +188,87 @@ export default function SuperAdminSecuritySOCPage() {
       console.error(err);
     }
   };
+
+  const handleTriggerPlaybook = async (playbookName: string, targetId: string) => {
+    try {
+      const res = await fetch('/api/admin/security/playbooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playbookName, trigger: 'Manual execution', targetId })
+      });
+      if (res.ok) {
+        alert('Playbook triggered successfully.');
+        loadAllData(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleTriggerHunt = async (name: string, huntType: string) => {
+    try {
+      const res = await fetch('/api/admin/security/threat-hunting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, huntType })
+      });
+      if (res.ok) {
+        alert('Proactive threat hunt execution completed.');
+        loadAllData(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleApproveAction = async (actionId: string, approve: boolean) => {
+    try {
+      const res = await fetch('/api/admin/security/automated-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId, action: approve ? 'approve' : 'reject' })
+      });
+      if (res.ok) {
+        alert(approve ? 'Containment action approved and executed.' : 'Containment action rejected.');
+        loadAllData(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleApplyFpRec = async (recommendationId: string, accept: boolean) => {
+    try {
+      const res = await fetch('/api/admin/security/false-positives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendationId, action: accept ? 'accept' : 'reject' })
+      });
+      if (res.ok) {
+        alert(accept ? 'Recommendation accepted and rule tuned.' : 'Recommendation rejected.');
+        loadAllData(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleTuneRule = async (id: string, state: string, severity: string, thresholds: any) => {
+    try {
+      const res = await fetch('/api/admin/security/detection-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, state, severity, thresholds })
+      });
+      if (res.ok) {
+        alert('Detection rule config updated.');
+        loadAllData(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   const handleResolveFinding = async (findingId: string, notesText = 'Resolved by Super Admin') => {
     try {
@@ -291,6 +396,7 @@ export default function SuperAdminSecuritySOCPage() {
         {[
           { id: 'soc', label: 'SOC Threat Feed', icon: AlertIcon },
           { id: 'incidents', label: 'Incident Command', icon: ShieldAlert },
+          { id: 'executive', label: 'Executive Insights & SOAR', icon: Zap },
           { id: 'posture', label: 'Security Posture', icon: TrendingUp },
           { id: 'controls', label: 'Verified Controls', icon: ShieldCheck },
           { id: 'findings', label: 'Findings Registry', icon: FileText },
@@ -1475,6 +1581,306 @@ export default function SuperAdminSecuritySOCPage() {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 10: Executive Insights & SOAR Automation (Wave 7C.3) */}
+            {activeTab === 'executive' && (
+              <div className="space-y-8 animate-fadeIn">
+                {/* SOC Performance Scorecard */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">MTTC (Mean Containment)</span>
+                    <div className="text-2xl font-light text-[#D4AF37] mt-1">{executiveMetrics?.mttcMinutes || 2}m</div>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Detection Accuracy</span>
+                    <div className="text-2xl font-light text-green-400 mt-1">{executiveMetrics?.alertAccuracyPercentage || 100}%</div>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Automation Success</span>
+                    <div className="text-2xl font-light text-blue-400 mt-1">{executiveMetrics?.automationSuccessRatePercentage || 100}%</div>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Playbook Success</span>
+                    <div className="text-2xl font-light text-purple-400 mt-1">{executiveMetrics?.playbookSuccessRatePercentage || 100}%</div>
+                  </div>
+                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Rules Active Coverage</span>
+                    <div className="text-2xl font-light text-yellow-400 mt-1">{executiveMetrics?.detectionCoveragePercentage || 100}%</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Playbooks & Simulations Control */}
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">SOAR Playbooks & Trigger Sandbox</h4>
+                      <span className="text-[8px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded font-mono font-bold">ACTIVE ORCHESTRATOR</span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {[
+                        { name: 'LOGIN_ATTACK_RESPONSE', desc: 'Blocks malicious source IPs and locks target account.' },
+                        { name: 'ACCOUNT_TAKEOVER_RESPONSE', desc: 'Forces password resets and invalidates active session tokens.' },
+                        { name: 'SESSION_HIJACK_RESPONSE', desc: 'Revokes suspicious target session IDs immediately.' },
+                        { name: 'CREDENTIAL_STUFFING_RESPONSE', desc: 'Blocks brute force bots IPs and warns admins.' }
+                      ].map((playbook, idx) => (
+                        <div key={idx} className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-xs font-bold text-white block">{playbook.name}</span>
+                            <span className="text-[10px] text-white/50 block mt-0.5">{playbook.desc}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const target = prompt('Enter Target ID (IP, User ID, or Session ID):');
+                              if (target) handleTriggerPlaybook(playbook.name, target);
+                            }}
+                            className="py-1 px-3 bg-[#D4AF37] hover:bg-[#C29E30] text-black font-bold uppercase tracking-wider text-[9px] rounded shrink-0 transition-colors"
+                          >
+                            Simulate
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Playbook Run Logs */}
+                    <div className="border-t border-white/5 pt-4">
+                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block mb-2 font-mono">Recent Playbook Executions</span>
+                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                        {playbookExecs.length === 0 ? (
+                          <div className="text-[10px] text-white/30 text-center py-4">No playbook execution logs found.</div>
+                        ) : (
+                          playbookExecs.map((log, i) => (
+                            <div key={i} className="p-2 bg-black/20 border border-white/5 rounded text-[10px] flex justify-between items-center">
+                              <div>
+                                <span className="font-bold text-white">{log.playbookName}</span>
+                                <div className="text-white/40 text-[9px] mt-0.5">Trigger: {log.trigger}</div>
+                              </div>
+                              <div className="text-right">
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${log.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{log.status}</span>
+                                <div className="text-white/30 text-[8px] font-mono mt-1">{log.durationMs}ms</div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Proactive Threat Hunting */}
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">Proactive Threat Hunting Workspace</h4>
+                      <span className="text-[8px] bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded font-mono font-bold">THREAT HUNTER</span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {[
+                        { name: 'Daily Authentication Hunt', type: 'ACCOUNT_TAKEOVER', desc: 'Scans for login failure spikes followed by a successful credentials validation.' },
+                        { name: 'Daily Session Hijacking Hunt', type: 'SESSION_HIJACK', desc: 'Detects active sessions with sudden user agent or IP address updates.' },
+                        { name: 'Daily Privilege Hunt', type: 'PRIVILEGE_ESCALATION', desc: 'Audits administrator promotions and permission shifts.' },
+                        { name: 'Daily Geographic Hunt', type: 'GEO_ANOMALY', desc: 'Validates sessions coordinates for impossible travel velocity violations.' }
+                      ].map((hunt, idx) => (
+                        <div key={idx} className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-3">
+                          <div>
+                            <span className="text-xs font-bold text-white block">{hunt.name}</span>
+                            <span className="text-[10px] text-white/50 block mt-0.5">{hunt.desc}</span>
+                          </div>
+                          <button
+                            onClick={() => handleTriggerHunt(hunt.name, hunt.type)}
+                            className="py-1 px-3 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 font-bold uppercase tracking-wider text-[9px] rounded shrink-0 transition-colors"
+                          >
+                            Run Hunt
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Threat Hunt Execution logs */}
+                    <div className="border-t border-white/5 pt-4">
+                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block mb-2 font-mono">Proactive Hunt Run Logs</span>
+                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                        {threatHunts.length === 0 ? (
+                          <div className="text-[10px] text-white/30 text-center py-4">No hunt execution history found.</div>
+                        ) : (
+                          threatHunts.map((hunt, i) => (
+                            <div key={i} className="p-2.5 bg-black/20 border border-white/5 rounded text-[10px] space-y-1">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-white">{hunt.huntName}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${hunt.findingsCount > 0 ? 'bg-orange-500/10 text-orange-400' : 'bg-green-500/10 text-green-400'}`}>
+                                  {hunt.findingsCount} Findings
+                                </span>
+                              </div>
+                              <p className="text-white/60 text-[9px] font-light">{hunt.summary}</p>
+                              <div className="flex justify-between text-white/30 text-[8px] font-mono">
+                                <span>Risk: {hunt.riskScore}/100</span>
+                                <span>Duration: {hunt.durationMs}ms</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Automated Containment Approvals (1/3 Width) */}
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
+                    <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">Containment Governance Approvals</h4>
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                      {pendingActions.filter(a => a.status === 'PENDING_APPROVAL').length === 0 ? (
+                        <div className="text-[10px] text-white/30 text-center py-12">Zero containment actions pending approval.</div>
+                      ) : (
+                        pendingActions.filter(a => a.status === 'PENDING_APPROVAL').map((action) => (
+                          <div key={action.id} className="p-3 bg-black/35 border border-red-500/25 rounded-lg space-y-2">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="text-xs font-bold text-red-400 block">{action.actionType}</span>
+                                <span className="text-[9px] text-white/40 block mt-0.5">Target: {action.targetId}</span>
+                              </div>
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-yellow-500/10 text-yellow-400 uppercase font-mono">PENDING</span>
+                            </div>
+                            <p className="text-[9px] text-white/50 leading-normal">Safety check: High-privilege actions require administrative approval before execution.</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleApproveAction(action.id, true)}
+                                className="flex-1 py-1 bg-green-500 hover:bg-green-600 text-black font-bold uppercase tracking-wider text-[8px] rounded transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleApproveAction(action.id, false)}
+                                className="flex-1 py-1 bg-white/5 hover:bg-white/10 text-white/60 font-bold uppercase tracking-wider text-[8px] rounded border border-white/10 transition-all"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Detections Rule Config Tuning (2/3 Width) */}
+                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4 lg:col-span-2">
+                    <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">Detection Rules Configurations & Tuning</h4>
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                      {detectionRules.map((rule) => (
+                        <div key={rule.id} className="p-3.5 bg-black/40 border border-white/5 rounded-xl space-y-3">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="text-xs font-bold text-white block">{rule.name}</span>
+                              <span className="text-[8px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded font-mono mt-0.5 block w-max">{rule.category}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={rule.state}
+                                onChange={(e) => handleTuneRule(rule.id, e.target.value, rule.severity, rule.thresholds)}
+                                className="bg-black border border-white/10 text-[9px] text-white rounded p-1"
+                              >
+                                <option value="ACTIVE">Active</option>
+                                <option value="DISABLED">Disabled</option>
+                                <option value="TESTING">Testing</option>
+                              </select>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${rule.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-400' : 'bg-orange-500/10 text-orange-400'}`}>
+                                {rule.severity}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3 text-center border-t border-white/5 pt-2">
+                            <div className="p-1.5 bg-black/20 rounded">
+                              <span className="text-[7px] uppercase tracking-widest text-white/40 font-bold block">Trigger Count</span>
+                              <span className="text-xs font-mono font-bold text-white">{rule.triggerCount}</span>
+                            </div>
+                            <div className="p-1.5 bg-black/20 rounded">
+                              <span className="text-[7px] uppercase tracking-widest text-white/40 font-bold block">Rule Precision</span>
+                              <span className="text-xs font-mono font-bold text-green-400">{Math.round(rule.precision * 100)}%</span>
+                            </div>
+                            <div className="p-1.5 bg-black/20 rounded">
+                              <span className="text-[7px] uppercase tracking-widest text-white/40 font-bold block">False Alarm Rate</span>
+                              <span className="text-xs font-mono font-bold text-red-400">{Math.round(rule.falsePositiveRate * 100)}%</span>
+                            </div>
+                          </div>
+
+                          {/* Inline thresholds tuner */}
+                          <div className="flex gap-2 items-center flex-wrap bg-black/20 p-2 rounded-lg text-[9px]">
+                            <span className="text-white/40 font-bold font-mono">Tuner Thresholds:</span>
+                            {Object.entries((rule.thresholds as any) || {}).map(([key, val]: any) => (
+                              <div key={key} className="flex gap-1 items-center">
+                                <span className="text-white/60">{key}:</span>
+                                <input
+                                  type="text"
+                                  defaultValue={val}
+                                  onBlur={(e) => {
+                                    const valStr = e.target.value;
+                                    const parsedVal = isNaN(Number(valStr)) ? valStr === 'true' || (valStr === 'false' ? false : valStr) : Number(valStr);
+                                    const newThresholds = { ...(rule.thresholds as any), [key]: parsedVal };
+                                    handleTuneRule(rule.id, rule.state, rule.severity, newThresholds);
+                                  }}
+                                  className="w-10 bg-black border border-white/10 text-white rounded p-0.5 font-mono text-center"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* False Positive Recommendations Workspace */}
+                <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">False Positive Auto-Analysis & Rules Tuning Recommendations</h4>
+                    <span className="text-[8px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded font-mono font-bold">TUNING ENGINE</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {fpRecs.length === 0 ? (
+                      <div className="text-[10px] text-white/30 text-center py-6">Zero recommended tuning parameters identified. Detections precision remains optimized.</div>
+                    ) : (
+                      fpRecs.map((rec) => (
+                        <div key={rec.id} className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-4 flex-wrap">
+                          <div>
+                            <div className="flex gap-2 items-center">
+                              <span className="text-xs font-bold text-white">{rec.ruleName}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                rec.recommendation === 'DISABLE_RULE' ? 'bg-red-500/10 text-red-400' :
+                                rec.recommendation === 'TUNE_RULE' ? 'bg-yellow-500/10 text-yellow-400' :
+                                'bg-blue-500/10 text-blue-400'
+                              }`}>{rec.recommendation}</span>
+                            </div>
+                            <p className="text-[10px] text-white/50 mt-1 leading-normal">{rec.reason}</p>
+                            <span className="text-[8px] text-white/30 font-mono block mt-1">Analyzed: {rec.analyzedAlerts} alerts • Outcomes: {JSON.stringify(rec.resolvedOutcomes)}</span>
+                          </div>
+                          {!rec.accepted && !rec.rejected ? (
+                            <div className="flex gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleApplyFpRec(rec.id, true)}
+                                className="py-1 px-3 bg-green-500 hover:bg-green-600 text-black font-bold uppercase tracking-wider text-[9px] rounded transition-colors"
+                              >
+                                Accept & Apply
+                              </button>
+                              <button
+                                onClick={() => handleApplyFpRec(rec.id, false)}
+                                className="py-1 px-3 bg-white/5 hover:bg-white/10 text-white/50 font-bold uppercase tracking-wider text-[9px] rounded border border-white/10 transition-all"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[8px] uppercase tracking-widest text-green-500/60 font-bold bg-green-500/5 px-2 py-0.5 border border-green-500/10 rounded">
+                              {rec.rejected ? 'Dismissed' : 'Applied successfully'}
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             )}
