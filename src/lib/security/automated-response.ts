@@ -8,6 +8,15 @@ import {
 } from '@prisma/client';
 import { SecurityEventLogger } from './event-logger';
 
+const AUTO_EXECUTABLE_ACTIONS = new Set<ResponseActionType>([
+  ResponseActionType.REVOKE_SESSION,
+  ResponseActionType.ROTATE_SESSION,
+  ResponseActionType.REMOVE_TRUST,
+  ResponseActionType.BLOCK_MALICIOUS_IP,
+  ResponseActionType.BLOCK_TOR_NODE,
+  ResponseActionType.BLOCK_PROXY_SOURCE
+]);
+
 export class AutomatedResponseService {
   /**
    * Evaluates and logs/executes a containment response action.
@@ -18,14 +27,7 @@ export class AutomatedResponseService {
     requestedBy: string;
     metadata?: any;
   }): Promise<any> {
-    const isAutoAllowed = [
-      ResponseActionType.REVOKE_SESSION,
-      ResponseActionType.ROTATE_SESSION,
-      ResponseActionType.REMOVE_TRUST,
-      ResponseActionType.BLOCK_MALICIOUS_IP,
-      ResponseActionType.BLOCK_TOR_NODE,
-      ResponseActionType.BLOCK_PROXY_SOURCE
-    ].includes(params.actionType);
+    const isAutoAllowed = AUTO_EXECUTABLE_ACTIONS.has(params.actionType);
 
     // High privilege modifications must be downgraded to approval required
     const executionMode = isAutoAllowed
@@ -97,7 +99,7 @@ export class AutomatedResponseService {
       switch (action.actionType) {
         case ResponseActionType.REVOKE_SESSION: {
           const { SessionManager } = await import('./session-manager');
-          await SessionManager.revokeSession(action.targetId);
+          await SessionManager.revokeSession(action.targetId, approvedBy);
           break;
         }
         case ResponseActionType.ROTATE_SESSION: {
@@ -107,7 +109,7 @@ export class AutomatedResponseService {
         }
         case ResponseActionType.LOGOUT_ALL_DEVICES: {
           const { SessionManager } = await import('./session-manager');
-          await SessionManager.revokeUserSessions(action.targetId);
+          await SessionManager.revokeUserSessions(action.targetId, approvedBy);
           break;
         }
         case ResponseActionType.FORCE_PASSWORD_RESET: {

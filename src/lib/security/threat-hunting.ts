@@ -218,7 +218,7 @@ export class ThreatHuntingService {
           findingsCount,
           riskScore,
           summary,
-          findingsLink: { findings }
+          findingsLink: { findings } as any
         }
       });
 
