@@ -12,7 +12,7 @@ export async function PUT(request: NextRequest) {
     const role = (session?.user as any)?.role;
     const actorId = (session?.user as any)?.id;
 
-    if (!session || role !== 'ADMIN') {
+    if (!session || (role !== 'ADMIN' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

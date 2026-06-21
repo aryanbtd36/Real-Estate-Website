@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const role = (session?.user as any)?.role;
     const actorId = (session?.user as any)?.id;
 
-    if (!session || role !== 'ADMIN') {
+    if (!session || (role !== 'ADMIN' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -74,7 +74,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const role = (session?.user as any)?.role;
     const actorId = (session?.user as any)?.id;
 
-    if (!session || role !== 'ADMIN') {
+    if (!session || (role !== 'ADMIN' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -184,7 +184,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const role = (session?.user as any)?.role;
     const actorId = (session?.user as any)?.id;
 
-    if (!session || role !== 'ADMIN') {
+    if (!session || (role !== 'ADMIN' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
