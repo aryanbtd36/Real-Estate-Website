@@ -16,7 +16,9 @@ import {
   BarChart2,
   ShieldAlert,
   Compass,
-  UserCheck
+  UserCheck,
+  Settings,
+  FileCode
 } from 'lucide-react';
 
 export function AdminSidebar() {
@@ -45,7 +47,9 @@ export function AdminSidebar() {
 
   if ((session?.user as any)?.isFounder) {
     navigationItems.push(
-      { href: '/founder', name: 'Founder console', icon: ShieldAlert, exact: false }
+      { href: '/founder', name: 'Founder console', icon: ShieldAlert, exact: false },
+      { href: '/admin/cms', name: 'CMS Control Panel', icon: Settings, exact: false },
+      { href: '/admin/cms/templates', name: 'Template Builder', icon: FileCode, exact: false }
     );
   }
 

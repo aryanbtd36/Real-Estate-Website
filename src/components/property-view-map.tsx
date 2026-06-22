@@ -78,12 +78,12 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
         const coords = JSON.parse(boundary);
         if (Array.isArray(coords) && coords.length > 0) {
           polygonRef.current = L.polygon(coords, {
-            color: '#D4AF37',
-            fillColor: '#D4AF37',
+            color: '#0b4c8c',
+            fillColor: '#10b981',
             fillOpacity: 0.15,
             weight: 3,
           }).addTo(map);
-
+          
           // Fit map boundary
           map.fitBounds(polygonRef.current.getBounds(), { padding: [20, 20] });
         }
@@ -159,10 +159,10 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
               setMapLayer(layer);
               localStorage.setItem('aura_estates_map_layer', layer);
             }}
-            className={`px-2.5 py-1 bg-black/40 border text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
+            className={`px-2.5 py-1 border text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
               mapLayer === layer
-                ? 'border-[#D4AF37] bg-[#D4AF37]/10 text-[#F5D67B]'
-                : 'border-white/5 text-white/40 hover:text-white'
+                ? 'border-trust-blue bg-trust-blue/10 text-trust-blue'
+                : 'border-slate-200 text-slate-500 hover:text-slate-700 bg-white'
             }`}
           >
             {layer === 'standard' && '🗺 Standard'}
@@ -171,7 +171,7 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
           </button>
         ))}
       </div>
-      <div className="w-full h-full min-h-[300px] md:min-h-[400px] rounded-xl overflow-hidden border border-white/10 relative">
+      <div className="w-full h-full min-h-[300px] md:min-h-[400px] rounded-xl overflow-hidden border border-slate-200 relative">
         <div ref={mapContainerRef} className="w-full h-full" />
       </div>
     </div>

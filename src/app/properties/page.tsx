@@ -115,35 +115,35 @@ export default function PropertiesCatalogPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white font-sans antialiased pb-20">
+    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased pb-20">
       {/* Background radial gradient */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-[#D4AF37]/5 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-trust-blue/5 to-transparent pointer-events-none" />
 
       <div className="max-w-6xl mx-auto px-6 pt-28 relative z-10 space-y-12">
         {/* Title */}
-        <div className="border-b border-white/5 pb-6">
-          <h1 className="text-3xl md:text-5xl font-light tracking-wide text-white">Find Lucknow Properties</h1>
-          <p className="text-sm text-white/50 mt-2">Discover GIS-mapped plots, residential buildings, and estate listings.</p>
+        <div className="border-b border-slate-100 pb-6">
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900">Find Lucknow Properties</h1>
+          <p className="text-sm text-slate-500 mt-2">Discover GIS-mapped plots, residential buildings, and estate listings.</p>
         </div>
 
         {/* Filters Toolbar */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#161616] p-4 rounded-xl border border-white/5 items-center">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 items-center">
           <div className="relative md:col-span-3">
             <input
               type="text"
               placeholder="Search by title, neighborhood..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 hover:border-white/20 focus:border-[#D4AF37] p-2.5 pl-9 rounded-lg text-white text-xs outline-none transition-colors"
+              className="w-full bg-white border border-slate-200 focus:border-trust-blue p-2.5 pl-9 rounded-lg text-slate-700 text-xs outline-none transition-colors"
             />
-            <Search className="absolute left-3 top-3 text-white/40" size={14} />
+            <Search className="absolute left-3 top-3.5 text-slate-400" size={14} />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:col-span-9">
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="bg-[#0A0A0A] border border-white/10 p-2.5 rounded-lg text-white text-[11px] outline-none cursor-pointer"
+              className="bg-white border border-slate-200 p-2.5 rounded-lg text-slate-700 text-[11px] outline-none cursor-pointer"
             >
               <option value="">All Types</option>
               <option value="Apartment">Apartment</option>
@@ -156,7 +156,7 @@ export default function PropertiesCatalogPage() {
             <select
               value={filterBudget}
               onChange={(e) => setFilterBudget(e.target.value)}
-              className="bg-[#0A0A0A] border border-white/10 p-2.5 rounded-lg text-white text-[11px] outline-none cursor-pointer"
+              className="bg-white border border-slate-200 p-2.5 rounded-lg text-slate-700 text-[11px] outline-none cursor-pointer"
             >
               <option value="">No Budget Limit</option>
               <option value="5000000">Under ₹50 Lakh</option>
@@ -169,7 +169,7 @@ export default function PropertiesCatalogPage() {
             <select
               value={filterBedrooms}
               onChange={(e) => setFilterBedrooms(e.target.value)}
-              className="bg-[#0A0A0A] border border-white/10 p-2.5 rounded-lg text-white text-[11px] outline-none cursor-pointer"
+              className="bg-white border border-slate-200 p-2.5 rounded-lg text-slate-700 text-[11px] outline-none cursor-pointer"
             >
               <option value="">Any Bedrooms</option>
               <option value="2">2+ Beds</option>
@@ -180,10 +180,10 @@ export default function PropertiesCatalogPage() {
             <button
               onClick={handleNearMeToggle}
               disabled={gpsLoading}
-              className={`w-full py-2 bg-black border text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+              className={`w-full py-2 border text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                 nearMeActive
-                  ? 'border-[#D4AF37] bg-[#D4AF37]/15 text-[#F5D67B]'
-                  : 'border-white/10 hover:border-white/20 text-white/80'
+                  ? 'border-trust-blue bg-trust-blue/15 text-trust-blue'
+                  : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
               }`}
             >
               <CompassIcon size={12} className={gpsLoading ? 'animate-spin' : ''} />
@@ -196,12 +196,12 @@ export default function PropertiesCatalogPage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-96 bg-white/5 rounded-xl animate-pulse" />
+              <div key={i} className="h-96 bg-slate-50 rounded-xl animate-pulse animate-duration-1000" />
             ))}
           </div>
         ) : filteredProperties.length === 0 ? (
-          <div className="bg-[#161616]/40 border border-white/5 p-16 text-center rounded-xl">
-            <p className="text-white/45">No properties cataloged matching your parameters.</p>
+          <div className="bg-slate-50 border border-slate-200 p-16 text-center rounded-xl">
+            <p className="text-slate-400">No properties cataloged matching your parameters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -212,30 +212,30 @@ export default function PropertiesCatalogPage() {
               return (
                 <div
                   key={prop.id}
-                  className="group bg-[#161616] border border-white/5 hover:border-[#D4AF37]/30 rounded-lg overflow-hidden transition-all duration-300 shadow-xl hover:-translate-y-1 flex flex-col h-full"
+                  className="group bg-white border border-slate-100 hover:border-trust-blue/30 rounded-lg overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col h-full"
                 >
                   {/* Photo area */}
-                  <div className="relative h-48 bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="relative h-48 bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
                     {coverImg ? (
-                      <img src={coverImg} alt={prop.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={coverImg} alt={prop.name} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
                     ) : (
-                      <div className="text-white/20"><ImageIcon size={36} /></div>
+                      <div className="text-slate-300"><ImageIcon size={36} /></div>
                     )}
 
                     {/* Proximity badge */}
                     {prop.distanceKm !== undefined && (
-                      <div className="absolute top-4 left-4 z-20 px-2.5 py-1 bg-[#D4AF37] text-black text-[9px] uppercase tracking-wider font-extrabold rounded shadow-md">
+                      <div className="absolute top-4 left-4 z-20 px-2.5 py-1 bg-trust-blue text-white text-[9px] uppercase tracking-wider font-extrabold rounded shadow-md">
                         {prop.distanceKm.toFixed(1)} km away
                       </div>
                     )}
 
-                    <div className="absolute top-4 right-4 z-20 px-2.5 py-1 bg-black/60 backdrop-blur border border-white/10 rounded text-[9px] uppercase tracking-wider text-white">
+                    <div className="absolute top-4 right-4 z-20 px-2.5 py-1 bg-black/60 backdrop-blur border border-slate-100/10 rounded text-[9px] uppercase tracking-wider text-white">
                       Floor {prop.floor}
                     </div>
 
                     <Link
                       href={`/properties/${prop.id}`}
-                      className="absolute bottom-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-white text-black hover:bg-[#D4AF37] hover:text-black text-[10px] font-bold uppercase rounded shadow transition-colors opacity-0 group-hover:opacity-100"
+                      className="absolute bottom-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-trust-blue text-white hover:bg-trust-blue-hover text-[10px] font-bold uppercase rounded shadow transition-colors opacity-0 group-hover:opacity-100"
                     >
                       <Eye size={12} />
                       View Listing
@@ -246,27 +246,27 @@ export default function PropertiesCatalogPage() {
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-2">
                       <div className="flex justify-between items-start gap-2">
-                        <h3 className="font-semibold text-white group-hover:text-[#F5D67B] transition-colors truncate">
+                        <h3 className="font-semibold text-slate-800 group-hover:text-trust-blue transition-colors truncate">
                           {prop.name}
                         </h3>
-                        <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] text-white/50 uppercase tracking-widest shrink-0">
+                        <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[8px] text-slate-500 uppercase tracking-widest shrink-0">
                           {prop.type}
                         </span>
                       </div>
-                      <div className="flex items-center text-xs text-white/50 gap-1">
-                        <MapPin size={12} className="text-[#D4AF37]" />
+                      <div className="flex items-center text-xs text-slate-500 gap-1">
+                        <MapPin size={12} className="text-slate-400" />
                         <span className="truncate">{prop.location}</span>
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center pt-3 border-t border-white/5">
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                       <div>
-                        <span className="text-[8px] uppercase tracking-widest text-white/40 block">Price</span>
-                        <span className="font-bold text-[#D4AF37] text-sm">
+                        <span className="text-[8px] uppercase tracking-widest text-slate-400 block">Price</span>
+                        <span className="font-bold text-trust-blue text-sm">
                           {formatIndianRealEstatePrice(prop.price)}
                         </span>
                       </div>
-                      <div className="text-right text-[10px] text-white/60 space-y-0.5">
+                      <div className="text-right text-[10px] text-slate-500 space-y-0.5">
                         <div>{prop.bedrooms} Bed / {prop.bathrooms || 1} Bath</div>
                         <div>{prop.area.toLocaleString()} {prop.areaUnit || 'Sq Ft'}</div>
                       </div>

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AURA | Luxury Real Estate Platform",
-  description: "A premium luxury real-estate platform designed with modern minimalist aesthetics and lightweight 3D experiences.",
+  title: "Aura Estates | Trustworthy Property Discovery & Market Intelligence",
+  description: "Discover verified properties, calculate affordability, and make informed real estate investments with Aura Estates.",
 };
 
 export default function RootLayout({
@@ -24,9 +24,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0A0A0A] text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-slate-900`}
       >
         <Providers>{children}</Providers>
       </body>

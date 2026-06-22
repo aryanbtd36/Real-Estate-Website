@@ -87,6 +87,11 @@ export default function AdminPropertiesPage() {
   const [brochureUrl, setBrochureUrl] = useState('');
   const [virtualTourUrl, setVirtualTourUrl] = useState('');
 
+  // Wave 8B Template states
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [templateFields, setTemplateFields] = useState<any>({});
+
   // Amenities checklist
   const availableAmenities = ['Parking', 'Swimming Pool', 'Security', 'Power Backup', 'Garden', 'Gym', 'Wine Cellar', 'Spa', 'Private Dock'];
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
@@ -108,8 +113,20 @@ export default function AdminPropertiesPage() {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const res = await fetch('/api/admin/cms/templates');
+      if (res.ok) {
+        setTemplates(await res.json());
+      }
+    } catch (err) {
+      console.error('Failed to load templates:', err);
+    }
+  };
+
   useEffect(() => {
     fetchProperties();
+    fetchTemplates();
   }, []);
 
   // Open Form for Adding
@@ -141,6 +158,8 @@ export default function AdminPropertiesPage() {
     setVirtualTourUrl('');
     setSelectedAmenities([]);
     setImagesList([]);
+    setTemplateId(null);
+    setTemplateFields({});
     setShowForm(true);
   };
 
@@ -190,6 +209,8 @@ export default function AdminPropertiesPage() {
     setBrochureUrl(prop.brochureUrl || '');
     setVirtualTourUrl(prop.virtualTourUrl || '');
     setSelectedAmenities(prop.amenities || []);
+    setTemplateId(prop.templateId || null);
+    setTemplateFields(prop.templateFields || {});
 
     // Load related images
     if (prop.imagesRelation) {
@@ -356,7 +377,9 @@ export default function AdminPropertiesPage() {
       status,
       videoUrl,
       brochureUrl,
-      virtualTourUrl
+      virtualTourUrl,
+      templateId,
+      templateFields
     };
 
     try {
@@ -568,8 +591,8 @@ export default function AdminPropertiesPage() {
               {/* Basic Info */}
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37] border-l-2 border-[#D4AF37] pl-2">Basic Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2 md:col-span-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="space-y-2 md:col-span-4">
                     <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Title / Name</label>
                     <input
                       type="text"
@@ -585,7 +608,30 @@ export default function AdminPropertiesPage() {
                     <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Type</label>
                     <select
                       value={type}
-                      onChange={(e) => setType(e.target.value)}
+                      onChange={(e) => {
+                        const newType = e.target.value;
+                        setType(newType);
+                        // Auto-select template matching standard types
+                        if (newType === 'Apartment') {
+                          const t = templates.find(temp => temp.type === 'APARTMENT');
+                          if (t) {
+                            setTemplateId(t.id);
+                            setTemplateFields({});
+                          }
+                        } else if (newType === 'Villa' || newType === 'Duplex' || newType === 'Penthouse') {
+                          const t = templates.find(temp => temp.type === 'RESIDENCY');
+                          if (t) {
+                            setTemplateId(t.id);
+                            setTemplateFields({});
+                          }
+                        } else if (newType === 'Lot') {
+                          const t = templates.find(temp => temp.type === 'PLOT');
+                          if (t) {
+                            setTemplateId(t.id);
+                            setTemplateFields({});
+                          }
+                        }
+                      }}
                       className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
                     >
                       <option value="Apartment">Apartment</option>
@@ -618,6 +664,24 @@ export default function AdminPropertiesPage() {
                       <option value="DRAFT">Draft Mode</option>
                       <option value="PUBLISHED">Published / Active</option>
                       <option value="ARCHIVED">Archived / Hidden</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40 block">Property Template Schema</label>
+                    <select
+                      value={templateId || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTemplateId(val || null);
+                        setTemplateFields({});
+                      }}
+                      className="w-full bg-[#0A0A0A] border border-white/10 p-3 rounded-lg text-white text-sm outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="">No Schema / Custom Fields</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name} (Code: {t.type})</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -722,6 +786,108 @@ export default function AdminPropertiesPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Dynamic Template Fields */}
+              {templateId && (
+                <div className="space-y-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37] border-l-2 border-[#D4AF37] pl-2">Dynamic Template Attributes</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-[#0A0A0A] border border-white/5 rounded-xl">
+                    {(() => {
+                      const selectedT = templates.find(t => t.id === templateId);
+                      if (!selectedT || !selectedT.fields || selectedT.fields.length === 0) {
+                        return <p className="text-xs text-white/40 col-span-2 italic">This template has no attributes configured.</p>;
+                      }
+                      return selectedT.fields.map((field: any) => {
+                        const val = templateFields[field.name] !== undefined ? templateFields[field.name] : '';
+                        
+                        const handleFieldChange = (newValue: any) => {
+                          setTemplateFields((prev: any) => ({
+                            ...prev,
+                            [field.name]: newValue
+                          }));
+                        };
+
+                        return (
+                          <div key={field.name} className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-white/40 block">
+                              {field.label} {field.required && <span className="text-red-400">*</span>}
+                            </label>
+                            {field.type === 'checkbox' ? (
+                              <div className="flex items-center gap-2 pt-2">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(val)}
+                                  onChange={(e) => handleFieldChange(e.target.checked)}
+                                  className="w-4 h-4 accent-[#D4AF37] bg-[#161616] border-white/10 rounded cursor-pointer"
+                                />
+                                <span className="text-xs text-white/60">Yes / Enabled</span>
+                              </div>
+                            ) : field.type === 'dropdown' ? (
+                              <select
+                                value={val}
+                                required={field.required}
+                                onChange={(e) => handleFieldChange(e.target.value)}
+                                className="w-full bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                              >
+                                <option value="">-- Choose Option --</option>
+                                {(field.options || []).map((opt: string) => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            ) : field.type === 'multiselect' ? (
+                              <div className="flex flex-wrap gap-3 p-2.5 bg-[#161616] border border-white/10 rounded">
+                                {(field.options || []).map((opt: string) => {
+                                  const list = Array.isArray(val) ? val : [];
+                                  const checked = list.includes(opt);
+                                  const handleToggle = () => {
+                                    const next = checked ? list.filter((x: any) => x !== opt) : [...list, opt];
+                                    handleFieldChange(next);
+                                  };
+                                  return (
+                                    <label key={opt} className="flex items-center gap-1.5 cursor-pointer text-xs text-white/70 select-none">
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={handleToggle}
+                                        className="w-3.5 h-3.5 accent-[#D4AF37]"
+                                      />
+                                      <span>{opt}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            ) : field.type === 'textarea' ? (
+                              <textarea
+                                value={val}
+                                required={field.required}
+                                onChange={(e) => handleFieldChange(e.target.value)}
+                                rows={3}
+                                className="w-full bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37] resize-none"
+                              />
+                            ) : field.type === 'date' ? (
+                              <input
+                                type="date"
+                                value={val}
+                                required={field.required}
+                                onChange={(e) => handleFieldChange(e.target.value)}
+                                className="w-full bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                              />
+                            ) : (
+                              <input
+                                type={field.type === 'number' ? 'number' : 'text'}
+                                value={val}
+                                required={field.required}
+                                onChange={(e) => handleFieldChange(field.type === 'number' ? (e.target.value === '' ? '' : parseFloat(e.target.value)) : e.target.value)}
+                                className="w-full bg-[#161616] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                              />
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
 
               {/* Media Enhancements */}
               <div className="space-y-4">

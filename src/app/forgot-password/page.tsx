@@ -67,54 +67,52 @@ function ForgotPasswordContent() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-[#0A0A0A] text-white">
-      {/* Left Column: Cinematic Visual */}
-      <div className="hidden lg:flex lg:col-span-5 relative overflow-hidden flex-col justify-between p-12 border-r border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_40%,rgba(212,175,55,0.06),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none" />
-
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-white text-slate-900 font-sans antialiased">
+      {/* Left Column: Decision Support Context */}
+      <div className="hidden lg:flex lg:col-span-6 relative overflow-hidden flex-col justify-between p-12 bg-slate-50 border-r border-slate-200">
+        {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 z-10">
-          <span className="text-2xl font-bold tracking-[0.2em] text-[#D4AF37]">AURA</span>
-          <span className="text-[10px] tracking-[0.4em] uppercase text-white/50 border-l border-white/20 pl-2">ESTATE</span>
+          <span className="text-xl font-bold tracking-tight text-trust-blue">Aura Estates</span>
+          <span className="text-[10px] tracking-widest uppercase text-slate-400 border-l border-slate-200 pl-2">Decision Support</span>
         </Link>
 
-        <div className="space-y-6 z-10 max-w-sm my-auto">
-          <div className="p-3 bg-[#D4AF37]/5 border border-[#D4AF37]/10 w-fit rounded-lg text-[#F5D67B] animate-pulse">
-            <Sparkles size={24} />
+        {/* Narrative info */}
+        <div className="space-y-6 z-10 max-w-sm my-auto text-left">
+          <div className="p-3 bg-trust-blue/10 w-fit rounded-lg text-trust-blue">
+            <Mail size={24} />
           </div>
-          <h2 className="text-4xl font-light tracking-tight leading-tight">
-            Security & <br />
-            <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] to-[#F5D67B]">
-              Privacy First
-            </span>
+          <h2 className="text-4xl font-extrabold tracking-tight leading-none text-slate-900">
+            Account <br />
+            <span className="text-trust-blue">Security</span>
           </h2>
-          <p className="text-sm text-white/50 leading-relaxed font-light">
+          <p className="text-sm text-slate-500 leading-relaxed font-normal">
             If you have misplaced your client account credentials, you may request a secure single-use link to reset your password code.
           </p>
         </div>
 
-        <div className="text-[10px] tracking-wider text-white/30 uppercase z-10">
-          © 2026 AURA REAL ESTATE. SECURED CLIENT PROTOCOLS.
+        {/* Footnote */}
+        <div className="text-[10px] tracking-wider text-slate-400 uppercase z-10">
+          © 2026 AURA ESTATES. REGISTERED DECISION SUPPORT DESK.
         </div>
       </div>
 
       {/* Right Column: Form */}
-      <div className="col-span-1 lg:col-span-7 flex flex-col justify-center px-6 sm:px-12 md:px-24 py-12">
+      <div className="col-span-1 lg:col-span-6 flex flex-col justify-center px-6 sm:px-12 md:px-24 py-12">
         <div className="max-w-md w-full mx-auto space-y-8">
           <div className="space-y-2">
-            <h1 className="text-3xl font-light tracking-wide">Recover Password</h1>
-            <p className="text-xs text-white/50">Enter email below to receive a secure password configuration invite.</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Recover Password</h1>
+            <p className="text-xs text-slate-500">Enter email below to receive a secure password configuration invite.</p>
           </div>
 
           {isOAuthRedirect && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/35 rounded flex gap-3 text-xs leading-relaxed"
+              className="p-4 bg-blue-50 border border-blue-200 rounded flex gap-3 text-xs leading-relaxed"
             >
-              <ShieldCheck className="text-[#D4AF37] shrink-0" size={18} />
+              <ShieldCheck className="text-trust-blue shrink-0" size={18} />
               <div>
-                <span className="font-bold text-[#F5D67B] block mb-0.5">Google OAuth Account Detected</span>
+                <span className="font-bold text-slate-900 block mb-0.5">Google OAuth Account Detected</span>
                 Your account is currently configured to sign in via Google. Please enter your email below to configure a new password, enabling credentials-based login.
               </div>
             </motion.div>
@@ -124,17 +122,17 @@ function ForgotPasswordContent() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-8 bg-green-500/10 border border-green-500/20 text-center rounded-xl space-y-4"
+              className="p-8 bg-green-50 border border-green-200 text-center rounded-xl space-y-4"
             >
-              <div className="w-12 h-12 rounded-full bg-green-500/25 flex items-center justify-center text-green-400 mx-auto">
+              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mx-auto">
                 <Check size={24} />
               </div>
-              <h3 className="text-xl font-medium text-white">Reset Link Dispatched</h3>
-              <p className="text-sm text-white/50 leading-relaxed">
+              <h3 className="text-xl font-bold text-slate-900">Reset Link Dispatched</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
                 If an account matches that email, a secure, single-use password reset link has been sent. Please check your inbox.
               </p>
               <div className="pt-4">
-                <Link href="/login" className="text-xs text-[#D4AF37] hover:underline font-semibold">
+                <Link href="/login" className="text-xs text-trust-blue hover:underline font-bold">
                   Back to Sign In
                 </Link>
               </div>
@@ -142,23 +140,23 @@ function ForgotPasswordContent() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded">
+                <div className="p-4 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg">
                   {error}
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-white/40 block">Email Address</label>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Email Address</label>
                 <div className="relative">
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#161616] border border-white/10 hover:border-white/20 focus:border-[#D4AF37] p-3.5 pl-10 rounded text-white text-sm outline-none transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-trust-blue p-3 pl-10 rounded-lg text-slate-700 text-sm outline-none transition-colors"
                     placeholder="name@domain.com"
                   />
-                  <Mail className="absolute left-3.5 top-4 text-white/40" size={16} />
+                  <Mail className="absolute left-3.5 top-3.5 text-slate-400" size={16} />
                 </div>
               </div>
 
@@ -170,7 +168,7 @@ function ForgotPasswordContent() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-gradient-to-r from-[#D4AF37] to-[#F5D67B] text-black font-semibold uppercase tracking-wider text-xs rounded hover:opacity-95 shadow-lg flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-trust-blue hover:bg-trust-blue-hover text-white font-bold uppercase tracking-wider text-xs rounded-lg shadow transition-colors flex items-center justify-center gap-2"
               >
                 <span>{loading ? 'Requesting Link...' : 'Send Reset Link'}</span>
                 <ArrowRight size={14} />
@@ -178,9 +176,9 @@ function ForgotPasswordContent() {
             </form>
           )}
 
-          <p className="text-xs text-center text-white/40">
+          <p className="text-xs text-center text-slate-500">
             Remember your credentials?{' '}
-            <Link href="/login" className="text-[#D4AF37] hover:underline font-semibold">
+            <Link href="/login" className="text-trust-blue hover:underline font-bold">
               Client Sign In
             </Link>
           </p>
@@ -193,8 +191,8 @@ function ForgotPasswordContent() {
 export default function ForgotPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-white">
-        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-white flex items-center justify-center text-slate-900">
+        <div className="w-8 h-8 border-2 border-trust-blue border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <ForgotPasswordContent />

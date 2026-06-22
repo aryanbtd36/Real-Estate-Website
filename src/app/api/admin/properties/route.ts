@@ -49,7 +49,9 @@ export async function POST(req: Request) {
       videoUrl,
       brochureUrl,
       virtualTourUrl,
-      boundaryZones
+      boundaryZones,
+      templateId,
+      templateFields
     } = body;
 
     if (!name || !price || !area || !bedrooms) {
@@ -88,6 +90,8 @@ export async function POST(req: Request) {
         brochureUrl: brochureUrl || null,
         virtualTourUrl: virtualTourUrl || null,
         boundaryZones: boundaryZones || null,
+        templateId: templateId || null,
+        templateFields: templateFields || null,
         imagesRelation: {
           create: Array.isArray(imagesList) ? imagesList.map((img: any) => ({
             publicId: img.publicId,
@@ -164,7 +168,9 @@ export async function PUT(req: Request) {
       videoUrl,
       brochureUrl,
       virtualTourUrl,
-      boundaryZones
+      boundaryZones,
+      templateId,
+      templateFields
     } = body;
 
     if (!id || !name || !price || !area || !bedrooms) {
@@ -234,6 +240,8 @@ export async function PUT(req: Request) {
         brochureUrl: brochureUrl || null,
         virtualTourUrl: virtualTourUrl || null,
         boundaryZones: boundaryZones || null,
+        templateId: templateId || null,
+        templateFields: templateFields || null,
         imagesRelation: {
           create: Array.isArray(imagesList) ? imagesList.map((img: any) => ({
             publicId: img.publicId,

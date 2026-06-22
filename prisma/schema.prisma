@@ -282,6 +282,8 @@ model Property {
   virtualTourUrl String?
   boundaryZones  Json?
   priceHistories PropertyPriceHistory[]
+  templateId     String?
+  templateFields Json?
 }
 
 model PropertyImage {
@@ -1366,6 +1368,142 @@ model FalsePositiveRecommendation {
 
   createdAt        DateTime                        @default(now())
   updatedAt        DateTime                        @updatedAt
+}
+
+// --- WAVE 8B CMS & PROPERTY TEMPLATE SYSTEM MODELS ---
+
+model CmsHeroConfig {
+  id               String   @id @default("hero-config")
+  headline         String   @default("Find the Right Property. Backed by Data, Not Guesswork.")
+  highlightedText  String   @default("Backed by Data, Not Guesswork.")
+  subheadline      String   @default("Discover verified plots, apartments and residences using market intelligence, locality insights, affordability tools, investment analytics and transparent property information.")
+  primaryCtaText   String   @default("Explore Properties")
+  primaryCtaUrl    String   @default("/plots")
+  secondaryCtaText String   @default("Market Intelligence")
+  secondaryCtaUrl  String   @default("/investment-intelligence")
+  backgroundMedia  String   @default("")
+  bgType           String   @default("image") // "image" or "video"
+  visible          Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+model CmsHeroMetric {
+  id           String   @id @default(uuid())
+  title        String
+  value        String
+  suffix       String   @default("")
+  icon         String   @default("Activity")
+  displayOrder Int      @default(0)
+  visible      Boolean  @default(true)
+}
+
+model CmsTrustMetric {
+  id           String   @id @default(uuid())
+  title        String
+  value        String
+  suffix       String   @default("")
+  icon         String   @default("CheckCircle")
+  displayOrder Int      @default(0)
+  visible      Boolean  @default(true)
+}
+
+model CmsSectionConfig {
+  id           String   @id // e.g. "hero", "trust-bar", "categories", etc.
+  name         String
+  visible      Boolean  @default(true)
+  displayOrder Int      @default(0)
+}
+
+model CmsTestimonial {
+  id           String   @id @default(uuid())
+  name         String
+  photo        String   @default("")
+  location     String
+  propertyType String   @default("Plot")
+  review       String
+  rating       Int      @default(5)
+  displayOrder Int      @default(0)
+  visible      Boolean  @default(true)
+  featured     Boolean  @default(false)
+}
+
+model CmsLocalityIntelligence {
+  id               String   @id @default(uuid())
+  areaName         String   @unique
+  growthScore      Int      @default(80)
+  demandScore      Int      @default(80)
+  connectivityScore Int     @default(80)
+  investmentRating String   @default("A")
+  displayOrder     Int      @default(0)
+  visible          Boolean  @default(true)
+}
+
+model CmsResearchArticle {
+  id            String   @id @default(uuid())
+  title         String
+  slug          String   @unique
+  thumbnail     String   @default("")
+  content       String
+  status        String   @default("DRAFT") // "DRAFT" | "PUBLISHED"
+  publishedDate DateTime @default(now())
+  author        String   @default("Aura Research Team")
+}
+
+model CmsAnnouncementBanner {
+  id          String   @id @default("announcement")
+  title       String   @default("")
+  description String   @default("")
+  ctaText     String   @default("")
+  ctaUrl      String   @default("")
+  visible     Boolean  @default(false)
+}
+
+model CmsSeoConfig {
+  id              String   @id @default("seo-config")
+  metaTitle       String   @default("Aura Estates")
+  metaDescription String   @default("Transparent Property Discovery Platform")
+  keywords        String   @default("real estate, verified plots, lucknow")
+  ogImage         String   @default("")
+  canonicalUrl    String   @default("")
+  structuredData  Json?
+}
+
+model CmsFeaturedPropertyConfig {
+  id        String   @id @default("featured-config")
+  mode      String   @default("AUTOMATIC") // "AUTOMATIC" or "MANUAL"
+  manualIds String[] @default([]) // Array of property IDs selected manually
+}
+
+model CmsFooterConfig {
+  id           String   @id @default("footer-config")
+  linksJson    Json?    // Category lists link data
+  socialsJson  Json?    // Social channel url links
+  companyInfo  String   @default("")
+  contactPhone String   @default("")
+  contactEmail String   @default("")
+}
+
+model PropertyTemplate {
+  id        String                  @id @default(uuid())
+  name      String
+  type      String                  @unique // "PLOT", "APARTMENT", "RESIDENCY", "COMMERCIAL", or custom name
+  fields    Json                    // Array of fields configs: { name: string, label: string, type: "text"|"number"|"dropdown"|"checkbox"|"multiselect"|"date"|"textarea", required: boolean, options?: string[] }
+  version   Int                     @default(1)
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  versions  PropertyTemplateVersion[]
+}
+
+model PropertyTemplateVersion {
+  id          String           @id @default(uuid())
+  templateId  String
+  template    PropertyTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  version     Int
+  fields      Json
+  changedBy   String
+  createdAt   DateTime         @default(now())
+
+  @@unique([templateId, version])
 }
 
 
