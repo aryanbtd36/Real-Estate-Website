@@ -75,7 +75,7 @@ export default function PropertyEditMap({
   // Zones editor state
   const [selectedZoneIndex, setSelectedZoneIndex] = useState<number | null>(null);
   const [newZoneName, setNewZoneName] = useState('');
-  const [newZoneColor, setNewZoneColor] = useState('#D4AF37');
+  const [newZoneColor, setNewZoneColor] = useState('#0B4C8C');
 
   // Paste upload state
   const [pasteData, setPasteData] = useState('');
@@ -420,8 +420,8 @@ export default function PropertyEditMap({
 
     if (tempPoints.length > 0) {
       primaryPolygonRef.current = L.polygon(tempPoints, {
-        color: '#D4AF37',
-        fillColor: '#D4AF37',
+        color: '#0B4C8C',
+        fillColor: '#0B4C8C',
         fillOpacity: 0.15,
         weight: 3,
       }).addTo(map);
@@ -667,7 +667,7 @@ export default function PropertyEditMap({
   return (
     <div className="space-y-4">
       {/* Mode Control Tabs */}
-      <div className="flex flex-wrap gap-1 bg-[#0A0A0A] p-1.5 border border-white/5 rounded-xl">
+      <div className="flex flex-wrap gap-1 bg-white p-1.5 border border-slate-200/80 rounded-xl">
         {(['pin', 'boundary', 'upload', 'measurement', 'zones'] as const).map((tab) => (
           <button
             key={tab}
@@ -678,8 +678,8 @@ export default function PropertyEditMap({
             }}
             className={`flex-1 min-w-[70px] py-2 text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
               activeTab === tab
-                ? 'bg-[#D4AF37] text-black font-extrabold'
-                : 'text-white/45 hover:text-white/80 hover:bg-white/5'
+                ? 'bg-[#0B4C8C] text-white font-extrabold'
+                : 'text-white/45 hover:text-slate-700 hover:bg-slate-50'
             }`}
           >
             {tab === 'pin' && '1. Pin Center'}
@@ -692,15 +692,15 @@ export default function PropertyEditMap({
       </div>
 
       {/* Tab Context Inputs */}
-      <div className="p-4 bg-[#161616] border border-white/5 rounded-xl space-y-4">
+      <div className="p-4 bg-white border border-slate-200/80 rounded-xl space-y-4">
         
         {activeTab === 'pin' && (
           <div className="space-y-4">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Center Pin Mode</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Center Pin Mode</p>
 
             {/* Geocoding Search Panel */}
             <div className="space-y-2 relative">
-              <label className="text-[8px] uppercase tracking-wider text-white/35 block">🔍 Search Location</label>
+              <label className="text-[8px] uppercase tracking-wider text-slate-800/35 block">🔍 Search Location</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -711,13 +711,13 @@ export default function PropertyEditMap({
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
-                  className="flex-1 bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                  className="flex-1 bg-white border border-slate-200 p-2.5 rounded text-slate-800 text-xs outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                   placeholder="Taj Mahal, Agra or Beverly Hills, CA"
                 />
                 <button
                   type="button"
                   onClick={() => handleSearchLocation()}
-                  className="px-4 py-2 bg-[#D4AF37] hover:opacity-90 text-black text-xs font-bold uppercase rounded tracking-wider"
+                  className="px-4 py-2 bg-[#0B4C8C] hover:opacity-90 text-white text-xs font-bold uppercase rounded tracking-wider"
                 >
                   Search
                 </button>
@@ -739,9 +739,9 @@ export default function PropertyEditMap({
 
               {/* Suggestions autocomplete dropdown */}
               {showSuggestions && (suggestions.length > 0 || loadingSuggestions) && (
-                <div className="absolute left-0 right-0 top-full mt-1 bg-[#0A0A0A] border border-white/10 rounded-lg shadow-2xl z-50 max-h-[200px] overflow-y-auto divide-y divide-white/5">
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-2xl z-50 max-h-[200px] overflow-y-auto divide-y divide-white/5">
                   {loadingSuggestions && (
-                    <div className="p-3 text-[10px] text-white/40 uppercase tracking-wider text-center">Searching suggestions...</div>
+                    <div className="p-3 text-[10px] text-slate-500 uppercase tracking-wider text-center">Searching suggestions...</div>
                   )}
                   {!loadingSuggestions && suggestions.map((item: any, idx) => (
                     <button
@@ -779,7 +779,7 @@ export default function PropertyEditMap({
                         setStatusMessage({ type: 'success', text: 'Location found successfully' });
                         setTimeout(() => setStatusMessage(null), 3000);
                       }}
-                      className="w-full text-left p-3 hover:bg-white/5 text-white/80 hover:text-white text-xs truncate block"
+                      className="w-full text-left p-3 hover:bg-slate-50 text-slate-700 hover:text-slate-800 text-xs truncate block"
                     >
                       {item.displayName || (item.lat + ', ' + item.lng)}
                     </button>
@@ -791,7 +791,7 @@ export default function PropertyEditMap({
             {/* Search History Panel */}
             {searchHistory.length > 0 && (
               <div className="space-y-1">
-                <label className="text-[8px] uppercase tracking-wider text-white/35 block">Recent Searches</label>
+                <label className="text-[8px] uppercase tracking-wider text-slate-800/35 block">Recent Searches</label>
                 <div className="flex flex-wrap gap-1">
                   {searchHistory.map((historyQuery, idx) => (
                     <button
@@ -801,7 +801,7 @@ export default function PropertyEditMap({
                         setSearchQueryText(historyQuery);
                         handleSearchLocation(historyQuery);
                       }}
-                      className="px-2 py-1 bg-[#1A1A1A] hover:bg-white/5 border border-white/5 rounded text-[10px] text-white/50 hover:text-white transition-colors"
+                      className="px-2 py-1 bg-slate-50 hover:bg-slate-50 border border-slate-200/80 rounded text-[10px] text-slate-650 hover:text-slate-800 transition-colors"
                     >
                       {historyQuery.length > 25 ? `${historyQuery.slice(0, 25)}...` : historyQuery}
                     </button>
@@ -812,24 +812,24 @@ export default function PropertyEditMap({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[8px] uppercase tracking-wider text-white/35 block">Latitude</label>
+                <label className="text-[8px] uppercase tracking-wider text-slate-800/35 block">Latitude</label>
                 <input
                   type="number"
                   step="any"
                   value={latitude || ''}
                   onChange={(e) => onChangeLocation(parseFloat(e.target.value) || 0, longitude || 0)}
-                  className="w-full bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                  className="w-full bg-white border border-slate-200 p-2.5 rounded text-slate-800 text-xs outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                   placeholder="26.8467"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] uppercase tracking-wider text-white/35 block">Longitude</label>
+                <label className="text-[8px] uppercase tracking-wider text-slate-800/35 block">Longitude</label>
                 <input
                   type="number"
                   step="any"
                   value={longitude || ''}
                   onChange={(e) => onChangeLocation(latitude || 0, parseFloat(e.target.value) || 0)}
-                  className="w-full bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                  className="w-full bg-white border border-slate-200 p-2.5 rounded text-slate-800 text-xs outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                   placeholder="80.9462"
                 />
               </div>
@@ -845,33 +845,33 @@ export default function PropertyEditMap({
               <button
                 type="button"
                 onClick={handleGoToCoordinates}
-                className="w-full py-2 bg-[#D4AF37]/80 hover:bg-[#D4AF37] text-black rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
+                className="w-full py-2 bg-[#0B4C8C]/80 hover:bg-[#0B4C8C] text-white rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
               >
                 <span>📍 GO TO COORDINATES</span>
               </button>
               <button
                 type="button"
                 onClick={handleUseCurrentLocation}
-                className="w-full py-2 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
+                className="w-full py-2 bg-slate-50 hover:bg-slate-50 border border-slate-200 text-slate-800 rounded text-xs flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors"
               >
                 <span>📍 Use My Current Location</span>
               </button>
             </div>
-            <p className="text-[10px] text-white/40 italic">Type coordinates and click "Go to Coordinates", use address search, or click directly on the map.</p>
+            <p className="text-[10px] text-slate-500 italic">Type coordinates and click "Go to Coordinates", use address search, or click directly on the map.</p>
           </div>
         )}
 
         {activeTab === 'boundary' && (
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Polygon Drawing Mode</p>
-              <p className="text-[10px] text-white/40 italic">Click spots on the map to define the perimeter outlines ({tempPoints.length} points).</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Polygon Drawing Mode</p>
+              <p className="text-[10px] text-slate-500 italic">Click spots on the map to define the perimeter outlines ({tempPoints.length} points).</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={handleUseCurrentLocation}
-                className="px-3 py-1.5 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white text-[9px] uppercase font-bold rounded flex items-center gap-1 transition-colors"
+                className="px-3 py-1.5 bg-slate-50 hover:bg-slate-50 border border-slate-200 text-slate-800 text-[9px] uppercase font-bold rounded flex items-center gap-1 transition-colors"
               >
                 <span>📍 Use Current Location as Property Center</span>
               </button>
@@ -880,14 +880,14 @@ export default function PropertyEditMap({
                   <button
                     type="button"
                     onClick={handleUndoPoint}
-                    className="px-3 py-1.5 border border-white/10 hover:border-white/20 text-white/60 text-[9px] uppercase font-bold rounded"
+                    className="px-3 py-1.5 border border-slate-200 hover:border-slate-300 text-slate-650 text-[9px] uppercase font-bold rounded"
                   >
                     Undo Point
                   </button>
                   <button
                     type="button"
                     onClick={handleClearBoundary}
-                    className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-black text-red-400 text-[9px] uppercase font-bold rounded transition-colors"
+                    className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-slate-800 text-red-400 text-[9px] uppercase font-bold rounded transition-colors"
                   >
                     Clear Boundary
                   </button>
@@ -899,12 +899,12 @@ export default function PropertyEditMap({
 
         {activeTab === 'upload' && (
           <div className="space-y-3">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Coordinate Upload Mode</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Coordinate Upload Mode</p>
             <textarea
               rows={3}
               value={pasteData}
               onChange={(e) => setPasteData(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37] leading-relaxed font-mono resize-none"
+              className="w-full bg-white border border-slate-200 p-2.5 rounded text-slate-800 text-xs outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 leading-relaxed font-mono resize-none"
               placeholder={`Paste format:\nJSON: [[lat, lng], [lat, lng], ...]\nCSV: lat,lng (per line)`}
             />
             {pasteError && (
@@ -913,7 +913,7 @@ export default function PropertyEditMap({
             <button
               type="button"
               onClick={handleParsePaste}
-              className="px-4 py-2 bg-[#D4AF37] hover:opacity-90 text-black text-[10px] font-bold uppercase tracking-wider rounded"
+              className="px-4 py-2 bg-[#0B4C8C] hover:opacity-90 text-white text-[10px] font-bold uppercase tracking-wider rounded"
             >
               Parse & Apply Perimeter
             </button>
@@ -922,15 +922,15 @@ export default function PropertyEditMap({
 
         {activeTab === 'measurement' && (
           <div className="space-y-3">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Measurement-Based Auto-generate square boundary</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Measurement-Based Auto-generate square boundary</p>
             <div className="flex flex-wrap gap-4 items-end">
               <div className="flex-1 min-w-[200px] space-y-1">
-                <label className="text-[8px] uppercase tracking-wider text-white/35 block">Target Footprint Area (Sq Ft)</label>
+                <label className="text-[8px] uppercase tracking-wider text-slate-800/35 block">Target Footprint Area (Sq Ft)</label>
                 <input
                   type="number"
                   value={sqFtArea}
                   onChange={(e) => setSqFtArea(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-white/10 p-2.5 rounded text-white text-xs outline-none focus:border-[#D4AF37]"
+                  className="w-full bg-white border border-slate-200 p-2.5 rounded text-slate-800 text-xs outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                   placeholder="5000"
                 />
               </div>
@@ -938,55 +938,55 @@ export default function PropertyEditMap({
                 <button
                   type="button"
                   onClick={handleUseCurrentLocation}
-                  className="px-4 py-3 bg-[#1E1E1E] hover:bg-white/5 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded flex items-center gap-1 transition-colors"
+                  className="px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded flex items-center gap-1 transition-colors"
                 >
                   <span>📍 Use Current Location as Property Center</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleGenerateMeasurementBoundary}
-                  className="px-4 py-3 bg-[#D4AF37] hover:opacity-90 text-black text-[10px] font-bold uppercase tracking-wider rounded"
+                  className="px-4 py-3 bg-[#0B4C8C] hover:opacity-90 text-white text-[10px] font-bold uppercase tracking-wider rounded"
                 >
                   Generate Square
                 </button>
               </div>
             </div>
-            <p className="text-[10px] text-white/40 italic">Automatically generates a square boundary polygon centered around the Pin coordinates matching the specified area.</p>
+            <p className="text-[10px] text-slate-500 italic">Automatically generates a square boundary polygon centered around the Pin coordinates matching the specified area.</p>
           </div>
         )}
 
         {activeTab === 'zones' && (
           <div className="space-y-4">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Multiple Boundary Zones Manager</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Multiple Boundary Zones Manager</p>
             
             {/* Create new zone form */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
               <div className="sm:col-span-6 space-y-1">
-                <label className="text-[8px] uppercase tracking-wider text-white/35 block">New Zone Name</label>
+                <label className="text-[8px] uppercase tracking-wider text-slate-800/35 block">New Zone Name</label>
                 <input
                   type="text"
                   value={newZoneName}
                   onChange={(e) => setNewZoneName(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-white/10 p-2 rounded text-white text-xs outline-none"
+                  className="w-full bg-white border border-slate-200 p-2 rounded text-slate-800 text-xs outline-none"
                   placeholder="Zone A - Master Suite Block"
                 />
               </div>
               <div className="sm:col-span-3 space-y-1">
-                <label className="text-[8px] uppercase tracking-wider text-white/35 block">Color</label>
-                <div className="flex items-center gap-2 bg-[#0A0A0A] border border-white/10 rounded p-1">
+                <label className="text-[8px] uppercase tracking-wider text-slate-800/35 block">Color</label>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded p-1">
                   <input
                     type="color"
                     value={newZoneColor}
                     onChange={(e) => setNewZoneColor(e.target.value)}
                     className="w-8 h-6 bg-transparent border-0 cursor-pointer"
                   />
-                  <span className="text-[10px] text-white/50">{newZoneColor}</span>
+                  <span className="text-[10px] text-slate-650">{newZoneColor}</span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleAddZone}
-                className="sm:col-span-3 py-2 bg-[#D4AF37] hover:opacity-90 text-black text-[10px] font-bold uppercase tracking-wider rounded"
+                className="sm:col-span-3 py-2 bg-[#0B4C8C] hover:opacity-90 text-white text-[10px] font-bold uppercase tracking-wider rounded"
               >
                 Create Zone
               </button>
@@ -1000,8 +1000,8 @@ export default function PropertyEditMap({
                     key={idx}
                     className={`flex items-center justify-between p-2 rounded border transition-colors ${
                       selectedZoneIndex === idx
-                        ? 'border-[#D4AF37] bg-[#D4AF37]/5'
-                        : 'border-white/5 bg-[#0A0A0A]'
+                        ? 'border-[#0B4C8C] bg-blue-50/30'
+                        : 'border-slate-200/80 bg-white'
                     }`}
                   >
                     <button
@@ -1009,15 +1009,15 @@ export default function PropertyEditMap({
                       onClick={() => setSelectedZoneIndex(idx)}
                       className="flex-1 flex items-center gap-3 text-left"
                     >
-                      <span className="w-3.5 h-3.5 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: zone.color }} />
-                      <span className="text-xs font-semibold text-white/90">{zone.name}</span>
-                      <span className="text-[9px] text-white/40">({zone.points.length} nodes)</span>
+                      <span className="w-3.5 h-3.5 rounded-full border border-slate-200 shrink-0" style={{ backgroundColor: zone.color }} />
+                      <span className="text-xs font-semibold text-slate-800/90">{zone.name}</span>
+                      <span className="text-[9px] text-slate-500">({zone.points.length} nodes)</span>
                     </button>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleClearZonePoints(idx)}
-                        className="text-[9px] uppercase font-bold text-white/40 hover:text-white"
+                        className="text-[9px] uppercase font-bold text-slate-500 hover:text-slate-800"
                       >
                         Reset points
                       </button>
@@ -1033,7 +1033,7 @@ export default function PropertyEditMap({
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-white/40 italic">Select a zone in the list, then click on the map to set the perimeter boundary nodes for that zone.</p>
+            <p className="text-[10px] text-slate-500 italic">Select a zone in the list, then click on the map to set the perimeter boundary nodes for that zone.</p>
           </div>
         )}
 
@@ -1049,10 +1049,10 @@ export default function PropertyEditMap({
               setMapLayer(layer);
               localStorage.setItem('aura_estates_map_layer', layer);
             }}
-            className={`px-2.5 py-1 bg-black/40 border text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
+            className={`px-2.5 py-1 bg-slate-50/40 border text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
               mapLayer === layer
-                ? 'border-[#D4AF37] bg-[#D4AF37]/10 text-[#F5D67B]'
-                : 'border-white/5 text-white/40 hover:text-white'
+                ? 'border-[#0B4C8C] bg-blue-50 text-[#0B4C8C]'
+                : 'border-slate-200/80 text-slate-500 hover:text-slate-800'
             }`}
           >
             {layer === 'standard' && '🗺 Standard'}
@@ -1063,7 +1063,7 @@ export default function PropertyEditMap({
       </div>
 
       {/* Map Container */}
-      <div className="w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden border border-white/10 relative z-10">
+      <div className="w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden border border-slate-200 relative z-10">
         <div ref={mapContainerRef} className="w-full h-full" />
       </div>
     </div>

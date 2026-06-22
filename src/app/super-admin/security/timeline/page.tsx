@@ -91,59 +91,59 @@ function SecurityTimelineContent() {
       default:
         return {
           icon: Clock,
-          border: 'border-white/5 bg-[#141414]',
-          iconColor: 'text-white/40',
+          border: 'border-slate-200/80 bg-[#141414]',
+          iconColor: 'text-slate-500',
         };
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-slate-50 text-slate-800 p-6 space-y-6">
       {/* Back button */}
-      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+      <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
         <div className="flex items-center gap-3">
           <Link
             href="/super-admin/security"
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/10"
+            className="p-2 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
           >
             <ArrowLeft size={16} />
           </Link>
           <div>
             <h1 className="text-xl font-light tracking-wide flex items-center gap-2">
-              <Activity className="text-[#D4AF37]" size={20} />
+              <Activity className="text-[#0B4C8C]" size={20} />
               SOC Incident Investigation Timeline
             </h1>
-            <p className="text-[10px] text-white/40">Reconstruct step-by-step logs and session audits.</p>
+            <p className="text-[10px] text-slate-500">Reconstruct step-by-step logs and session audits.</p>
           </div>
         </div>
       </div>
 
       {/* Query Filter panel */}
-      <div className="bg-[#121212] border border-white/5 p-4 rounded-xl flex flex-col md:flex-row gap-4 items-end">
+      <div className="bg-white border border-slate-200/80 p-4 rounded-xl flex flex-col md:flex-row gap-4 items-end">
         <div className="flex-1 space-y-1">
-          <label className="text-[9px] uppercase tracking-wider text-white/40 font-bold block">User ID</label>
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">User ID</label>
           <input
             type="text"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
             placeholder="uuid-of-user..."
-            className="w-full bg-black border border-white/10 rounded p-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-800 outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
           />
         </div>
         <div className="flex-1 space-y-1">
-          <label className="text-[9px] uppercase tracking-wider text-white/40 font-bold block">Session ID</label>
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">Session ID</label>
           <input
             type="text"
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
             placeholder="uuid-of-session..."
-            className="w-full bg-black border border-white/10 rounded p-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+            className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-800 outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
           />
         </div>
         <button
           onClick={loadTimeline}
           disabled={loading}
-          className="px-5 py-2.5 bg-[#D4AF37] hover:bg-[#BCA035] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors flex items-center gap-1.5"
+          className="px-5 py-2.5 bg-[#0B4C8C] hover:bg-[#093d70] text-white font-bold uppercase tracking-wider text-[10px] rounded transition-colors flex items-center gap-1.5"
         >
           {loading ? <RefreshCw className="animate-spin" size={12} /> : <Search size={12} />}
           Investigate
@@ -156,20 +156,20 @@ function SecurityTimelineContent() {
       {timelineData && (
         <div className="space-y-6">
           {/* User metadata header */}
-          <div className="bg-gradient-to-r from-[#D4AF37]/5 to-transparent border border-white/5 p-4 rounded-xl flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37]">
+          <div className="bg-gradient-to-r from-[#0B4C8C]/5 to-transparent border border-slate-200/80 p-4 rounded-xl flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0B4C8C]">
               <User size={20} />
             </div>
             <div>
-              <span className="text-xs font-semibold text-white">Target profile: {timelineData.email || 'Anonymous'}</span>
-              <div className="text-[9px] text-white/40 font-mono mt-0.5">User ID: {timelineData.userId}</div>
+              <span className="text-xs font-semibold text-slate-800">Target profile: {timelineData.email || 'Anonymous'}</span>
+              <div className="text-[9px] text-slate-500 font-mono mt-0.5">User ID: {timelineData.userId}</div>
             </div>
           </div>
 
           {/* Timeline Feed */}
-          <div className="relative border-l border-white/5 pl-6 ml-3 space-y-6">
+          <div className="relative border-l border-slate-200/80 pl-6 ml-3 space-y-6">
             {timelineData.timeline.length === 0 ? (
-              <div className="text-center py-16 text-white/35 text-xs">No records available for this search criteria.</div>
+              <div className="text-center py-16 text-slate-450 text-xs">No records available for this search criteria.</div>
             ) : (
               timelineData.timeline.map((ev: any, index: number) => {
                 const style = getEventIconAndStyle(ev.type, ev.severity);
@@ -177,34 +177,34 @@ function SecurityTimelineContent() {
                 return (
                   <div key={index} className="relative">
                     {/* Node Dot */}
-                    <div className={`absolute -left-[31px] top-1.5 w-4.5 h-4.5 rounded-full border bg-black flex items-center justify-center ${style.iconColor} border-white/10`}>
+                    <div className={`absolute -left-[31px] top-1.5 w-4.5 h-4.5 rounded-full border bg-slate-50 flex items-center justify-center ${style.iconColor} border-slate-200`}>
                       <Icon size={10} />
                     </div>
 
                     <div className={`p-4 rounded-xl border ${style.border} space-y-2`}>
                       <div className="flex justify-between items-start flex-wrap gap-2">
                         <div>
-                          <span className="text-xs font-bold text-white block">{ev.title}</span>
-                          <span className="text-[9px] text-white/40 font-mono block mt-0.5">
+                          <span className="text-xs font-bold text-slate-800 block">{ev.title}</span>
+                          <span className="text-[9px] text-slate-500 font-mono block mt-0.5">
                             {new Date(ev.timestamp).toLocaleString()}
                           </span>
                         </div>
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-mono font-bold border border-white/10 ${
-                          ev.severity === 'CRITICAL' ? 'bg-red-950/20 text-red-400' : 'bg-white/5 text-white/50'
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-mono font-bold border border-slate-200 ${
+                          ev.severity === 'CRITICAL' ? 'bg-red-950/20 text-red-400' : 'bg-slate-50 text-slate-650'
                         }`}>
                           {ev.type}
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-white/70 leading-relaxed">{ev.description}</p>
+                      <p className="text-[11px] text-slate-700 leading-relaxed">{ev.description}</p>
 
                       {/* Expanded properties */}
                       {ev.metadata && Object.keys(ev.metadata).length > 0 && (
-                        <div className="bg-black/25 border border-white/5 rounded p-2.5 font-mono text-[9px] text-white/50 space-y-1">
+                        <div className="bg-slate-50 border border-slate-200/80 rounded p-2.5 font-mono text-[9px] text-slate-650 space-y-1">
                           {Object.entries(ev.metadata).map(([k, v]) => (
                             <div key={k} className="flex justify-between gap-4">
-                              <span className="text-white/35">{k}:</span>
-                              <span className="text-white/60 truncate max-w-[200px]">{JSON.stringify(v)}</span>
+                              <span className="text-slate-450">{k}:</span>
+                              <span className="text-slate-650 truncate max-w-[200px]">{JSON.stringify(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -224,8 +224,8 @@ function SecurityTimelineContent() {
 export default function SecurityTimelinePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-white">
-        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-800">
+        <div className="w-8 h-8 border-2 border-[#0B4C8C] border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <SecurityTimelineContent />

@@ -109,7 +109,7 @@ function AdminSearchContent() {
       if (s === 'PENDING') return 'border-yellow-500/30 bg-yellow-500/5 text-yellow-400';
       return 'border-red-500/30 bg-red-500/5 text-red-400';
     }
-    return 'border-white/10 bg-white/5 text-white/50';
+    return 'border-slate-200 bg-white/5 text-slate-800/50';
   };
 
   const typeTabs = [
@@ -126,30 +126,30 @@ function AdminSearchContent() {
       <div className="flex items-center gap-4">
         <Link 
           href="/admin" 
-          className="p-2 bg-[#161616] border border-white/5 hover:border-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
+          className="p-2 bg-white border border-slate-200/80 hover:border-slate-200 rounded-lg text-slate-800/60 hover:text-slate-800 transition-colors"
         >
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold">Search System</span>
+          <span className="text-xs uppercase tracking-widest text-[#0B4C8C] font-semibold">Search System</span>
           <h1 className="text-3xl font-light tracking-tight mt-1">Platform Finder</h1>
         </div>
       </div>
 
       {/* Unified Search Box */}
-      <form onSubmit={handleSearchSubmit} className="relative bg-[#161616] p-4 rounded-xl border border-white/5 shadow-lg">
+      <form onSubmit={handleSearchSubmit} className="relative bg-white p-4 rounded-xl border border-slate-200/80 shadow-lg">
         <div className="relative flex items-center">
           <input
             type="text"
             placeholder="Search across properties, clients, inquiries, appointments..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-[#0A0A0A] border border-white/10 hover:border-white/20 focus:border-[#D4AF37] p-3.5 pl-11 pr-24 rounded-lg text-white text-sm outline-none transition-colors"
+            className="w-full bg-slate-50 border border-slate-200 hover:border-white/20 focus:border-[#0B4C8C] p-3.5 pl-11 pr-24 rounded-lg text-slate-800 text-sm outline-none transition-colors"
           />
-          <Search className="absolute left-4 text-white/40" size={18} />
+          <Search className="absolute left-4 text-slate-500" size={18} />
           <button
             type="submit"
-            className="absolute right-2 px-4 py-2 bg-[#D4AF37] hover:opacity-90 text-black text-xs uppercase tracking-widest font-bold rounded transition-opacity"
+            className="absolute right-2 px-4 py-2 bg-[#0B4C8C] hover:opacity-90 text-white text-xs uppercase tracking-widest font-bold rounded transition-opacity"
           >
             Find
           </button>
@@ -157,7 +157,7 @@ function AdminSearchContent() {
       </form>
 
       {/* Entity Filter Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-white/5 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-slate-200/80 pb-2">
         {typeTabs.map((tab) => (
           <button
             key={tab.value}
@@ -167,8 +167,8 @@ function AdminSearchContent() {
             }}
             className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold border-b-2 transition-all ${
               activeType === tab.value
-                ? 'border-[#D4AF37] text-[#D4AF37] bg-white/5'
-                : 'border-transparent text-white/50 hover:text-white/80 hover:bg-white/5'
+                ? 'border-[#0B4C8C] text-[#0B4C8C] bg-white/5'
+                : 'border-transparent text-slate-800/50 hover:text-slate-800/80 hover:bg-white/5'
             }`}
           >
             {tab.label}
@@ -179,8 +179,8 @@ function AdminSearchContent() {
       {/* Loading state */}
       {loading ? (
         <div className="space-y-4 py-12">
-          <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-center text-[10px] uppercase tracking-widest text-white/40">Searching database records...</p>
+          <div className="w-8 h-8 border-2 border-[#0B4C8C] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-center text-[10px] uppercase tracking-widest text-slate-500">Searching database records...</p>
         </div>
       ) : (
         <div className="space-y-8">
@@ -192,17 +192,17 @@ function AdminSearchContent() {
                 if (groupList.length === 0) return null;
 
                 return (
-                  <div key={key} className="bg-[#161616] border border-white/5 rounded-xl p-5 space-y-3 shadow-lg">
-                    <h3 className="text-xs uppercase tracking-widest font-semibold text-white/40 flex items-center gap-1.5 border-b border-white/5 pb-2">
+                  <div key={key} className="bg-white border border-slate-200/80 rounded-xl p-5 space-y-3 shadow-lg">
+                    <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-500 flex items-center gap-1.5 border-b border-slate-200/80 pb-2">
                       {getEntityIcon(key)}
                       <span>{getEntityLabel(key)} Matches ({groupList.length})</span>
                     </h3>
                     <div className="space-y-2">
                       {groupList.map((item: any) => (
-                        <div key={item.id} className="p-3 bg-[#0A0A0A] border border-white/5 rounded-lg flex justify-between items-center gap-2 hover:border-white/10 transition-colors">
+                        <div key={item.id} className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg flex justify-between items-center gap-2 hover:border-slate-200 transition-colors">
                           <div className="min-w-0">
-                            <h4 className="text-xs font-semibold text-white truncate">{item.title}</h4>
-                            <p className="text-[10px] text-white/40 truncate">{item.subtitle}</p>
+                            <h4 className="text-xs font-semibold text-slate-800 truncate">{item.title}</h4>
+                            <p className="text-[10px] text-slate-500 truncate">{item.subtitle}</p>
                           </div>
                           <span className={`text-[8px] uppercase tracking-widest font-bold px-1.5 py-0.5 border rounded shrink-0 ${getStatusBadgeClass(item.entityType, item.status)}`}>
                             {item.status || 'Active'}
@@ -218,14 +218,14 @@ function AdminSearchContent() {
 
           {/* Combined Flat Results / Paginated results */}
           <div className="space-y-4">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-[#D4AF37]">
+            <h3 className="text-xs uppercase tracking-widest font-bold text-[#0B4C8C]">
               {query ? `Search Results (${pagination.total})` : 'All Records'}
             </h3>
             {results.length === 0 ? (
-              <div className="bg-[#161616] border border-dashed border-white/10 p-12 text-center rounded-xl">
-                <Compass className="mx-auto text-white/20 mb-2" size={32} />
-                <p className="text-xs text-white/50">No database records matched your finder parameters.</p>
-                <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Try other keywords or adjust type filters</p>
+              <div className="bg-white border border-dashed border-slate-200 p-12 text-center rounded-xl">
+                <Compass className="mx-auto text-slate-800/20 mb-2" size={32} />
+                <p className="text-xs text-slate-800/50">No database records matched your finder parameters.</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Try other keywords or adjust type filters</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -235,27 +235,27 @@ function AdminSearchContent() {
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.03 }}
-                    className="bg-[#161616] border border-white/5 hover:border-white/10 p-5 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 transition-colors"
+                    className="bg-white border border-slate-200/80 hover:border-slate-200 p-5 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 transition-colors"
                   >
                     <div className="flex gap-4 items-start">
-                      <div className="p-2.5 bg-[#0A0A0A] border border-white/5 rounded-lg shrink-0">
+                      <div className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-lg shrink-0">
                         {getEntityIcon(item.entityType)}
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-sm font-semibold text-white">{item.title}</h4>
-                          <span className="text-[8px] uppercase font-bold tracking-widest bg-white/5 border border-white/10 text-white/40 px-1.5 py-0.5 rounded">
+                          <h4 className="text-sm font-semibold text-slate-800">{item.title}</h4>
+                          <span className="text-[8px] uppercase font-bold tracking-widest bg-white/5 border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded">
                             {getEntityLabel(item.entityType)}
                           </span>
                           {item.relevance > 0 && (
-                            <span className="text-[8px] uppercase font-bold tracking-widest bg-amber-400/10 border border-amber-400/25 text-[#D4AF37] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            <span className="text-[8px] uppercase font-bold tracking-widest bg-amber-400/10 border border-amber-400/25 text-[#0B4C8C] px-1.5 py-0.5 rounded flex items-center gap-0.5">
                               <TrendingUp size={8} />
                               Match score: {item.relevance}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-white/50">{item.subtitle}</p>
-                        <p className="text-[9px] text-white/30 uppercase tracking-wider">
+                        <p className="text-xs text-slate-800/50">{item.subtitle}</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider">
                           Registered: {new Date(item.createdAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -271,7 +271,7 @@ function AdminSearchContent() {
                       {item.entityType === 'property' && (
                         <Link
                           href={`/admin/properties`}
-                          className="px-3 py-1.5 bg-[#0A0A0A] hover:bg-white/5 border border-white/5 text-[10px] uppercase font-bold tracking-wider rounded text-white"
+                          className="px-3 py-1.5 bg-slate-50 hover:bg-white/5 border border-slate-200/80 text-[10px] uppercase font-bold tracking-wider rounded text-slate-800"
                         >
                           Details
                         </Link>
@@ -279,7 +279,7 @@ function AdminSearchContent() {
                       {item.entityType === 'user' && (
                         <Link
                           href={`/admin/users`}
-                          className="px-3 py-1.5 bg-[#0A0A0A] hover:bg-white/5 border border-white/5 text-[10px] uppercase font-bold tracking-wider rounded text-white"
+                          className="px-3 py-1.5 bg-slate-50 hover:bg-white/5 border border-slate-200/80 text-[10px] uppercase font-bold tracking-wider rounded text-slate-800"
                         >
                           CRM Profile
                         </Link>
@@ -287,7 +287,7 @@ function AdminSearchContent() {
                       {item.entityType === 'inquiry' && (
                         <Link
                           href={`/admin/inquiries`}
-                          className="px-3 py-1.5 bg-[#0A0A0A] hover:bg-white/5 border border-white/5 text-[10px] uppercase font-bold tracking-wider rounded text-white"
+                          className="px-3 py-1.5 bg-slate-50 hover:bg-white/5 border border-slate-200/80 text-[10px] uppercase font-bold tracking-wider rounded text-slate-800"
                         >
                           Concierge
                         </Link>
@@ -295,7 +295,7 @@ function AdminSearchContent() {
                       {item.entityType === 'appointment' && (
                         <Link
                           href={`/admin/appointments`}
-                          className="px-3 py-1.5 bg-[#0A0A0A] hover:bg-white/5 border border-white/5 text-[10px] uppercase font-bold tracking-wider rounded text-white"
+                          className="px-3 py-1.5 bg-slate-50 hover:bg-white/5 border border-slate-200/80 text-[10px] uppercase font-bold tracking-wider rounded text-slate-800"
                         >
                           Bookings
                         </Link>
@@ -309,22 +309,22 @@ function AdminSearchContent() {
 
           {/* Pagination Controls */}
           {pagination.pages > 1 && (
-            <div className="flex justify-between items-center bg-[#161616] p-4 rounded-xl border border-white/5">
-              <span className="text-xs text-white/40 uppercase tracking-widest font-medium">
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200/80">
+              <span className="text-xs text-slate-500 uppercase tracking-widest font-medium">
                 Page {pagination.page} of {pagination.pages}
               </span>
               <div className="flex items-center gap-2">
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage(page - 1)}
-                  className="p-2 border border-white/5 hover:border-white/10 text-white hover:text-[#D4AF37] rounded-lg disabled:opacity-30 disabled:hover:text-white"
+                  className="p-2 border border-slate-200/80 hover:border-slate-200 text-slate-800 hover:text-[#0B4C8C] rounded-lg disabled:opacity-30 disabled:hover:text-slate-800"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
                   disabled={page >= pagination.pages}
                   onClick={() => setPage(page + 1)}
-                  className="p-2 border border-white/5 hover:border-white/10 text-white hover:text-[#D4AF37] rounded-lg disabled:opacity-30 disabled:hover:text-white"
+                  className="p-2 border border-slate-200/80 hover:border-slate-200 text-slate-800 hover:text-[#0B4C8C] rounded-lg disabled:opacity-30 disabled:hover:text-slate-800"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -340,8 +340,8 @@ function AdminSearchContent() {
 export default function AdminSearchPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center text-slate-800">
+        <div className="w-8 h-8 border-2 border-[#0B4C8C] border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <AdminSearchContent />

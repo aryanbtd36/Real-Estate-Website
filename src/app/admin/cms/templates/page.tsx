@@ -360,9 +360,9 @@ export default function TemplateBuilderPage() {
 
   if (sessionStatus === 'loading' || loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] bg-[#0A0A0A] text-white">
-        <div className="w-10 h-10 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mb-4" />
-        <span className="text-xs uppercase tracking-widest text-white/40">Loading Template Configurator...</span>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] bg-slate-50 text-slate-800">
+        <div className="w-10 h-10 border-2 border-[#0B4C8C] border-t-transparent rounded-full animate-spin mb-4" />
+        <span className="text-xs uppercase tracking-widest text-slate-500">Loading Template Configurator...</span>
       </div>
     );
   }
@@ -370,16 +370,16 @@ export default function TemplateBuilderPage() {
   return (
     <div className="space-y-8 pb-20">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200/80 pb-6">
         <div>
-          <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold">Founder Portal</span>
+          <span className="text-xs uppercase tracking-widest text-[#0B4C8C] font-semibold">Founder Portal</span>
           <h1 className="text-3xl font-light tracking-tight mt-1">Property Template Builder</h1>
-          <p className="text-xs text-white/50 mt-1">Design form schemas dynamically for different types of properties. Fields appear in property listings, edit sheets, and frontend scorecards.</p>
+          <p className="text-xs text-slate-650 mt-1">Design form schemas dynamically for different types of properties. Fields appear in property listings, edit sheets, and frontend scorecards.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-[#D4AF37] hover:bg-[#C5A030] text-black text-xs uppercase tracking-widest font-bold rounded flex items-center gap-1.5 transition-all"
+            className="px-4 py-2 bg-[#0B4C8C] hover:bg-[#093d70] text-white text-xs uppercase tracking-widest font-bold rounded flex items-center gap-1.5 transition-all"
           >
             <Plus size={14} />
             <span>Create Custom Template</span>
@@ -401,7 +401,7 @@ export default function TemplateBuilderPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Template selection list */}
         <div className="lg:col-span-4 space-y-4">
-          <h3 className="text-xs uppercase tracking-widest text-white/40 font-bold block mb-2">Available Categories</h3>
+          <h3 className="text-xs uppercase tracking-widest text-slate-500 font-bold block mb-2">Available Categories</h3>
           <div className="space-y-3">
             {templates.map((t) => {
               const active = selectedTemplate?.id === t.id;
@@ -413,18 +413,18 @@ export default function TemplateBuilderPage() {
                     setSelectedTemplate(t);
                     resetFieldForm();
                   }}
-                  className={`w-full text-left p-4 rounded-xl border flex justify-between items-center transition-all ${
+                  className={`w-full text-left p-4 bg-white border border-slate-200/80 rounded-[24px] shadow-sm flex justify-between items-center transition-all ${
                     active
-                      ? 'bg-gradient-to-r from-[#D4AF37]/15 to-[#F5D67B]/5 border-[#D4AF37] text-white'
-                      : 'bg-[#161616] border-white/5 text-white/60 hover:text-white hover:bg-white/[0.02]'
+                      ? 'bg-gradient-to-r from-[#D4AF37]/15 to-[#F5D67B]/5 border-[#0B4C8C] text-slate-800'
+                      : 'bg-white border-slate-200/80 text-slate-650 hover:text-slate-800 hover:bg-blue-50/50'
                   }`}
                 >
                   <div>
-                    <span className="font-semibold text-xs text-white block">{t.name}</span>
-                    <span className="text-[9px] uppercase tracking-wider font-mono text-white/40 block mt-1">
+                    <span className="font-semibold text-xs text-slate-800 block">{t.name}</span>
+                    <span className="text-[9px] uppercase tracking-wider font-mono text-slate-500 block mt-1">
                       Code: {t.type} • v{t.version}
                     </span>
-                    <span className="text-[9px] text-white/30 block mt-0.5">
+                    <span className="text-[9px] text-slate-400 block mt-0.5">
                       {t.fields?.length || 0} fields configured
                     </span>
                   </div>
@@ -446,16 +446,16 @@ export default function TemplateBuilderPage() {
         {/* Right Column: Schema configurator workspace */}
         <div className="lg:col-span-8 space-y-6">
           {selectedTemplate ? (
-            <div className="bg-[#161616] border border-white/5 rounded-2xl p-6 space-y-6">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6">
               
               {/* Workspace Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200/80 pb-4">
                 <div>
-                  <h2 className="text-lg font-light tracking-wide text-white flex items-center gap-2">
-                    <FolderOpen size={18} className="text-[#D4AF37]" />
+                  <h2 className="text-lg font-light tracking-wide text-slate-800 flex items-center gap-2">
+                    <FolderOpen size={18} className="text-[#0B4C8C]" />
                     <span>{selectedTemplate.name} Schema Configuration</span>
                   </h2>
-                  <span className="text-[10px] text-white/40 uppercase tracking-widest font-mono">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-widest font-mono">
                     Template ID: {selectedTemplate.id} • Version: v{selectedTemplate.version}
                   </span>
                 </div>
@@ -463,9 +463,9 @@ export default function TemplateBuilderPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleOpenHistory}
-                    className="px-3 py-1.5 border border-white/10 bg-[#1E1E1E] hover:bg-[#252525] text-white text-[10px] uppercase font-bold tracking-widest rounded flex items-center gap-1.5 transition-all"
+                    className="px-3 py-1.5 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[10px] uppercase font-bold tracking-widest rounded flex items-center gap-1.5 transition-all"
                   >
-                    <History size={12} className="text-[#D4AF37]" />
+                    <History size={12} className="text-[#0B4C8C]" />
                     <span>History</span>
                   </button>
 
@@ -483,29 +483,29 @@ export default function TemplateBuilderPage() {
 
               {/* Fields List */}
               <div className="space-y-3">
-                <h3 className="text-xs uppercase tracking-widest text-[#D4AF37] font-bold block border-b border-white/5 pb-2">Fields Checklist</h3>
+                <h3 className="text-xs uppercase tracking-widest text-[#0B4C8C] font-bold block border-b border-slate-200/80 pb-2">Fields Checklist</h3>
                 
                 {selectedTemplate.fields.length === 0 ? (
-                  <div className="p-8 text-center text-white/30 italic text-xs border border-white/5 border-dashed rounded-xl">
+                  <div className="p-8 text-center text-slate-400 italic text-xs border border-slate-200/80 border-dashed rounded-xl">
                     No custom fields configured for this template. Use the "Add Field" workspace below to insert schema attributes.
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {selectedTemplate.fields.map((f, idx) => (
-                      <div key={idx} className="p-3 bg-[#0A0A0A] border border-white/5 rounded-lg flex justify-between items-center hover:border-white/10 transition-all">
+                      <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center hover:border-slate-200 transition-all">
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-mono text-white/30">#{idx + 1}</span>
+                          <span className="text-[10px] font-mono text-slate-400">#{idx + 1}</span>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-xs text-white">{f.label}</span>
+                              <span className="font-semibold text-xs text-slate-800">{f.label}</span>
                               {f.required && (
                                 <span className="px-1.5 py-0.2 bg-red-500/10 text-red-400 text-[7px] uppercase font-bold border border-red-500/20 rounded">
                                   Required
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-white/40 mt-0.5">
-                              Database Key: <code className="text-[#D4AF37] font-mono">{f.name}</code> • Input type: <span className="uppercase text-white/60">{f.type}</span>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Database Key: <code className="text-[#0B4C8C] font-mono">{f.name}</code> • Input type: <span className="uppercase text-slate-650">{f.type}</span>
                               {f.options && f.options.length > 0 && ` • Options: (${f.options.join(', ')})`}
                             </p>
                           </div>
@@ -515,7 +515,7 @@ export default function TemplateBuilderPage() {
                           <button
                             onClick={() => handleMoveField(idx, 'up')}
                             disabled={idx === 0}
-                            className="p-1.5 border border-white/5 bg-[#1E1E1E] text-white rounded disabled:opacity-30 disabled:pointer-events-none"
+                            className="p-1.5 border border-slate-200/80 bg-slate-50 text-slate-800 rounded disabled:opacity-30 disabled:pointer-events-none"
                             title="Move Up"
                           >
                             <Edit size={10} className="rotate-180" />
@@ -523,7 +523,7 @@ export default function TemplateBuilderPage() {
                           <button
                             onClick={() => handleMoveField(idx, 'down')}
                             disabled={idx === selectedTemplate.fields.length - 1}
-                            className="p-1.5 border border-white/5 bg-[#1E1E1E] text-white rounded disabled:opacity-30 disabled:pointer-events-none"
+                            className="p-1.5 border border-slate-200/80 bg-slate-50 text-slate-800 rounded disabled:opacity-30 disabled:pointer-events-none"
                             title="Move Down"
                           >
                             <Edit size={10} />
@@ -550,13 +550,13 @@ export default function TemplateBuilderPage() {
               </div>
 
               {/* Add Field Schema Form */}
-              <div className="border border-white/5 bg-[#0A0A0A] rounded-xl p-5 space-y-4">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <h4 className="text-xs uppercase tracking-widest text-[#D4AF37] font-bold">
+              <div className="border border-slate-200/80 bg-white rounded-xl p-5 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-200/80 pb-2">
+                  <h4 className="text-xs uppercase tracking-widest text-[#0B4C8C] font-bold">
                     {editingFieldIndex !== null ? 'Modify Field Parameters' : 'Add Custom Field Schema Attribute'}
                   </h4>
                   {isAddingNewField && (
-                    <button onClick={resetFieldForm} className="text-white/40 hover:text-white">
+                    <button onClick={resetFieldForm} className="text-slate-500 hover:text-slate-800">
                       <X size={14} />
                     </button>
                   )}
@@ -566,16 +566,16 @@ export default function TemplateBuilderPage() {
                   <button
                     type="button"
                     onClick={() => setIsAddingNewField(true)}
-                    className="w-full py-3 bg-[#161616] hover:bg-[#1E1E1E] border border-white/5 hover:border-white/10 rounded-lg text-xs uppercase tracking-wider font-bold text-white/55 hover:text-white transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200/80 hover:border-slate-200 rounded-lg text-xs uppercase tracking-wider font-bold text-slate-800/55 hover:text-slate-800 transition-all flex items-center justify-center gap-1.5"
                   >
-                    <PlusCircle size={14} className="text-[#D4AF37]" />
+                    <PlusCircle size={14} className="text-[#0B4C8C]" />
                     <span>Create custom input field attribute</span>
                   </button>
                 ) : (
                   <div className="space-y-4 text-xs">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase text-white/40 font-bold block">Field Visual Label</label>
+                        <label className="text-[10px] uppercase text-slate-500 font-bold block">Field Visual Label</label>
                         <input
                           type="text"
                           placeholder="e.g. Total Floor Count"
@@ -586,28 +586,28 @@ export default function TemplateBuilderPage() {
                             const key = label.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/(^_|_$)/g, '');
                             setFieldForm({ ...fieldForm, label, name: key });
                           }}
-                          className="w-full bg-[#161616] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50 focus:outline-none"
+                          className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 focus:outline-none focus:ring-2 focus:ring-[#0B4C8C]/20"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase text-white/40 font-bold block">Database Key name (lowercase, no spaces)</label>
+                        <label className="text-[10px] uppercase text-slate-500 font-bold block">Database Key name (lowercase, no spaces)</label>
                         <input
                           type="text"
                           placeholder="e.g. total_floor_count"
                           value={fieldForm.name}
                           onChange={(e) => setFieldForm({ ...fieldForm, name: e.target.value })}
-                          className="w-full bg-[#161616] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50 focus:outline-none font-mono"
+                          className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 focus:outline-none focus:ring-2 focus:ring-[#0B4C8C]/20 font-mono"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase text-white/40 font-bold block">Visual input widget type</label>
+                        <label className="text-[10px] uppercase text-slate-500 font-bold block">Visual input widget type</label>
                         <select
                           value={fieldForm.type}
                           onChange={(e) => setFieldForm({ ...fieldForm, type: e.target.value as any })}
-                          className="w-full bg-[#161616] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50"
+                          className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                         >
                           <option value="text">Text input</option>
                           <option value="number">Number input</option>
@@ -620,11 +620,11 @@ export default function TemplateBuilderPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase text-white/40 font-bold block">Field Requirement</label>
+                        <label className="text-[10px] uppercase text-slate-500 font-bold block">Field Requirement</label>
                         <select
                           value={String(fieldForm.required)}
                           onChange={(e) => setFieldForm({ ...fieldForm, required: e.target.value === 'true' })}
-                          className="w-full bg-[#161616] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50"
+                          className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                         >
                           <option value="false">Optional field</option>
                           <option value="true">Required validation</option>
@@ -632,14 +632,14 @@ export default function TemplateBuilderPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase text-white/40 block font-bold">List Options (if dropdown/multiselect)</label>
+                        <label className="text-[10px] uppercase text-slate-500 block font-bold">List Options (if dropdown/multiselect)</label>
                         <input
                           type="text"
                           placeholder="Option 1, Option 2, Option 3"
                           value={dropdownOptionsString}
                           onChange={(e) => setDropdownOptionsString(e.target.value)}
                           disabled={fieldForm.type !== 'dropdown' && fieldForm.type !== 'multiselect'}
-                          className="w-full bg-[#161616] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50 focus:outline-none disabled:opacity-40"
+                          className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 focus:outline-none focus:ring-2 focus:ring-[#0B4C8C]/20 disabled:opacity-40"
                         />
                       </div>
                     </div>
@@ -648,14 +648,14 @@ export default function TemplateBuilderPage() {
                       <button
                         type="button"
                         onClick={resetFieldForm}
-                        className="px-4 py-2 border border-white/5 bg-[#1C1C1C] hover:bg-[#252525] rounded text-[10px] uppercase font-bold tracking-widest transition-colors"
+                        className="px-4 py-2 border border-slate-200/80 bg-[#1C1C1C] hover:bg-slate-100 rounded text-[10px] uppercase font-bold tracking-widest transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={handleAddField}
-                        className="px-4 py-2 bg-[#D4AF37] hover:bg-[#C5A030] text-black rounded text-[10px] uppercase font-bold tracking-widest transition-colors"
+                        className="px-4 py-2 bg-[#0B4C8C] hover:bg-[#093d70] text-white rounded text-[10px] uppercase font-bold tracking-widest transition-colors"
                       >
                         {editingFieldIndex !== null ? 'Update field' : 'Insert field'}
                       </button>
@@ -665,11 +665,11 @@ export default function TemplateBuilderPage() {
               </div>
 
               {/* Master Save Button */}
-              <div className="border-t border-white/5 pt-6 flex justify-end">
+              <div className="border-t border-slate-200/80 pt-6 flex justify-end">
                 <button
                   onClick={handleSaveTemplateSchema}
                   disabled={saveLoading}
-                  className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white text-xs uppercase font-bold tracking-widest rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-slate-800 text-xs uppercase font-bold tracking-widest rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <Save size={14} />
                   <span>Save Template Schema Version</span>
@@ -678,7 +678,7 @@ export default function TemplateBuilderPage() {
 
             </div>
           ) : (
-            <div className="p-12 text-center text-white/30 italic text-sm border border-white/5 bg-[#161616] rounded-2xl">
+            <div className="p-12 text-center text-slate-400 italic text-sm border border-slate-200/80 bg-white rounded-2xl">
               Select or create a property template form layout to get started.
             </div>
           )}
@@ -688,35 +688,35 @@ export default function TemplateBuilderPage() {
       {/* Version History Modal Overlay */}
       <AnimatePresence>
         {showHistory && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-slate-50/80 flex items-center justify-center p-4 z-50">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#161616] border border-white/10 p-6 rounded-xl w-full max-w-xl space-y-4"
+              className="bg-white border border-slate-200 p-6 rounded-xl w-full max-w-xl space-y-4"
             >
-              <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-[#D4AF37] flex items-center gap-1.5">
+              <div className="flex justify-between items-center border-b border-slate-200/80 pb-2">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-[#0B4C8C] flex items-center gap-1.5">
                   <History size={16} />
                   <span>Version History & Rollback Logs</span>
                 </h3>
-                <button onClick={() => setShowHistory(false)} className="text-white/40 hover:text-white">
+                <button onClick={() => setShowHistory(false)} className="text-slate-500 hover:text-slate-800">
                   <X size={16} />
                 </button>
               </div>
 
               <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                 {versionHistory.length === 0 ? (
-                  <p className="text-xs text-white/30 italic text-center py-6">No previous versions registered.</p>
+                  <p className="text-xs text-slate-400 italic text-center py-6">No previous versions registered.</p>
                 ) : (
                   versionHistory.map((vh) => (
-                    <div key={vh.id} className="p-3 bg-[#0A0A0A] border border-white/5 rounded-lg flex justify-between items-center">
+                    <div key={vh.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
                       <div>
-                        <span className="font-semibold text-xs text-white">Version #{vh.version}</span>
-                        <p className="text-[10px] text-white/40 mt-0.5">
+                        <span className="font-semibold text-xs text-slate-800">Version #{vh.version}</span>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
                           Change by: {vh.changedBy} • {new Date(vh.createdAt).toLocaleString()}
                         </p>
-                        <p className="text-[9px] text-white/30 mt-0.5">
+                        <p className="text-[9px] text-slate-400 mt-0.5">
                           Fields: {vh.fields ? (vh.fields as any[]).map(f => f.label).join(', ') : 'None'}
                         </p>
                       </div>
@@ -725,7 +725,7 @@ export default function TemplateBuilderPage() {
                         <button
                           onClick={() => handleRollbackVersion(vh.version)}
                           disabled={saveLoading}
-                          className="px-2.5 py-1.5 bg-[#D4AF37] hover:bg-[#C5A030] text-black text-[9px] uppercase tracking-widest font-extrabold rounded flex items-center gap-1 transition-colors disabled:opacity-40"
+                          className="px-2.5 py-1.5 bg-[#0B4C8C] hover:bg-[#093d70] text-white text-[9px] uppercase tracking-widest font-extrabold rounded flex items-center gap-1 transition-colors disabled:opacity-40"
                         >
                           <RotateCcw size={10} />
                           <span>Rollback</span>
@@ -743,54 +743,54 @@ export default function TemplateBuilderPage() {
       {/* Create Custom Template Modal Overlay */}
       <AnimatePresence>
         {showCreateModal && (
-          <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-slate-50/85 flex items-center justify-center p-4 z-50">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#161616] border border-white/10 p-6 rounded-xl w-full max-w-md space-y-4"
+              className="bg-white border border-slate-200 p-6 rounded-xl w-full max-w-md space-y-4"
             >
-              <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-[#D4AF37] flex items-center gap-1.5">
+              <div className="flex justify-between items-center border-b border-slate-200/80 pb-2">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-[#0B4C8C] flex items-center gap-1.5">
                   <PlusCircle size={16} />
                   <span>Create Custom Property Template</span>
                 </h3>
-                <button onClick={() => setShowCreateModal(false)} className="text-white/40 hover:text-white">
+                <button onClick={() => setShowCreateModal(false)} className="text-slate-500 hover:text-slate-800">
                   <X size={16} />
                 </button>
               </div>
 
               <form onSubmit={handleCreateTemplate} className="space-y-4 text-xs">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase text-white/40 block font-bold">Template Label Name</label>
+                  <label className="text-[10px] uppercase text-slate-500 block font-bold">Template Label Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Duplex Villa Template"
                     value={newTemplateName}
                     onChange={(e) => setNewTemplateName(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50 focus:outline-none"
+                    className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 focus:outline-none focus:ring-2 focus:ring-[#0B4C8C]/20"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase text-white/40 block font-bold font-mono">Unique code identifier key (all caps)</label>
+                  <label className="text-[10px] uppercase text-slate-500 block font-bold font-mono">Unique code identifier key (all caps)</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. DUPLEX_VILLA"
                     value={newTemplateType}
                     onChange={(e) => setNewTemplateType(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50 focus:outline-none font-mono"
+                    className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 focus:outline-none focus:ring-2 focus:ring-[#0B4C8C]/20 font-mono"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase text-white/40 block font-bold">Clone layout schema from</label>
+                  <label className="text-[10px] uppercase text-slate-500 block font-bold">Clone layout schema from</label>
                   <select
                     value={cloneFromId}
                     onChange={(e) => setCloneFromId(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded px-3 py-2 text-white focus:border-[#D4AF37]/50"
+                    className="w-full bg-white border border-slate-200 rounded px-3 py-2 text-slate-800 focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                   >
                     <option value="">-- Start from scratch --</option>
                     {templates.map(t => (
@@ -801,18 +801,18 @@ export default function TemplateBuilderPage() {
                   </select>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-3 border-t border-white/5">
+                <div className="flex justify-end gap-3 pt-3 border-t border-slate-200/80">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 border border-white/5 bg-[#1C1C1C] hover:bg-[#252525] rounded text-[10px] uppercase font-bold tracking-widest"
+                    className="px-4 py-2 border border-slate-200/80 bg-[#1C1C1C] hover:bg-slate-100 rounded text-[10px] uppercase font-bold tracking-widest"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saveLoading}
-                    className="px-4 py-2 bg-[#D4AF37] hover:bg-[#C5A030] text-black rounded text-[10px] uppercase font-bold tracking-widest"
+                    className="px-4 py-2 bg-[#0B4C8C] hover:bg-[#093d70] text-white rounded text-[10px] uppercase font-bold tracking-widest"
                   >
                     Create Template
                   </button>

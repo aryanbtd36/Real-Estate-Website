@@ -266,14 +266,13 @@ export default function HomePage() {
     return true;
   });
 
-  // Dynamic layout renderer mapping
   const renderCmsSection = (sectionId: string) => {
     switch (sectionId) {
       case 'hero':
         if (cmsData?.hero && !cmsData.hero.visible) return null;
         
         const headline = cmsData?.hero?.headline || "Find the Right Property. Backed by Data, Not Guesswork.";
-        const subheadline = cmsData?.hero?.subheadline || "Discover verified plots, apartments, and residences with real market insights, investment intelligence, locality trends, and transparent pricing.";
+        const subheadline = cmsData?.hero?.subheadline || "Discover verified opportunities using market intelligence, area insights, investment analytics, and transparent pricing.";
         const primaryText = cmsData?.hero?.primaryCtaText || "Explore Properties";
         const primaryUrl = cmsData?.hero?.primaryCtaUrl || "/plots";
         const secondaryText = cmsData?.hero?.secondaryCtaText || "View Market Intelligence";
@@ -282,36 +281,34 @@ export default function HomePage() {
         const bgType = cmsData?.hero?.bgType || "image";
 
         return (
-          <section key="hero" className="relative min-h-screen flex items-center pt-28 pb-20 overflow-hidden grid-pattern">
-            {/* Background media if configured */}
-            {mediaUrl && (
-              <div className="absolute inset-0 w-full h-full -z-20 overflow-hidden">
-                {bgType === 'video' ? (
-                  <video src={mediaUrl} autoPlay loop muted className="w-full h-full object-cover opacity-15" />
-                ) : (
-                  <img src={mediaUrl} alt="Hero Background Image" className="w-full h-full object-cover opacity-15" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-b from-white via-white/80 to-white" />
-              </div>
-            )}
-            
-            {/* Stripe/Linear style background accents */}
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-radial from-blue-50/40 via-blue-100/10 to-transparent blur-[80px] pointer-events-none -z-10" />
-            <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-blue-50/30 blur-3xl animate-float-slow -z-10" />
-            <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-emerald-50/20 blur-3xl animate-float-rev -z-10" />
+          <section key="hero" className="relative min-h-screen flex items-center pt-28 pb-20 overflow-hidden bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 text-slate-900 grid-pattern">
+            {/* Mesh gradient and radial glows */}
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-tr from-blue-100/35 via-slate-100/10 to-transparent blur-[120px] pointer-events-none -z-10" />
+            <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-blue-50/40 blur-3xl animate-float-slow -z-10" />
+            <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-emerald-50/30 blur-3xl animate-float-rev -z-10" />
 
             <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center z-10">
               {/* Hero Left */}
               <div className="lg:col-span-6 flex flex-col space-y-6 text-left">
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-trust-blue/10 rounded-full text-xs font-semibold text-trust-blue w-fit"
-                >
-                  <ShieldCheck size={14} />
-                  100% Registry Verification & Boundary Checks
-                </motion.div>
+                {/* Trust Badges row */}
+                <div className="grid grid-cols-2 gap-3 max-w-md">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200/60 rounded-xl text-xs font-semibold text-slate-600 shadow-xs">
+                    <ShieldCheck size={14} className="text-trust-blue" />
+                    <span>Verified Listings</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200/60 rounded-xl text-xs font-semibold text-slate-600 shadow-xs">
+                    <TrendingUp size={14} className="text-trust-blue" />
+                    <span>Investment Intel</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200/60 rounded-xl text-xs font-semibold text-slate-600 shadow-xs">
+                    <MapPin size={14} className="text-trust-blue" />
+                    <span>Area Insights</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200/60 rounded-xl text-xs font-semibold text-slate-600 shadow-xs">
+                    <Activity size={14} className="text-trust-blue" />
+                    <span>Secure Platform</span>
+                  </div>
+                </div>
 
                 <motion.h1
                   initial={{ opacity: 0, y: 15 }}
@@ -331,12 +328,12 @@ export default function HomePage() {
                   {subheadline}
                 </motion.p>
 
-                {/* Search */}
+                {/* Search Box Form */}
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
-                  className="w-full bg-white p-3 rounded-2xl border border-slate-200 shadow-xl"
+                  className="w-full bg-white p-3 rounded-2xl border border-slate-200 shadow-lg"
                 >
                   <form 
                     action={`/${searchType.toLowerCase() === 'plot' ? 'plots' : searchType.toLowerCase() === 'villa' || searchType.toLowerCase() === 'duplex' ? 'residencies' : 'apartments'}`}
@@ -347,7 +344,7 @@ export default function HomePage() {
                       <select
                         value={searchLocation}
                         onChange={(e) => setSearchLocation(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200/80 p-2 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-trust-blue"
+                        className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-trust-blue"
                         name="location"
                       >
                         <option value="">All Areas</option>
@@ -362,7 +359,7 @@ export default function HomePage() {
                       <select
                         value={searchType}
                         onChange={(e) => setSearchType(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200/80 p-2 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-trust-blue"
+                        className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-trust-blue"
                         name="type"
                       >
                         <option value="Plot">Plot / Land</option>
@@ -375,7 +372,7 @@ export default function HomePage() {
                       <select
                         value={searchBudget}
                         onChange={(e) => setSearchBudget(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200/80 p-2 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-trust-blue"
+                        className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-trust-blue"
                         name="budget"
                       >
                         <option value="">No Limit</option>
@@ -387,7 +384,7 @@ export default function HomePage() {
                     <div className="md:col-span-3 pt-3.5">
                       <button
                         type="submit"
-                        className="w-full h-9 bg-trust-blue text-white hover:bg-trust-blue-hover rounded-lg font-bold flex items-center justify-center gap-1.5 shadow transition-colors text-xs"
+                        className="w-full h-9 bg-trust-blue text-white hover:bg-trust-blue-hover rounded-lg font-bold flex items-center justify-center gap-1.5 shadow transition-colors text-xs cursor-pointer"
                       >
                         <Search size={14} />
                         <span>Search</span>
@@ -412,7 +409,7 @@ export default function HomePage() {
                   </Link>
                   <Link
                     href={secondaryUrl}
-                    className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors border border-slate-200 flex items-center gap-2"
+                    className="px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors border border-slate-200 flex items-center gap-2"
                   >
                     <span>{secondaryText}</span>
                     <ArrowUpRight size={14} />
@@ -420,17 +417,17 @@ export default function HomePage() {
                 </motion.div>
               </div>
 
-              {/* Hero Right */}
+              {/* Hero Right: Floating Intelligence Dashboard */}
               <div className="lg:col-span-6 flex justify-center">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
-                  className="w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl relative space-y-6"
+                  className="w-full max-w-lg bg-white/95 border border-slate-200/80 rounded-[32px] p-6 shadow-xl relative space-y-6"
                 >
                   <div className="absolute -top-3 -right-3 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
-                    Live Market Data
+                    Verified System Active
                   </div>
 
                   <div className="flex justify-between items-start border-b border-slate-100 pb-4">
@@ -481,37 +478,27 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Performance Indicators */}
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    {getHeroMetrics().slice(0, 2).map((m: any) => (
-                      <div key={m.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100/50 space-y-1">
-                        <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold block">{m.title}</span>
-                        <span className="text-xs font-bold text-slate-800 block truncate">{m.value}</span>
-                        <span className="text-[10px] text-slate-400 block font-medium">{m.suffix}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Locality bars */}
-                  <div className="space-y-2 border-t border-slate-100 pt-4">
-                    <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold block">Demand Distribution</span>
-                    <div className="space-y-1.5">
-                      {getLocalitiesScorecards().slice(0, 2).map((loc: any, idx: number) => (
-                        <React.Fragment key={loc.id}>
-                          <div className="flex justify-between items-center text-[10px]">
-                            <span className="font-semibold text-slate-600">{loc.areaName}</span>
-                            <span className="font-bold text-slate-700">{loc.demandScore}/100</span>
-                          </div>
-                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${loc.demandScore}%` }}
-                              transition={{ duration: 1, delay: idx * 0.15 }}
-                              className="h-full bg-trust-blue rounded-full"
-                            />
-                          </div>
-                        </React.Fragment>
-                      ))}
+                  {/* Floating intelligence metrics grid */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold block">Area Growth</span>
+                      <span className="text-xs font-bold text-slate-800 block truncate">Gomti Nagar Ext.</span>
+                      <span className="text-[10px] text-soft-green block font-bold">12.2% CAGR</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold block">Rental Yield</span>
+                      <span className="text-xs font-bold text-slate-800 block truncate">Hazratganj Central</span>
+                      <span className="text-[10px] text-trust-blue block font-bold">5.2% Net Yield</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold block">Market Demand</span>
+                      <span className="text-xs font-bold text-slate-800 block truncate">Vibhuti Khand</span>
+                      <span className="text-[10px] text-slate-500 block font-semibold">92/100 Index</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold block">Investment score</span>
+                      <span className="text-xs font-bold text-slate-800 block truncate">Faizabad Road</span>
+                      <span className="text-[10px] text-indigo-500 block font-bold">A+ Stable Rating</span>
                     </div>
                   </div>
                 </motion.div>
@@ -522,7 +509,7 @@ export default function HomePage() {
 
       case 'trust-bar':
         return (
-          <section key="trust-bar" className="bg-slate-50 border-y border-slate-200 py-6">
+          <section key="trust-bar" className="bg-white border-y border-slate-200 py-12">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-slate-200">
               {getTrustMetrics().map((m: any) => (
                 <div key={m.id}>
@@ -536,7 +523,7 @@ export default function HomePage() {
 
       case 'categories':
         return (
-          <section key="categories" className="py-24 border-b border-slate-100">
+          <section key="categories" className="py-24 border-b border-slate-100 bg-slate-50">
             <div className="max-w-7xl mx-auto px-6 text-center space-y-12">
               <div className="space-y-2">
                 <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Structural Categories</span>
@@ -579,9 +566,8 @@ export default function HomePage() {
         );
 
       case 'how-we-help':
-      case 'why-trust':
         return (
-          <section key={sectionId} className="py-24 border-b border-slate-100 bg-slate-50/50">
+          <section key="how-we-help" className="py-24 border-b border-slate-100 bg-white">
             <div className="max-w-5xl mx-auto px-6 text-center space-y-16">
               <div className="space-y-2">
                 <span className="text-soft-green text-xs font-bold uppercase tracking-widest block">User Journey</span>
@@ -639,51 +625,99 @@ export default function HomePage() {
           </section>
         );
 
+      case 'why-trust':
+        return (
+          <section key="why-trust" className="py-24 border-b border-slate-100 bg-slate-50">
+            <div className="max-w-6xl mx-auto px-6 text-center space-y-12">
+              <div className="space-y-2">
+                <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Trust Verification Protocol</span>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Designed for Absolute Transparency</h2>
+                <p className="text-sm text-slate-500 max-w-xl mx-auto">
+                  Aura Estates is your data-backed decision support partner, not a marketing agency. We enforce rigorous boundary and register verification for every listing.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  {
+                    title: 'Direct Registry Auditing',
+                    desc: 'Every listing is cross-referenced directly with state registry records, ensuring absolute ownership and clean, dispute-free title deeds.',
+                    icon: <ShieldCheck size={24} className="text-trust-blue" />
+                  },
+                  {
+                    title: 'Physical Boundary Surveys',
+                    desc: 'We physically map plot limits and boundary fences, surveying GPS coordinates on-site to guarantee zero layout encroachment disputes.',
+                    icon: <MapPin size={24} className="text-trust-blue" />
+                  },
+                  {
+                    title: 'Zero Broker Intermediary',
+                    desc: 'Connect directly with verified owners without pushy agent sales pitches, commission markups, or hidden transactional costs.',
+                    icon: <Users size={24} className="text-trust-blue" />
+                  },
+                  {
+                    title: 'Empirical Price Indexing',
+                    desc: 'Decide based on transaction history and growth index charts, evaluating localities on actual registry indices rather than broker estimates.',
+                    icon: <TrendingUp size={24} className="text-trust-blue" />
+                  }
+                ].map((pillar, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 p-6 rounded-[24px] shadow-xs text-left hover:-translate-y-1 hover:shadow-md transition-all flex flex-col justify-between h-64">
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100">{pillar.icon}</div>
+                      <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">{pillar.title}</h3>
+                      <p className="text-xs text-slate-500 leading-relaxed font-light">{pillar.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+
       case 'investment':
         return (
-          <section key="investment" className="py-24 border-b border-slate-100">
+          <section key="investment" className="py-32 border-b border-slate-900 bg-[#0F172A] text-white">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
-              <div className="flex justify-between items-end border-b border-slate-100 pb-4">
+              <div className="flex justify-between items-end border-b border-slate-800 pb-4">
                 <div>
                   <span className="text-soft-green text-xs font-bold uppercase tracking-widest">Bloomberg meets Zillow</span>
-                  <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">Real Estate Appreciation Dashboard</h2>
+                  <h2 className="text-3xl font-extrabold text-white tracking-tight mt-1">Real Estate Appreciation Dashboard</h2>
                 </div>
-                <Link href="/investment-intelligence" className="text-xs font-bold text-trust-blue hover:underline flex items-center gap-1">
+                <Link href="/investment-intelligence" className="text-xs font-bold text-blue-400 hover:underline flex items-center gap-1">
                   <span>Explore Analytics Dashboard</span>
                   <ArrowUpRight size={14} />
                 </Link>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-8 bg-slate-50 p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                <div className="lg:col-span-8 bg-slate-900 p-6 rounded-2xl border border-slate-800/80 shadow-sm space-y-4">
                   <div className="flex justify-between items-center flex-wrap gap-2 text-xs font-bold">
-                    <div className="text-slate-700">Localities Price Appreciation % (5 Yr History)</div>
+                    <div className="text-slate-300">Localities Price Appreciation % (5 Yr History)</div>
                     <div className="flex gap-4">
-                      <span className="flex items-center gap-1 text-trust-blue">
-                        <span className="w-2.5 h-2.5 bg-trust-blue rounded-full"></span> Gomti Nagar (+28%)
+                      <span className="flex items-center gap-1 text-blue-400">
+                        <span className="w-2.5 h-2.5 bg-blue-400 rounded-full"></span> Gomti Nagar (+28%)
                       </span>
-                      <span className="flex items-center gap-1 text-slate-500">
-                        <span className="w-2.5 h-2.5 bg-slate-400 rounded-full"></span> Indira Nagar (+17%)
+                      <span className="flex items-center gap-1 text-slate-400">
+                        <span className="w-2.5 h-2.5 bg-slate-500 rounded-full"></span> Indira Nagar (+17%)
                       </span>
-                      <span className="flex items-center gap-1 text-emerald-500">
+                      <span className="flex items-center gap-1 text-emerald-400">
                         <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> Shaheed Path (+35%)
                       </span>
                     </div>
                   </div>
 
-                  <div className="h-64 bg-white rounded-xl border border-slate-200 p-4 relative">
-                    <svg className="w-full h-full" viewBox="0 0 400 150" preserveAspectRatio="none">
-                      <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(226, 232, 240, 0.4)" strokeDasharray="3" />
-                      <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(226, 232, 240, 0.4)" strokeDasharray="3" />
-                      <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(226, 232, 240, 0.4)" strokeDasharray="3" />
+                  <div className="h-64 bg-slate-950 rounded-xl border border-slate-800 p-4 relative">
+                    <svg className="w-full h-full text-blue-500" viewBox="0 0 400 150" preserveAspectRatio="none">
+                      <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(226, 232, 240, 0.05)" strokeDasharray="3" />
+                      <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(226, 232, 240, 0.05)" strokeDasharray="3" />
+                      <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(226, 232, 240, 0.05)" strokeDasharray="3" />
                       <path d="M0,130 Q100,115 200,90 T400,60" fill="none" stroke="var(--color-trust-blue)" strokeWidth="2.5" />
-                      <path d="M0,130 Q100,123 200,110 T400,95" fill="none" stroke="#94a3b8" strokeWidth="2" />
+                      <path d="M0,130 Q100,123 200,110 T400,95" fill="none" stroke="#64748b" strokeWidth="2" />
                       <path d="M0,130 Q100,105 200,75 T400,45" fill="none" stroke="var(--color-soft-green)" strokeWidth="2.5" />
                       <circle cx="400" cy="60" r="3.5" fill="var(--color-trust-blue)" />
-                      <circle cx="400" cy="95" r="3" fill="#94a3b8" />
+                      <circle cx="400" cy="95" r="3" fill="#64748b" />
                       <circle cx="400" cy="45" r="3.5" fill="var(--color-soft-green)" />
                     </svg>
-                    <div className="absolute top-4 left-4 p-2.5 bg-slate-900 text-white rounded text-[9px] font-mono leading-relaxed space-y-0.5">
+                    <div className="absolute top-4 left-4 p-2.5 bg-slate-900 border border-slate-800 text-white rounded text-[9px] font-mono leading-relaxed space-y-0.5">
                       <div>REGISTRY STATS ACTIVE</div>
                       <div>LAST SEEDED CORRIDORS: 6</div>
                     </div>
@@ -691,27 +725,27 @@ export default function HomePage() {
                 </div>
 
                 <div className="lg:col-span-4 space-y-4">
-                  <div className="p-4 bg-white border border-slate-200 rounded-xl flex gap-3 shadow-sm hover:shadow transition-shadow">
-                    <div className="w-9 h-9 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><Star size={16} /></div>
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex gap-3 shadow-sm hover:shadow transition-shadow">
+                    <div className="w-9 h-9 rounded bg-emerald-950/50 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-900/35"><Star size={16} /></div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800">Highest Demand Locality</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Vibhuti Khand (Gomti Nagar) holds average growth multiplier scores of 9.2.</p>
+                      <h4 className="text-xs font-bold text-white">Highest Demand Locality</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Vibhuti Khand (Gomti Nagar) holds average growth multiplier scores of 9.2.</p>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-white border border-slate-200 rounded-xl flex gap-3 shadow-sm hover:shadow transition-shadow">
-                    <div className="w-9 h-9 rounded bg-blue-50 text-trust-blue flex items-center justify-center shrink-0"><TrendingUp size={16} /></div>
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex gap-3 shadow-sm hover:shadow transition-shadow">
+                    <div className="w-9 h-9 rounded bg-blue-950/50 text-blue-400 flex items-center justify-center shrink-0 border border-blue-900/35"><TrendingUp size={16} /></div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800">Fastest Growing Zone</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Shaheed Path corridor has appreciated +35% in total transaction index rates.</p>
+                      <h4 className="text-xs font-bold text-white">Fastest Growing Zone</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Shaheed Path corridor has appreciated +35% in total transaction index rates.</p>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-white border border-slate-200 rounded-xl flex gap-3 shadow-sm hover:shadow transition-shadow">
-                    <div className="w-9 h-9 rounded bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0"><Percent size={16} /></div>
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex gap-3 shadow-sm hover:shadow transition-shadow">
+                    <div className="w-9 h-9 rounded bg-indigo-950/50 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-900/35"><Percent size={16} /></div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800">Best Rental Yield Areas</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Central commercial corridors in Indira Nagar return 3.8% annual net yields.</p>
+                      <h4 className="text-xs font-bold text-white">Best Rental Yield Areas</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Central commercial corridors in Indira Nagar return 3.8% annual net yields.</p>
                     </div>
                   </div>
                 </div>
@@ -827,7 +861,7 @@ export default function HomePage() {
 
       case 'featured':
         return (
-          <section key="featured" className="py-24 border-b border-slate-100 bg-slate-50/20">
+          <section key="featured" className="py-24 border-b border-slate-100 bg-slate-50">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="space-y-2 text-left">
                 <span className="text-soft-green text-xs font-bold uppercase tracking-widest block">Premium Showcase</span>
@@ -919,7 +953,7 @@ export default function HomePage() {
 
       case 'localities':
         return (
-          <section key="localities" className="py-24 border-b border-slate-100">
+          <section key="localities" className="py-24 border-b border-slate-100 bg-white">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="flex flex-col lg:flex-row lg:items-end justify-between border-b border-slate-100 pb-4">
                 <div>
@@ -966,7 +1000,7 @@ export default function HomePage() {
 
       case 'testimonials':
         return (
-          <section key="testimonials" className="py-24 border-b border-slate-100">
+          <section key="testimonials" className="py-24 border-b border-slate-100 bg-white">
             <div className="max-w-4xl mx-auto px-6 text-center space-y-12">
               <div className="space-y-2">
                 <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Client Testimonials</span>
@@ -1032,7 +1066,7 @@ export default function HomePage() {
 
       case 'research':
         return (
-          <section key="research" className="py-24 border-b border-slate-100 bg-slate-50/50">
+          <section key="research" className="py-24 border-b border-slate-100 bg-slate-50">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="space-y-2 text-center">
                 <span className="text-soft-green text-xs font-bold uppercase tracking-widest block">Prop-Tech Journal</span>
@@ -1120,7 +1154,7 @@ export default function HomePage() {
         const parsedLinks = typeof cmsData?.footer?.linksJson === 'string' ? JSON.parse(cmsData.footer.linksJson) : cmsData?.footer?.linksJson || {};
 
         return (
-          <footer key="footer" className="bg-slate-950 text-slate-400 pt-20 pb-8 border-t border-slate-900 text-left">
+          <footer key="footer" className="bg-[#0F172A] text-slate-400 py-16 border-t border-slate-800 text-left">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-5 gap-12">
               <div className="col-span-2 space-y-6">
                 <h3 className="text-xl font-black text-white">Aura Estates</h3>

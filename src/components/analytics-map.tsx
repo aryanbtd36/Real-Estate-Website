@@ -74,7 +74,7 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
         if (p.latitude && p.longitude) {
           bounds.push([p.latitude, p.longitude]);
 
-          const color = type === 'demand' ? '#E53E3E' : '#D4AF37'; // Red for demand, Gold for interest
+          const color = type === 'demand' ? '#E53E3E' : '#0B4C8C'; // Red for demand, Blue for interest
           const radius = Math.min(200, 10 + p.weight * 5); // pixel or meter radius adjustment
 
           const circle = L.circle([p.latitude, p.longitude], {
@@ -154,7 +154,7 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
   }, [mapLayer]);
 
   return (
-    <div className="w-full h-[400px] rounded-xl overflow-hidden border border-white/10 relative z-10 flex flex-col gap-2 p-1 bg-[#161616]">
+    <div className="w-full h-[400px] rounded-xl overflow-hidden border border-slate-200/80 relative z-10 flex flex-col gap-2 p-1 bg-white shadow-xs">
       {/* Map Layer Switcher */}
       <div className="flex gap-2 justify-end px-2 pt-1">
         {(['standard', 'satellite', 'hybrid'] as const).map((layer) => (
@@ -165,10 +165,10 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
               setMapLayer(layer);
               localStorage.setItem('aura_estates_map_layer', layer);
             }}
-            className={`px-2.5 py-1 bg-black/40 border text-[9px] uppercase tracking-wider font-bold rounded transition-colors ${
+            className={`px-2.5 py-1 border text-[9px] uppercase tracking-wider font-extrabold rounded-lg transition-all ${
               mapLayer === layer
-                ? 'border-[#D4AF37] bg-[#D4AF37]/10 text-[#F5D67B]'
-                : 'border-white/5 text-white/40 hover:text-white'
+                ? 'border-[#0B4C8C] bg-blue-50 text-[#0B4C8C]'
+                : 'border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}
           >
             {layer === 'standard' && '🗺 Standard'}

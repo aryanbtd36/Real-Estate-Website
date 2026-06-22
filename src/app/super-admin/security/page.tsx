@@ -350,35 +350,35 @@ export default function SuperAdminSecuritySOCPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse py-8 min-h-screen bg-black text-white p-6">
-        <div className="h-8 w-48 bg-white/5 rounded" />
+      <div className="space-y-6 animate-pulse py-8 min-h-screen bg-slate-50 text-slate-800 p-6">
+        <div className="h-8 w-48 bg-slate-50 rounded" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-white/5 rounded-xl border border-white/5" />)}
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-slate-50 rounded-xl border border-slate-200/80" />)}
         </div>
-        <div className="h-96 bg-white/5 rounded-xl border border-white/5" />
+        <div className="h-96 bg-slate-50 rounded-xl border border-slate-200/80" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white p-6 space-y-8 pb-16">
+    <div className="min-h-screen bg-slate-50 text-slate-800 p-6 space-y-8 pb-16">
       {/* Top Banner Header */}
-      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 border-b border-slate-200/80 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[#0B4C8C] font-semibold">
             <Zap size={10} className="animate-pulse" /> Super Admin Portal • Production Certified
           </div>
           <h1 className="text-3xl font-light tracking-wide flex items-center gap-2 mt-1">
             <ShieldAlert className="text-red-500" size={28} />
             Security Posture Command Center
           </h1>
-          <p className="text-xs text-white/45 mt-1.5 font-light">
+          <p className="text-xs text-slate-500 mt-1.5 font-light">
             Single-pane control portal for security posture scores, compliance matrices, disaster recovery validation, and SOC alerts.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Timeframe */}
-          <div className="flex bg-black border border-white/10 rounded p-0.5">
+          <div className="flex bg-slate-50 border border-slate-200 rounded p-0.5">
             {[
               { id: '24h', label: '24H' },
               { id: '7d', label: '7D' },
@@ -390,8 +390,8 @@ export default function SuperAdminSecuritySOCPage() {
                 onClick={() => setTimeFilter(t.id as any)}
                 className={`px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition-all ${
                   timeFilter === t.id
-                    ? 'bg-[#D4AF37] text-black'
-                    : 'text-white/60 hover:text-white'
+                    ? 'bg-[#0B4C8C] text-white'
+                    : 'text-slate-650 hover:text-slate-800'
                 }`}
               >
                 {t.label}
@@ -402,7 +402,7 @@ export default function SuperAdminSecuritySOCPage() {
           <button
             onClick={() => loadAllData()}
             disabled={refreshing}
-            className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-white/60 hover:text-white transition-colors"
+            className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-slate-650 hover:text-slate-800 transition-colors"
           >
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           </button>
@@ -410,10 +410,10 @@ export default function SuperAdminSecuritySOCPage() {
       </div>
 
       {/* Tabs Navigation Layout */}
-      <div className="flex flex-col lg:flex-row gap-4 border-b border-white/5 pb-3">
+      <div className="flex flex-col lg:flex-row gap-4 border-b border-slate-200/80 pb-3">
         {/* Operations Section */}
         <div className="space-y-1">
-          <span className="text-[9px] uppercase tracking-widest text-[#D4AF37] font-semibold block px-2">Operations Command</span>
+          <span className="text-[9px] uppercase tracking-widest text-[#0B4C8C] font-semibold block px-2">Operations Command</span>
           <div className="flex gap-1 overflow-x-auto">
             {[
               { id: 'soc', label: 'SOC Console', icon: AlertIcon },
@@ -432,8 +432,8 @@ export default function SuperAdminSecuritySOCPage() {
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] uppercase tracking-wider font-bold transition-all shrink-0 ${
                     isActive
-                      ? 'bg-[#D4AF37] text-black font-extrabold'
-                      : 'text-white/55 hover:text-white hover:bg-white/5'
+                      ? 'bg-[#0B4C8C] text-white font-extrabold'
+                      : 'text-slate-650 hover:text-slate-800 hover:bg-slate-50'
                   }`}
                 >
                   <Icon size={12} />
@@ -446,7 +446,7 @@ export default function SuperAdminSecuritySOCPage() {
 
         {/* Governance & Posture Section */}
         <div className="space-y-1 flex-1">
-          <span className="text-[9px] uppercase tracking-widest text-[#D4AF37] font-semibold block px-2">Governance & Posture</span>
+          <span className="text-[9px] uppercase tracking-widest text-[#0B4C8C] font-semibold block px-2">Governance & Posture</span>
           <div className="flex gap-1 overflow-x-auto">
             {[
               { id: 'posture', label: 'Posture Center', icon: TrendingUp },
@@ -466,8 +466,8 @@ export default function SuperAdminSecuritySOCPage() {
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] uppercase tracking-wider font-bold transition-all shrink-0 ${
                     isActive
-                      ? 'bg-[#D4AF37] text-black font-extrabold'
-                      : 'text-white/55 hover:text-white hover:bg-white/5'
+                      ? 'bg-[#0B4C8C] text-white font-extrabold'
+                      : 'text-slate-650 hover:text-slate-800 hover:bg-slate-50'
                   }`}
                 >
                   <Icon size={12} />
@@ -494,19 +494,19 @@ export default function SuperAdminSecuritySOCPage() {
               <div className="space-y-6">
                 {/* Stats Widgets */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Posture Security Score</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Posture Security Score</span>
                     <div className="flex items-baseline gap-2 mt-2">
-                      <div className="text-4xl font-extralight text-[#D4AF37]">{stats?.securityScore}%</div>
-                      <div className="text-[10px] uppercase font-bold text-[#D4AF37]/65">{stats?.securityGrade}</div>
+                      <div className="text-4xl font-extralight text-[#0B4C8C]">{stats?.securityScore}%</div>
+                      <div className="text-[10px] uppercase font-bold text-[#0B4C8C]/65">{stats?.securityGrade}</div>
                     </div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Failed Logins</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Failed Logins</span>
                     <div className="text-4xl font-extralight text-orange-400 mt-2">{stats?.failedLogins}</div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Active Alerts</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Active Alerts</span>
                     <div className="text-4xl font-extralight text-red-500 mt-2">{stats?.activeAlerts}</div>
                     <div className="flex gap-1.5 mt-2">
                       {stats?.alertResolutionStats && (
@@ -517,8 +517,8 @@ export default function SuperAdminSecuritySOCPage() {
                       )}
                     </div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Open Findings</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Open Findings</span>
                     <div className="text-4xl font-extralight text-yellow-400 mt-2">{stats?.findings?.total || 0}</div>
                   </div>
                 </div>
@@ -526,15 +526,15 @@ export default function SuperAdminSecuritySOCPage() {
                 {/* SOC Intelligence Row: Event Trend + Top Types */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Events Per Hour Trend */}
-                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4 lg:col-span-2">
+                  <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4 lg:col-span-2">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60 flex items-center gap-1.5">
-                        <Activity size={13} className="text-[#D4AF37]" />
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650 flex items-center gap-1.5">
+                        <Activity size={13} className="text-[#0B4C8C]" />
                         Event Activity Trend (Last 24H)
                       </h3>
                       <button
                         onClick={handleDownloadReport}
-                        className="py-1 px-3 bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/20 rounded text-[9px] uppercase font-bold text-[#D4AF37] tracking-wider transition-all flex items-center gap-1"
+                        className="py-1 px-3 bg-blue-50 hover:bg-blue-50 border border-blue-200 rounded text-[9px] uppercase font-bold text-[#0B4C8C] tracking-wider transition-all flex items-center gap-1"
                       >
                         <Download size={10} />
                         Export
@@ -546,50 +546,50 @@ export default function SuperAdminSecuritySOCPage() {
                         return (
                           <div key={i} className="flex-1 flex flex-col items-center group relative">
                             <div
-                              className="w-full bg-[#D4AF37]/30 hover:bg-[#D4AF37]/60 rounded-t transition-all min-h-[2px]"
+                              className="w-full bg-blue-100 hover:bg-[#0B4C8C]/60 rounded-t transition-all min-h-[2px]"
                               style={{ height: `${Math.max(2, (h.count / maxVal) * 80)}px` }}
                             />
-                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-black border border-white/10 text-[8px] px-1.5 py-0.5 rounded text-white/80 whitespace-nowrap z-10 transition-opacity">
+                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-slate-50 border border-slate-200 text-[8px] px-1.5 py-0.5 rounded text-slate-700 whitespace-nowrap z-10 transition-opacity">
                               {h.hour}: {h.count}
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="flex justify-between text-[8px] text-white/25 font-mono">
+                    <div className="flex justify-between text-[8px] text-slate-400 font-mono">
                       <span>{(stats?.eventsPerHour || [])[0]?.hour || '—'}</span>
                       <span>NOW</span>
                     </div>
                   </div>
 
                   {/* Top Event Types + Top Source IPs */}
-                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
-                    <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60 flex items-center gap-1.5">
-                      <TrendingUp size={13} className="text-[#D4AF37]" />
+                  <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
+                    <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650 flex items-center gap-1.5">
+                      <TrendingUp size={13} className="text-[#0B4C8C]" />
                       SOC Intelligence
                     </h3>
                     <div className="space-y-1.5">
-                      <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold">Top Event Types</span>
+                      <span className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Top Event Types</span>
                       {(stats?.topEventTypes || []).map((t: any, i: number) => (
                         <div key={i} className="flex justify-between items-center text-[10px]">
-                          <span className="text-white/70 truncate mr-2">{t.eventType}</span>
-                          <span className="font-mono text-[#D4AF37] font-bold shrink-0">{t.count}</span>
+                          <span className="text-slate-700 truncate mr-2">{t.eventType}</span>
+                          <span className="font-mono text-[#0B4C8C] font-bold shrink-0">{t.count}</span>
                         </div>
                       ))}
                       {(!stats?.topEventTypes || stats.topEventTypes.length === 0) && (
-                        <div className="text-[10px] text-white/25">No events in window.</div>
+                        <div className="text-[10px] text-slate-400">No events in window.</div>
                       )}
                     </div>
-                    <div className="space-y-1.5 border-t border-white/5 pt-3">
-                      <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold">Top Source IPs</span>
+                    <div className="space-y-1.5 border-t border-slate-200/80 pt-3">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Top Source IPs</span>
                       {(stats?.topSourceIPs || []).map((ip: any, i: number) => (
                         <div key={i} className="flex justify-between items-center text-[10px]">
-                          <span className="text-white/70 font-mono">{ip.ipAddress}</span>
-                          <span className="font-mono text-[#D4AF37] font-bold">{ip.count}</span>
+                          <span className="text-slate-700 font-mono">{ip.ipAddress}</span>
+                          <span className="font-mono text-[#0B4C8C] font-bold">{ip.count}</span>
                         </div>
                       ))}
                       {(!stats?.topSourceIPs || stats.topSourceIPs.length === 0) && (
-                        <div className="text-[10px] text-white/25">No IP data.</div>
+                        <div className="text-[10px] text-slate-400">No IP data.</div>
                       )}
                     </div>
                   </div>
@@ -599,8 +599,8 @@ export default function SuperAdminSecuritySOCPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left Column: Alerts with Lifecycle + Counters */}
                   <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">SOC Attack Prevention Counters</h3>
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">SOC Attack Prevention Counters</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
                           { label: 'Replay Blocks', val: stats?.replayBlocks, icon: ShieldCheck, color: 'text-green-400' },
@@ -608,11 +608,11 @@ export default function SuperAdminSecuritySOCPage() {
                           { label: 'Rate Limits', val: stats?.rateLimitViolations, icon: ShieldCheck, color: 'text-yellow-400' },
                           { label: 'Brute Force attempts', val: stats?.bruteForceAttempts, icon: Flame, color: 'text-red-400' }
                         ].map((c, i) => (
-                          <div key={i} className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-1">
-                            <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">{c.label}</span>
+                          <div key={i} className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl space-y-1">
+                            <span className="text-[9px] uppercase tracking-widest text-slate-500 font-semibold block">{c.label}</span>
                             <div className="flex items-center gap-1.5 mt-1">
                               <c.icon size={13} className={c.color} />
-                              <span className="text-lg font-mono font-bold text-white">{c.val || 0}</span>
+                              <span className="text-lg font-mono font-bold text-slate-800">{c.val || 0}</span>
                             </div>
                           </div>
                         ))}
@@ -620,9 +620,9 @@ export default function SuperAdminSecuritySOCPage() {
                     </div>
 
                     {/* Security Alert Log with Lifecycle Management */}
-                    <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-4">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Security Incidents Alert Console</h3>
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-700">Security Incidents Alert Console</h3>
                         <div className="flex items-center gap-2">
                           <span className="text-[9px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded font-mono font-bold">
                             {alerts.filter((a: any) => a.status === 'OPEN').length} OPEN
@@ -630,7 +630,7 @@ export default function SuperAdminSecuritySOCPage() {
                           <span className="text-[9px] bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded font-mono font-bold">
                             {alerts.filter((a: any) => a.status === 'INVESTIGATING').length} INVESTIGATING
                           </span>
-                          <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">
+                          <span className="text-[9px] bg-slate-50 px-2 py-0.5 rounded font-mono text-slate-650">
                             {alerts.length} Total
                           </span>
                         </div>
@@ -638,25 +638,25 @@ export default function SuperAdminSecuritySOCPage() {
 
                       <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                         {alerts.length === 0 ? (
-                          <div className="text-center py-12 text-white/30 text-xs">Zero security alerts triggered.</div>
+                          <div className="text-center py-12 text-slate-400 text-xs">Zero security alerts triggered.</div>
                         ) : (
                           alerts.map((alert) => (
                             <div
                               key={alert.id}
                               className={`p-3 rounded-xl border transition-all ${
                                 alert.status === 'RESOLVED' || alert.status === 'FALSE_POSITIVE'
-                                  ? 'border-white/5 bg-black/15 opacity-50'
+                                  ? 'border-slate-200/80 bg-slate-50/50 opacity-50'
                                   : alert.severity === 'CRITICAL'
                                   ? 'border-red-500/25 bg-red-500/[0.03]'
                                   : alert.status === 'INVESTIGATING'
                                   ? 'border-yellow-500/20 bg-yellow-500/[0.02]'
-                                  : 'border-white/10 bg-[#1A1A1A]'
+                                  : 'border-slate-200 bg-slate-50'
                               }`}
                             >
                               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs font-semibold text-white truncate">{alert.description}</span>
+                                    <span className="text-xs font-semibold text-slate-800 truncate">{alert.description}</span>
                                     <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-extrabold ${
                                       alert.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
                                       alert.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
@@ -669,12 +669,12 @@ export default function SuperAdminSecuritySOCPage() {
                                       alert.status === 'OPEN' ? 'bg-red-500/10 text-red-400' :
                                       alert.status === 'INVESTIGATING' ? 'bg-yellow-500/10 text-yellow-400' :
                                       alert.status === 'RESOLVED' ? 'bg-green-500/10 text-green-400' :
-                                      'bg-white/5 text-white/40'
+                                      'bg-slate-50 text-slate-500'
                                     }`}>
                                       {alert.status}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2 text-[9px] text-white/30 font-mono mt-1 flex-wrap">
+                                  <div className="flex items-center gap-2 text-[9px] text-slate-400 font-mono mt-1 flex-wrap">
                                     <div>Type: {alert.type || 'Anomaly'}</div>
                                     <div>At: {new Date(alert.createdAt).toLocaleString()}</div>
                                     {alert.assignedTo && (
@@ -730,7 +730,7 @@ export default function SuperAdminSecuritySOCPage() {
                                           });
                                           loadAllData(true);
                                         }}
-                                        className="py-1 px-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold text-white/40 rounded uppercase transition-all"
+                                        className="py-1 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-500 rounded uppercase transition-all"
                                       >
                                         <XCircle size={9} className="inline mr-0.5" /> FP
                                       </button>
@@ -760,7 +760,7 @@ export default function SuperAdminSecuritySOCPage() {
                                           });
                                           loadAllData(true);
                                         }}
-                                        className="py-1 px-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold text-white/40 rounded uppercase transition-all"
+                                        className="py-1 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-500 rounded uppercase transition-all"
                                       >
                                         False +
                                       </button>
@@ -781,20 +781,20 @@ export default function SuperAdminSecuritySOCPage() {
                   </div>
 
                   {/* Right Column: Live Telemetry Feed */}
-                  <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-4">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Real-time Telemetry Event Feed</h3>
-                      <span className="text-[9px] bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-0.5 rounded font-mono font-bold">LIVE FEED</span>
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-700">Real-time Telemetry Event Feed</h3>
+                      <span className="text-[9px] bg-blue-50 text-[#0B4C8C] px-2 py-0.5 rounded font-mono font-bold">LIVE FEED</span>
                     </div>
 
                     <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                       {events.length === 0 ? (
-                        <div className="text-center py-12 text-white/30 text-xs">No events logged.</div>
+                        <div className="text-center py-12 text-slate-400 text-xs">No events logged.</div>
                       ) : (
                         events.map((e) => (
-                          <div key={e.id} className="p-3 bg-black/35 border border-white/5 rounded-xl space-y-2">
+                          <div key={e.id} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
                             <div className="flex justify-between items-center">
-                              <span className="text-xs font-semibold text-[#D4AF37]">{e.title}</span>
+                              <span className="text-xs font-semibold text-[#0B4C8C]">{e.title}</span>
                               <div className="flex items-center gap-1">
                                 <span className={`px-1 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
                                   e.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
@@ -804,12 +804,12 @@ export default function SuperAdminSecuritySOCPage() {
                                 }`}>
                                   {e.severity}
                                 </span>
-                                <span className="text-[8px] bg-white/5 px-2 py-0.5 border border-white/10 rounded font-mono text-white/50">
+                                <span className="text-[8px] bg-slate-50 px-2 py-0.5 border border-slate-200 rounded font-mono text-slate-650">
                                   {e.category}
                                 </span>
                               </div>
                             </div>
-                            <p className="text-[10px] text-white/70">{e.description}</p>
+                            <p className="text-[10px] text-slate-700">{e.description}</p>
                           </div>
                         ))
                       )}
@@ -824,31 +824,31 @@ export default function SuperAdminSecuritySOCPage() {
               <div className="space-y-6">
                 {/* Executive Operational Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Open Incidents</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Open Incidents</span>
                     <div className="text-4xl font-extralight text-red-500 mt-2">{incidentMetrics?.openIncidents || 0}</div>
-                    <span className="text-[8px] text-white/30 block mt-1">{incidentMetrics?.escalatedIncidents || 0} Critical</span>
+                    <span className="text-[8px] text-slate-400 block mt-1">{incidentMetrics?.escalatedIncidents || 0} Critical</span>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Closed Incidents</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Closed Incidents</span>
                     <div className="text-4xl font-extralight text-green-400 mt-2">{incidentMetrics?.closedIncidents || 0}</div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Mean Time To Detect</span>
-                    <div className="text-4xl font-extralight text-[#D4AF37] mt-2">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Mean Time To Detect</span>
+                    <div className="text-4xl font-extralight text-[#0B4C8C] mt-2">
                       {incidentMetrics?.meanTimeToDetectMinutes ? `${incidentMetrics.meanTimeToDetectMinutes.toFixed(1)}m` : '0m'}
                     </div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Mean Time To Resolve</span>
-                    <div className="text-4xl font-extralight text-[#D4AF37] mt-2">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Mean Time To Resolve</span>
+                    <div className="text-4xl font-extralight text-[#0B4C8C] mt-2">
                       {incidentMetrics?.meanTimeToResolveMinutes ? `${incidentMetrics.meanTimeToResolveMinutes.toFixed(1)}m` : '0m'}
                     </div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">SOAR Playbooks</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative overflow-hidden group">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">SOAR Playbooks</span>
                     <div className="text-4xl font-extralight text-blue-400 mt-2">{incidentMetrics?.playbooksExecuted || 0}</div>
-                    <span className="text-[8px] text-white/30 block mt-1">{incidentMetrics?.alertsCorrelated || 0} Correlated</span>
+                    <span className="text-[8px] text-slate-400 block mt-1">{incidentMetrics?.alertsCorrelated || 0} Correlated</span>
                   </div>
                 </div>
 
@@ -856,9 +856,9 @@ export default function SuperAdminSecuritySOCPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left Column: Active queue list */}
                   <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">SOC Active Incident Queue</h3>
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-700">SOC Active Incident Queue</h3>
                         <span className="text-[9px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded font-mono font-bold">
                           {incidents.filter(i => i.status !== 'RESOLVED' && i.status !== 'CLOSED').length} ACTIVE
                         </span>
@@ -866,23 +866,23 @@ export default function SuperAdminSecuritySOCPage() {
 
                       <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                         {incidents.length === 0 ? (
-                          <div className="text-center py-12 text-white/30 text-xs">No active security incidents in queue.</div>
+                          <div className="text-center py-12 text-slate-400 text-xs">No active security incidents in queue.</div>
                         ) : (
                           incidents.map((inc) => (
                             <div
                               key={inc.id}
                               className={`p-4 rounded-xl border transition-all ${
                                 inc.status === 'RESOLVED' || inc.status === 'CLOSED'
-                                  ? 'border-white/5 bg-black/15 opacity-55'
+                                  ? 'border-slate-200/80 bg-slate-50/50 opacity-55'
                                   : inc.severity === 'CRITICAL'
                                   ? 'border-red-500/25 bg-red-500/[0.03]'
-                                  : 'border-white/10 bg-[#1A1A1A]'
+                                  : 'border-slate-200 bg-slate-50'
                               }`}
                             >
                               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs font-bold text-white">{(inc.metadata as any)?.title || 'Security Incident'}</span>
+                                    <span className="text-xs font-bold text-slate-800">{(inc.metadata as any)?.title || 'Security Incident'}</span>
                                     <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-extrabold ${
                                       inc.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'
                                     }`}>{inc.severity}</span>
@@ -890,14 +890,14 @@ export default function SuperAdminSecuritySOCPage() {
                                       inc.status === 'OPEN' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'
                                     }`}>{inc.status}</span>
                                   </div>
-                                  <p className="text-[10px] text-white/70 leading-relaxed">{(inc.metadata as any)?.description || 'No description provided.'}</p>
-                                  <div className="text-[8px] text-white/30 font-mono flex items-center gap-3 flex-wrap">
+                                  <p className="text-[10px] text-slate-700 leading-relaxed">{(inc.metadata as any)?.description || 'No description provided.'}</p>
+                                  <div className="text-[8px] text-slate-400 font-mono flex items-center gap-3 flex-wrap">
                                     <div>ID: {inc.id.slice(0, 8)}...</div>
                                     <div>Created: {new Date(inc.createdAt).toLocaleString()}</div>
                                     {inc.assignedTo ? (
                                       <div className="text-yellow-400/80">Owner: {inc.assignedTo.name || inc.assignedTo.email}</div>
                                     ) : (
-                                      <div className="text-white/40">Unassigned</div>
+                                      <div className="text-slate-500">Unassigned</div>
                                     )}
                                   </div>
                                 </div>
@@ -928,7 +928,7 @@ export default function SuperAdminSecuritySOCPage() {
                                           });
                                           loadAllData(true);
                                         }}
-                                        className="py-1 px-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold text-white/50 rounded uppercase transition-all"
+                                        className="py-1 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-650 rounded uppercase transition-all"
                                       >
                                         Release
                                       </button>
@@ -978,8 +978,8 @@ export default function SuperAdminSecuritySOCPage() {
                   {/* Right Column: Playbooks & Campaign Reconstruction Viewer */}
                   <div className="space-y-6">
                     {/* Playbooks Section */}
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">Manual Playbook Trigger</h3>
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-700">Manual Playbook Trigger</h3>
                       <div className="space-y-3">
                         <button
                           onClick={async () => {
@@ -993,10 +993,10 @@ export default function SuperAdminSecuritySOCPage() {
                             alert('Credential Stuffing Playbook executed successfully');
                             loadAllData(true);
                           }}
-                          className="w-full text-left py-2.5 px-4 bg-black/40 border border-white/5 hover:border-[#D4AF37]/45 rounded-xl transition-all text-xs font-semibold text-white flex justify-between items-center"
+                          className="w-full text-left py-2.5 px-4 bg-slate-50 border border-slate-200/80 hover:border-[#0B4C8C]/50 rounded-xl transition-all text-xs font-semibold text-slate-800 flex justify-between items-center"
                         >
                           <span>Credential Stuffing Playbook</span>
-                          <span className="text-[9px] text-[#D4AF37] font-bold">RUN</span>
+                          <span className="text-[9px] text-[#0B4C8C] font-bold">RUN</span>
                         </button>
 
                         <button
@@ -1012,10 +1012,10 @@ export default function SuperAdminSecuritySOCPage() {
                             alert('Brute Force Playbook executed successfully');
                             loadAllData(true);
                           }}
-                          className="w-full text-left py-2.5 px-4 bg-black/40 border border-white/5 hover:border-[#D4AF37]/45 rounded-xl transition-all text-xs font-semibold text-white flex justify-between items-center"
+                          className="w-full text-left py-2.5 px-4 bg-slate-50 border border-slate-200/80 hover:border-[#0B4C8C]/50 rounded-xl transition-all text-xs font-semibold text-slate-800 flex justify-between items-center"
                         >
                           <span>Brute Force Playbook</span>
-                          <span className="text-[9px] text-[#D4AF37] font-bold">RUN</span>
+                          <span className="text-[9px] text-[#0B4C8C] font-bold">RUN</span>
                         </button>
 
                         <button
@@ -1032,18 +1032,18 @@ export default function SuperAdminSecuritySOCPage() {
                             alert('Session Hijacking Playbook executed successfully');
                             loadAllData(true);
                           }}
-                          className="w-full text-left py-2.5 px-4 bg-black/40 border border-white/5 hover:border-[#D4AF37]/45 rounded-xl transition-all text-xs font-semibold text-white flex justify-between items-center"
+                          className="w-full text-left py-2.5 px-4 bg-slate-50 border border-slate-200/80 hover:border-[#0B4C8C]/50 rounded-xl transition-all text-xs font-semibold text-slate-800 flex justify-between items-center"
                         >
                           <span>Session Hijacking Playbook</span>
-                          <span className="text-[9px] text-[#D4AF37] font-bold">RUN</span>
+                          <span className="text-[9px] text-[#0B4C8C] font-bold">RUN</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Campaign reconstruction */}
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/70">SOC Campaign Reconstruction</h3>
-                      <p className="text-[9px] text-white/40 leading-relaxed font-light font-mono">Filter by User ID or Session ID.</p>
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-700">SOC Campaign Reconstruction</h3>
+                      <p className="text-[9px] text-slate-500 leading-relaxed font-light font-mono">Filter by User ID or Session ID.</p>
                       
                       <div className="space-y-3">
                         <input
@@ -1051,14 +1051,14 @@ export default function SuperAdminSecuritySOCPage() {
                           value={campaignSearchUser}
                           onChange={(e) => setCampaignSearchUser(e.target.value)}
                           placeholder="Reconstruct by User ID..."
-                          className="w-full bg-black border border-white/10 rounded p-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-800 outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                         />
                         <input
                           type="text"
                           value={campaignSearchSession}
                           onChange={(e) => setCampaignSearchSession(e.target.value)}
                           placeholder="Reconstruct by Session ID..."
-                          className="w-full bg-black border border-white/10 rounded p-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+                          className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-800 outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20"
                         />
                         <button
                           onClick={async () => {
@@ -1070,23 +1070,23 @@ export default function SuperAdminSecuritySOCPage() {
                               alert('Campaign reconstruction failed.');
                             }
                           }}
-                          className="w-full py-2 bg-[#D4AF37] hover:bg-[#BBA030] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors"
+                          className="w-full py-2 bg-[#0B4C8C] hover:bg-[#093d70] text-white font-bold uppercase tracking-wider text-[10px] rounded transition-colors"
                         >
                           Reconstruct Campaign
                         </button>
                       </div>
 
                       {activeCampaign && (
-                        <div className="border-t border-white/5 pt-4 space-y-3">
-                          <h4 className="text-[10px] uppercase font-bold text-white/60">Chronological Attack Narrative</h4>
-                          <p className="text-[10px] text-white/80 bg-black/40 border border-white/5 p-3 rounded-lg leading-relaxed italic">
+                        <div className="border-t border-slate-200/80 pt-4 space-y-3">
+                          <h4 className="text-[10px] uppercase font-bold text-slate-650">Chronological Attack Narrative</h4>
+                          <p className="text-[10px] text-slate-700 bg-slate-50 border border-slate-200/80 p-3 rounded-lg leading-relaxed italic">
                             "{activeCampaign.narrative}"
                           </p>
 
                           {activeCampaign.riskBreakdown && (
                             <div className="space-y-2">
-                              <h4 className="text-[10px] uppercase font-bold text-white/60">Dynamic Risk Score Breakdown</h4>
-                              <div className="bg-black/40 border border-white/5 p-3 rounded-lg space-y-2 text-[10px]">
+                              <h4 className="text-[10px] uppercase font-bold text-slate-650">Dynamic Risk Score Breakdown</h4>
+                              <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-lg space-y-2 text-[10px]">
                                 {[
                                   { label: 'Authentication Risk', value: activeCampaign.riskBreakdown.authenticationRisk, color: 'bg-red-500' },
                                   { label: 'Session Risk', value: activeCampaign.riskBreakdown.sessionRisk, color: 'bg-orange-500' },
@@ -1094,14 +1094,14 @@ export default function SuperAdminSecuritySOCPage() {
                                   { label: 'Geo Risk', value: activeCampaign.riskBreakdown.geoRisk, color: 'bg-blue-500' },
                                   { label: 'Behavior Risk', value: activeCampaign.riskBreakdown.behaviorRisk, color: 'bg-purple-500' },
                                   { label: 'Threat Intel Risk', value: activeCampaign.riskBreakdown.threatIntelRisk, color: 'bg-pink-500' },
-                                  { label: 'Correlation Risk', value: activeCampaign.riskBreakdown.correlationRisk, color: 'bg-[#D4AF37]' },
+                                  { label: 'Correlation Risk', value: activeCampaign.riskBreakdown.correlationRisk, color: 'bg-[#0B4C8C]' },
                                 ].map((item, idx) => (
                                   <div key={idx} className="space-y-1">
                                     <div className="flex justify-between text-[8px] font-mono">
-                                      <span className="text-white/60">{item.label}</span>
-                                      <span className="text-white/80">{item.value}%</span>
+                                      <span className="text-slate-650">{item.label}</span>
+                                      <span className="text-slate-700">{item.value}%</span>
                                     </div>
-                                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div className="w-full h-1 bg-slate-50 rounded-full overflow-hidden">
                                       <div
                                         className={`h-full ${item.color} transition-all duration-500`}
                                         style={{ width: `${item.value}%` }}
@@ -1113,23 +1113,23 @@ export default function SuperAdminSecuritySOCPage() {
                             </div>
                           )}
 
-                          <h4 className="text-[10px] uppercase font-bold text-white/60">Campaign Timeline</h4>
+                          <h4 className="text-[10px] uppercase font-bold text-slate-650">Campaign Timeline</h4>
                           <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                             {activeCampaign.timeline.map((item: any, idx: number) => (
-                              <div key={idx} className="p-2 bg-black/20 border border-white/5 rounded text-[9px] space-y-1">
+                              <div key={idx} className="p-2 bg-slate-50 border border-slate-200/80 rounded text-[9px] space-y-1">
                                 <div className="flex justify-between font-semibold">
-                                  <span className="text-white">{item.title}</span>
+                                  <span className="text-slate-800">{item.title}</span>
                                   <span className={`px-1 py-0.2 rounded text-[7px] font-bold ${
                                     item.phase === 'Initial Access' ? 'bg-blue-500/15 text-blue-400' :
                                     item.phase === 'Escalation' ? 'bg-purple-500/15 text-purple-400' :
                                     item.phase === 'Exports' ? 'bg-red-500/15 text-red-400' :
                                     item.phase === 'Mitigation' ? 'bg-orange-500/15 text-orange-400' :
                                     item.phase === 'Resolution' ? 'bg-green-500/15 text-green-400' :
-                                    'bg-white/5 text-white/60'
+                                    'bg-slate-50 text-slate-650'
                                   }`}>{item.phase}</span>
                                 </div>
-                                <p className="text-white/50">{item.description}</p>
-                                <div className="text-[7px] text-white/20 font-mono">
+                                <p className="text-slate-650">{item.description}</p>
+                                <div className="text-[7px] text-slate-800/20 font-mono">
                                   {new Date(item.timestamp).toLocaleString()}
                                 </div>
                               </div>
@@ -1147,7 +1147,7 @@ export default function SuperAdminSecuritySOCPage() {
             {activeTab === 'posture' && (
               <div className="space-y-6">
                 {/* Posture Center Sub-Tabs Navigation */}
-                <div className="flex gap-2 border-b border-white/5 pb-2 overflow-x-auto">
+                <div className="flex gap-2 border-b border-slate-200/80 pb-2 overflow-x-auto">
                   {[
                     { id: 'scores', label: 'Overview & Scores' },
                     { id: 'controls', label: '25 Verified Controls' },
@@ -1160,8 +1160,8 @@ export default function SuperAdminSecuritySOCPage() {
                       onClick={() => setActivePostureSubTab(subTab.id as any)}
                       className={`px-3 py-1.5 rounded text-[9px] uppercase tracking-wider font-bold transition-all ${
                         activePostureSubTab === subTab.id
-                          ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#D4AF37]'
-                          : 'text-white/40 hover:text-white bg-white/5 border border-transparent'
+                          ? 'bg-blue-50 border border-[#0B4C8C]/50 text-[#0B4C8C]'
+                          : 'text-slate-500 hover:text-slate-800 bg-slate-50 border border-transparent'
                       }`}
                     >
                       {subTab.label}
@@ -1173,21 +1173,21 @@ export default function SuperAdminSecuritySOCPage() {
                 {activePostureSubTab === 'scores' && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
                     {/* Score Summary */}
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 text-center lg:col-span-1 flex flex-col justify-center items-center">
-                      <span className="text-xs uppercase tracking-widest text-white/40 font-bold block font-mono">Overall Security Posture Score</span>
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 text-center lg:col-span-1 flex flex-col justify-center items-center">
+                      <span className="text-xs uppercase tracking-widest text-slate-500 font-bold block font-mono">Overall Security Posture Score</span>
                       <div className="relative w-40 h-40 flex items-center justify-center mt-4">
                         <svg className="w-full h-full transform -rotate-95" viewBox="0 0 100 100">
                           <circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,0.02)" strokeWidth="8" fill="transparent" />
                           <circle cx="50" cy="50" r="42" stroke="#D4AF37" strokeWidth="8" fill="transparent"
                                   strokeDasharray="263.8" strokeDashoffset={263.8 - (263.8 * (postureData?.posture?.overallScore || stats?.posture?.overallScore || 97)) / 100} />
                         </svg>
-                        <div className="absolute text-4xl font-extralight text-[#D4AF37]">{postureData?.posture?.overallScore || stats?.posture?.overallScore || 97}%</div>
+                        <div className="absolute text-4xl font-extralight text-[#0B4C8C]">{postureData?.posture?.overallScore || stats?.posture?.overallScore || 97}%</div>
                       </div>
                       <div className="mt-4 flex flex-col items-center gap-2">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
                           (postureData?.posture?.overallScore || stats?.posture?.overallScore || 97) >= 90 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
                         }`}>{postureData?.posture?.maturityRating || stats?.posture?.maturityRating || 'Production Ready'}</span>
-                        <span className="text-[10px] text-white/50 flex items-center gap-1 font-mono">
+                        <span className="text-[10px] text-slate-650 flex items-center gap-1 font-mono">
                           Trend: {postureData?.posture?.trend || stats?.posture?.trend === 'UP' ? <TrendingUp size={12} className="text-green-400" /> : <TrendingDown size={12} className="text-red-400" />}
                           {postureData?.posture?.trend || stats?.posture?.trend || 'STABLE'}
                         </span>
@@ -1195,8 +1195,8 @@ export default function SuperAdminSecuritySOCPage() {
                     </div>
 
                     {/* Score Categories Breakdown */}
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-2">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Posture Weight Categories</h3>
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 lg:col-span-2">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Posture Weight Categories</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {[
                           { name: 'Authentication Security', val: postureData?.posture?.scores?.authentication ?? stats?.posture?.authentication, weight: '15%' },
@@ -1209,12 +1209,12 @@ export default function SuperAdminSecuritySOCPage() {
                           { name: 'Secure Response Headers', val: postureData?.posture?.scores?.headers ?? stats?.posture?.infrastructure, weight: '20%' }
                         ].map((comp, idx) => (
                           <div key={idx} className="space-y-1">
-                            <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-white/70">
-                              <span>{comp.name} <span className="text-white/30 font-normal">({comp.weight})</span></span>
-                              <span className="font-mono text-[#D4AF37]">{comp.val ?? 100}%</span>
+                            <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-slate-700">
+                              <span>{comp.name} <span className="text-slate-400 font-normal">({comp.weight})</span></span>
+                              <span className="font-mono text-[#0B4C8C]">{comp.val ?? 100}%</span>
                             </div>
-                            <div className="w-full h-2 bg-black rounded overflow-hidden">
-                              <div className="h-full bg-[#D4AF37] rounded" style={{ width: `${comp.val ?? 100}%` }} />
+                            <div className="w-full h-2 bg-slate-50 rounded overflow-hidden">
+                              <div className="h-full bg-[#0B4C8C] rounded" style={{ width: `${comp.val ?? 100}%` }} />
                             </div>
                           </div>
                         ))}
@@ -1225,21 +1225,21 @@ export default function SuperAdminSecuritySOCPage() {
 
                 {/* Sub Tab: 25 Verified Controls Grid */}
                 {activePostureSubTab === 'controls' && (
-                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 animate-fadeIn">
+                  <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 animate-fadeIn">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Verified Security Control Engine</h3>
-                        <p className="text-[10px] text-white/40 mt-1 font-light">Continual verification grid monitoring critical controls.</p>
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Verified Security Control Engine</h3>
+                        <p className="text-[10px] text-slate-500 mt-1 font-light">Continual verification grid monitoring critical controls.</p>
                       </div>
                       <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2.5 py-0.5 rounded font-mono font-bold">ALL PASS</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       {(stats?.controls || []).map((ctrl: any, idx: number) => (
-                        <div key={idx} className="bg-black/30 border border-white/5 p-4 rounded-xl space-y-2 flex flex-col justify-between">
+                        <div key={idx} className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl space-y-2 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] uppercase tracking-wider text-white/70 font-semibold block">{ctrl.name}</span>
+                              <span className="text-[10px] uppercase tracking-wider text-slate-700 font-semibold block">{ctrl.name}</span>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
                                 ctrl.status === 'ACTIVE'
                                   ? 'bg-green-500/10 text-green-400 border border-green-500/25'
@@ -1248,7 +1248,7 @@ export default function SuperAdminSecuritySOCPage() {
                                   : 'bg-red-500/10 text-red-400 border border-red-500/25'
                               }`}>{ctrl.status}</span>
                             </div>
-                            <p className="text-[10px] text-white/40 mt-2 font-light">{ctrl.details || 'No trace errors logged.'}</p>
+                            <p className="text-[10px] text-slate-500 mt-2 font-light">{ctrl.details || 'No trace errors logged.'}</p>
                           </div>
                         </div>
                       ))}
@@ -1258,25 +1258,25 @@ export default function SuperAdminSecuritySOCPage() {
 
                 {/* Sub Tab: Baseline Drifts */}
                 {activePostureSubTab === 'baseline' && (
-                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 animate-fadeIn">
+                  <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 animate-fadeIn">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                       <div>
-                        <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Security baseline freeze controls</h3>
-                        <p className="text-[10px] text-white/40 mt-1 font-light">Freeze configs to target future drifts or unauthorized role promotions.</p>
+                        <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Security baseline freeze controls</h3>
+                        <p className="text-[10px] text-slate-500 mt-1 font-light">Freeze configs to target future drifts or unauthorized role promotions.</p>
                       </div>
                       <button
                         onClick={handleCaptureBaseline}
-                        className="py-2 px-4 bg-[#D4AF37] hover:bg-[#C29E30] text-black font-bold uppercase tracking-wider text-[10px] rounded transition-colors"
+                        className="py-2 px-4 bg-[#0B4C8C] hover:bg-[#093d70] text-white font-bold uppercase tracking-wider text-[10px] rounded transition-colors"
                       >
                         Capture configuration snapshot
                       </button>
                     </div>
 
-                    <div className="border-t border-white/5 pt-4 space-y-4">
+                    <div className="border-t border-slate-200/80 pt-4 space-y-4">
                       <div className="flex justify-between items-center">
-                        <h4 className="text-xs uppercase tracking-wider text-white/70 font-semibold">Current vs baseline comparison</h4>
+                        <h4 className="text-xs uppercase tracking-wider text-slate-700 font-semibold">Current vs baseline comparison</h4>
                         {baselineData?.comparison?.baselineTimestamp && (
-                          <span className="text-[9px] text-white/40 font-mono">Frozen on: {new Date(baselineData.comparison.baselineTimestamp).toLocaleString()}</span>
+                          <span className="text-[9px] text-slate-500 font-mono">Frozen on: {new Date(baselineData.comparison.baselineTimestamp).toLocaleString()}</span>
                         )}
                       </div>
                       {driftAlerts.length === 0 ? (
@@ -1289,8 +1289,8 @@ export default function SuperAdminSecuritySOCPage() {
                           {driftAlerts.map((drift, idx) => (
                             <div key={idx} className="p-4 bg-red-500/[0.02] border border-red-500/20 rounded-xl flex items-center justify-between">
                               <div>
-                                <span className="text-xs font-semibold text-white">{drift.component}: {drift.parameter}</span>
-                                <div className="text-[10px] text-white/45 font-mono mt-1 leading-relaxed">
+                                <span className="text-xs font-semibold text-slate-800">{drift.component}: {drift.parameter}</span>
+                                <div className="text-[10px] text-slate-500 font-mono mt-1 leading-relaxed">
                                   Expected baseline: {JSON.stringify(drift.expected)} • Current actual: {JSON.stringify(drift.actual)}
                                   <div className="text-red-400 mt-0.5">{drift.description}</div>
                                 </div>
@@ -1306,16 +1306,16 @@ export default function SuperAdminSecuritySOCPage() {
 
                 {/* Sub Tab: HTTP Security Headers & CSP */}
                 {activePostureSubTab === 'headers' && (
-                  <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 animate-fadeIn">
+                  <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 animate-fadeIn">
                     <div>
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Secure Headers HTTP audit</h3>
-                      <p className="text-[10px] text-white/40 mt-1 font-light">Validates response headers against OWASP secure headers checklist.</p>
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Secure Headers HTTP audit</h3>
+                      <p className="text-[10px] text-slate-500 mt-1 font-light">Validates response headers against OWASP secure headers checklist.</p>
                     </div>
 
-                    <div className="border border-white/5 rounded-xl overflow-hidden">
+                    <div className="border border-slate-200/80 rounded-xl overflow-hidden">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="bg-black/60 text-[9px] uppercase tracking-wider text-white/55 border-b border-white/5 font-mono">
+                          <tr className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-650 border-b border-slate-200/80 font-mono">
                             <th className="p-4">Header Name</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Expected Value</th>
@@ -1324,15 +1324,15 @@ export default function SuperAdminSecuritySOCPage() {
                         </thead>
                         <tbody>
                           {(cspData?.headers || []).map((header: any, idx: number) => (
-                            <tr key={idx} className="border-b border-white/5 text-xs font-light hover:bg-white/[0.01]">
-                              <td className="p-4 font-semibold text-white/80">{header.headerName}</td>
+                            <tr key={idx} className="border-b border-slate-200/80 text-xs font-light hover:bg-white/[0.01]">
+                              <td className="p-4 font-semibold text-slate-700">{header.headerName}</td>
                               <td className="p-4">
                                 <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
                                   header.status === 'PASS' ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-red-500/10 text-red-400 border border-red-500/25'
                                 }`}>{header.status}</span>
                               </td>
-                              <td className="p-4 font-mono text-[10px] text-white/40 max-w-xs truncate" title={header.expectedValue}>{header.expectedValue}</td>
-                              <td className="p-4 font-mono text-[10px] text-white/60 max-w-xs truncate" title={header.currentValue}>{header.currentValue}</td>
+                              <td className="p-4 font-mono text-[10px] text-slate-500 max-w-xs truncate" title={header.expectedValue}>{header.expectedValue}</td>
+                              <td className="p-4 font-mono text-[10px] text-slate-650 max-w-xs truncate" title={header.currentValue}>{header.currentValue}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1345,26 +1345,26 @@ export default function SuperAdminSecuritySOCPage() {
                 {activePostureSubTab === 'dr' && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
                     {/* Objectives */}
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-1">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Recovery Time Objectives</h3>
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 lg:col-span-1">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Recovery Time Objectives</h3>
                       <div className="space-y-4">
-                        <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
-                          <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">RPO (Recovery Point Objective)</span>
-                          <div className="text-2xl font-light text-[#D4AF37] mt-1">15 Minutes</div>
-                          <span className="text-[9px] text-white/30 block mt-1">Incremental snapshots backup threshold</span>
+                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-500 font-semibold block">RPO (Recovery Point Objective)</span>
+                          <div className="text-2xl font-light text-[#0B4C8C] mt-1">15 Minutes</div>
+                          <span className="text-[9px] text-slate-400 block mt-1">Incremental snapshots backup threshold</span>
                         </div>
 
-                        <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
-                          <span className="text-[9px] uppercase tracking-widest text-white/40 font-semibold block">RTO (Recovery Time Objective)</span>
-                          <div className="text-2xl font-light text-[#D4AF37] mt-1">1 Hour</div>
-                          <span className="text-[9px] text-white/30 block mt-1">Standard full restoration buffer limit</span>
+                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-500 font-semibold block">RTO (Recovery Time Objective)</span>
+                          <div className="text-2xl font-light text-[#0B4C8C] mt-1">1 Hour</div>
+                          <span className="text-[9px] text-slate-400 block mt-1">Standard full restoration buffer limit</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Standby failovers */}
-                    <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-2">
-                      <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Standby Failover Roadmaps</h3>
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 lg:col-span-2">
+                      <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Standby Failover Roadmaps</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {[
                           { title: 'Database Failure', desc: 'Supabase Postgres connection outages. Failover triggers redirecting requests to cold restoration replica endpoints.' },
@@ -1372,9 +1372,9 @@ export default function SuperAdminSecuritySOCPage() {
                           { title: 'Supabase Platform Down', desc: 'Authentication downtime. In-memory NextAuth token buffering is activated with read-only controls.' },
                           { title: 'Email Service Failures', desc: 'Resend API outages. Mail payloads are written to database outbound tables and synced on recovery.' }
                         ].map((proc, idx) => (
-                          <div key={idx} className="bg-black/30 border border-white/5 p-4 rounded-xl space-y-2">
-                            <span className="text-xs font-semibold text-white">{proc.title}</span>
-                            <p className="text-[10px] text-white/45 mt-1 font-light leading-relaxed">{proc.desc}</p>
+                          <div key={idx} className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl space-y-2">
+                            <span className="text-xs font-semibold text-slate-800">{proc.title}</span>
+                            <p className="text-[10px] text-slate-500 mt-1 font-light leading-relaxed">{proc.desc}</p>
                           </div>
                         ))}
                       </div>
@@ -1395,22 +1395,22 @@ export default function SuperAdminSecuritySOCPage() {
                     { label: 'Medium Severity', val: findingsData?.metrics?.medium || 0, color: 'text-yellow-500' },
                     { label: 'Low Severity', val: findingsData?.metrics?.low || 0, color: 'text-blue-500' }
                   ].map((f, idx) => (
-                    <div key={idx} className="bg-[#121212] border border-white/5 p-5 rounded-2xl text-center">
-                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">{f.label}</span>
+                    <div key={idx} className="bg-white border border-slate-200/80 p-5 rounded-2xl text-center">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">{f.label}</span>
                       <div className={`text-4xl font-extralight mt-2 ${f.color}`}>{f.val}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Findings Filter Console */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
+                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Active Vulnerability findings</h3>
+                    <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Active Vulnerability findings</h3>
                     <div className="flex items-center gap-2 flex-wrap">
                       <select
                         value={findingSeverityFilter}
                         onChange={(e) => setFindingSeverityFilter(e.target.value)}
-                        className="bg-black border border-white/10 rounded p-1.5 text-[10px] uppercase font-mono tracking-wider outline-none text-white"
+                        className="bg-slate-50 border border-slate-200 rounded p-1.5 text-[10px] uppercase font-mono tracking-wider outline-none text-slate-800"
                       >
                         <option value="">All Severities</option>
                         <option value="CRITICAL">Critical</option>
@@ -1421,7 +1421,7 @@ export default function SuperAdminSecuritySOCPage() {
                       <select
                         value={findingStatusFilter}
                         onChange={(e) => setFindingStatusFilter(e.target.value)}
-                        className="bg-black border border-white/10 rounded p-1.5 text-[10px] uppercase font-mono tracking-wider outline-none text-white"
+                        className="bg-slate-50 border border-slate-200 rounded p-1.5 text-[10px] uppercase font-mono tracking-wider outline-none text-slate-800"
                       >
                         <option value="">All Statuses</option>
                         <option value="OPEN">Open</option>
@@ -1437,22 +1437,22 @@ export default function SuperAdminSecuritySOCPage() {
 
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                     {findingsData?.findings?.length === 0 ? (
-                      <div className="text-center py-16 border border-dashed border-white/5 rounded-2xl text-white/30 text-xs">
+                      <div className="text-center py-16 border border-dashed border-slate-200/80 rounded-2xl text-slate-400 text-xs">
                         No vulnerability findings recorded matching selected criteria.
                       </div>
                     ) : (
                       findingsData?.findings?.map((finding: any) => (
-                        <div key={finding.id} className="p-4 bg-black/30 border border-white/5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div key={finding.id} className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-semibold text-white">{finding.title}</span>
+                              <span className="text-xs font-semibold text-slate-800">{finding.title}</span>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
                                 finding.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
                                 finding.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
                                 finding.severity === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
                                 'bg-blue-500/20 text-blue-400'
                               }`}>{finding.severity}</span>
-                              <span className="text-[8px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/40">{finding.category}</span>
+                              <span className="text-[8px] bg-slate-50 px-2 py-0.5 rounded font-mono text-slate-500">{finding.category}</span>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
                                 finding.status === 'RESOLVED' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
                                 finding.status === 'ACKNOWLEDGED' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
@@ -1461,9 +1461,9 @@ export default function SuperAdminSecuritySOCPage() {
                                 'bg-red-500/10 text-red-400 border border-red-500/20'
                               }`}>{finding.status}</span>
                             </div>
-                            <p className="text-[10px] text-white/60 mt-1 font-light">{finding.description}</p>
-                            {finding.notes && <p className="text-[9px] text-[#D4AF37]/75 mt-1 font-mono">Notes: {finding.notes}</p>}
-                            <p className="text-[9px] text-white/30 font-mono mt-1">Source: {finding.source} • Detected: {new Date(finding.detectedAt).toLocaleDateString()}</p>
+                            <p className="text-[10px] text-slate-650 mt-1 font-light">{finding.description}</p>
+                            {finding.notes && <p className="text-[9px] text-[#0B4C8C]/75 mt-1 font-mono">Notes: {finding.notes}</p>}
+                            <p className="text-[9px] text-slate-400 font-mono mt-1">Source: {finding.source} • Detected: {new Date(finding.detectedAt).toLocaleDateString()}</p>
                           </div>
                           <div className="shrink-0 flex gap-2 flex-wrap items-center">
                             {finding.status !== 'RESOLVED' && (
@@ -1520,24 +1520,24 @@ export default function SuperAdminSecuritySOCPage() {
               <div className="space-y-6">
                 {/* Analytics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">TOS Acceptance rate</span>
-                    <div className="text-4xl font-extralight text-[#D4AF37] mt-2">{complianceData?.stats?.termsAcceptedRate || 100}%</div>
-                    <span className="text-[10px] text-white/30 block mt-1">Total signed consent logs: {complianceData?.stats?.totalConsents}</span>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">TOS Acceptance rate</span>
+                    <div className="text-4xl font-extralight text-[#0B4C8C] mt-2">{complianceData?.stats?.termsAcceptedRate || 100}%</div>
+                    <span className="text-[10px] text-slate-400 block mt-1">Total signed consent logs: {complianceData?.stats?.totalConsents}</span>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl relative">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">Privacy policy accepts</span>
-                    <div className="text-4xl font-extralight text-[#D4AF37] mt-2">{complianceData?.stats?.privacyPolicyAcceptedRate || 100}%</div>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl relative">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Privacy policy accepts</span>
+                    <div className="text-4xl font-extralight text-[#0B4C8C] mt-2">{complianceData?.stats?.privacyPolicyAcceptedRate || 100}%</div>
                   </div>
                   {/* Retention Policy settings */}
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl flex flex-col justify-between">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex flex-col justify-between">
                     <div>
-                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">Audit logs retention</span>
+                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Audit logs retention</span>
                       <div className="flex gap-2 items-center mt-2">
                         <select
                           value={retentionSetting}
                           onChange={(e) => setRetentionSetting(e.target.value)}
-                          className="bg-black border border-white/10 rounded p-1 text-xs text-white"
+                          className="bg-slate-50 border border-slate-200 rounded p-1 text-xs text-slate-800"
                         >
                           <option value="90">90 Days</option>
                           <option value="180">180 Days</option>
@@ -1546,7 +1546,7 @@ export default function SuperAdminSecuritySOCPage() {
                         </select>
                         <button
                           onClick={handleSaveRetention}
-                          className="px-2.5 py-1 bg-[#D4AF37] text-black font-bold uppercase text-[9px] rounded hover:bg-[#BBA030] transition-colors"
+                          className="px-2.5 py-1 bg-[#0B4C8C] text-white font-bold uppercase text-[9px] rounded hover:bg-[#093d70] text-slate-800 transition-colors"
                         >
                           Save
                         </button>
@@ -1556,25 +1556,25 @@ export default function SuperAdminSecuritySOCPage() {
                 </div>
 
                 {/* Privacy Requests queue */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
-                  <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">GDPR Privacy request queue</h3>
+                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">GDPR Privacy request queue</h3>
                   <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                     {complianceData?.privacyRequests?.length === 0 ? (
-                      <div className="text-center py-12 border border-dashed border-white/5 rounded-xl text-white/30 text-xs">
+                      <div className="text-center py-12 border border-dashed border-slate-200/80 rounded-xl text-slate-400 text-xs">
                         No GDPR deletion or data export requests registered.
                       </div>
                     ) : (
                       complianceData?.privacyRequests?.map((req: any) => (
-                        <div key={req.id} className="p-3 bg-black/35 border border-white/5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div key={req.id} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-white">{req.userEmail} ({req.userName})</span>
-                              <span className="px-1.5 py-0.5 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/25 rounded text-[8px] font-bold">{req.requestType}</span>
+                              <span className="text-xs font-semibold text-slate-800">{req.userEmail} ({req.userName})</span>
+                              <span className="px-1.5 py-0.5 bg-blue-50 text-[#0B4C8C] border border-blue-200 rounded text-[8px] font-bold">{req.requestType}</span>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
                                 req.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
                               }`}>{req.status}</span>
                             </div>
-                            <span className="text-[9px] text-white/30 font-mono mt-1 block">Requested: {new Date(req.createdAt).toLocaleString()}</span>
+                            <span className="text-[9px] text-slate-400 font-mono mt-1 block">Requested: {new Date(req.createdAt).toLocaleString()}</span>
                           </div>
                           {req.status === 'PENDING' && (
                             <div className="flex gap-2">
@@ -1599,13 +1599,13 @@ export default function SuperAdminSecuritySOCPage() {
                 </div>
 
                 {/* Data Governance Access Logs */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-4">
-                  <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Data access dashboard</h3>
-                  <p className="text-[10px] text-white/40 font-light mb-2">Audits high-privilege read and export actions with justified business reasons.</p>
-                  <div className="border border-white/5 rounded-xl overflow-hidden">
+                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Data access dashboard</h3>
+                  <p className="text-[10px] text-slate-500 font-light mb-2">Audits high-privilege read and export actions with justified business reasons.</p>
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-black/60 text-[9px] uppercase tracking-wider text-white/55 border-b border-white/5 font-mono">
+                        <tr className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-650 border-b border-slate-200/80 font-mono">
                           <th className="p-3">Accessor</th>
                           <th className="p-3">Action</th>
                           <th className="p-3">Target Model</th>
@@ -1616,16 +1616,16 @@ export default function SuperAdminSecuritySOCPage() {
                       <tbody>
                         {governanceData?.logs?.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="p-8 text-center text-white/30 text-xs">No sensitive data access logs registered.</td>
+                            <td colSpan={5} className="p-8 text-center text-slate-400 text-xs">No sensitive data access logs registered.</td>
                           </tr>
                         ) : (
                           governanceData?.logs?.map((log: any, idx: number) => (
-                            <tr key={idx} className="border-b border-white/5 text-xs font-light hover:bg-white/[0.01]">
-                              <td className="p-3 font-semibold text-white/80">{log.accessorEmail} <span className="text-white/30 block text-[9px]">{log.accessorRole}</span></td>
-                              <td className="p-3"><span className="px-1.5 py-0.5 bg-white/5 rounded text-[8px] font-mono">{log.actionType}</span></td>
-                              <td className="p-3 font-mono text-[10px] text-[#D4AF37]">{log.targetModel}</td>
-                              <td className="p-3 font-mono text-[10px] text-white/50">{log.justification}</td>
-                              <td className="p-3 text-[10px] text-white/30 font-mono">{new Date(log.createdAt).toLocaleString()}</td>
+                            <tr key={idx} className="border-b border-slate-200/80 text-xs font-light hover:bg-white/[0.01]">
+                              <td className="p-3 font-semibold text-slate-700">{log.accessorEmail} <span className="text-slate-400 block text-[9px]">{log.accessorRole}</span></td>
+                              <td className="p-3"><span className="px-1.5 py-0.5 bg-slate-50 rounded text-[8px] font-mono">{log.actionType}</span></td>
+                              <td className="p-3 font-mono text-[10px] text-[#0B4C8C]">{log.targetModel}</td>
+                              <td className="p-3 font-mono text-[10px] text-slate-650">{log.justification}</td>
+                              <td className="p-3 text-[10px] text-slate-400 font-mono">{new Date(log.createdAt).toLocaleString()}</td>
                             </tr>
                           ))
                         )}
@@ -1640,8 +1640,8 @@ export default function SuperAdminSecuritySOCPage() {
             {activeTab === 'readiness' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Readiness Result */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-1 flex flex-col justify-center items-center text-center">
-                  <span className="text-xs uppercase tracking-widest text-white/40 font-bold block font-mono">Overall readiness result</span>
+                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 lg:col-span-1 flex flex-col justify-center items-center text-center">
+                  <span className="text-xs uppercase tracking-widest text-slate-500 font-bold block font-mono">Overall readiness result</span>
                   <div className="mt-4 flex items-center justify-center">
                     {readinessData?.report?.overallResult === 'READY' ? (
                       <div className="text-center space-y-2">
@@ -1660,20 +1660,20 @@ export default function SuperAdminSecuritySOCPage() {
                       </div>
                     )}
                   </div>
-                  <p className="text-[10px] text-white/45 max-w-xs mt-2 leading-relaxed font-light">
+                  <p className="text-[10px] text-slate-500 max-w-xs mt-2 leading-relaxed font-light">
                     Evaluates configuration checks, open severity issues, and database control validations.
                   </p>
                   <button
                     onClick={() => alert('Readiness Report generated and logged successfully to server audits.')}
-                    className="w-full mt-4 py-2 bg-[#D4AF37] text-black font-bold uppercase text-[9px] tracking-wider rounded hover:bg-[#BBA030] transition-colors"
+                    className="w-full mt-4 py-2 bg-[#0B4C8C] text-white font-bold uppercase text-[9px] tracking-wider rounded hover:bg-[#093d70] text-slate-800 transition-colors"
                   >
                     Export Readiness Report
                   </button>
                 </div>
 
                 {/* Score list */}
-                <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl space-y-6 lg:col-span-2">
-                  <h3 className="text-xs uppercase tracking-widest font-semibold text-white/60">Sub-system Readiness scores</h3>
+                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-6 lg:col-span-2">
+                  <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-650">Sub-system Readiness scores</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[
                       { name: 'Security readiness', val: readinessData?.report?.scores?.securityReadiness || 100 },
@@ -1683,28 +1683,28 @@ export default function SuperAdminSecuritySOCPage() {
                       { name: 'Infrastructure readiness', val: readinessData?.report?.scores?.infrastructureReadiness || 100 }
                     ].map((score, idx) => (
                       <div key={idx} className="space-y-1">
-                        <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-white/70">
+                        <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-slate-700">
                           <span>{score.name}</span>
-                          <span className="font-mono text-[#D4AF37]">{score.val}%</span>
+                          <span className="font-mono text-[#0B4C8C]">{score.val}%</span>
                         </div>
-                        <div className="w-full h-2 bg-black rounded overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F5D67B] rounded" style={{ width: `${score.val}%` }} />
+                        <div className="w-full h-2 bg-slate-50 rounded overflow-hidden">
+                          <div className="h-full bg-[#0B4C8C] rounded" style={{ width: `${score.val}%` }} />
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="border-t border-white/5 pt-4 grid grid-cols-3 gap-4 text-center">
-                    <div className="p-3 bg-black/40 border border-white/5 rounded-xl">
-                      <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold block">Open Findings</span>
-                      <div className="text-xl font-bold text-white mt-1">{readinessData?.report?.metrics?.openFindingsCount || 0}</div>
+                  <div className="border-t border-slate-200/80 pt-4 grid grid-cols-3 gap-4 text-center">
+                    <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-500 font-bold block">Open Findings</span>
+                      <div className="text-xl font-bold text-slate-800 mt-1">{readinessData?.report?.metrics?.openFindingsCount || 0}</div>
                     </div>
-                    <div className="p-3 bg-black/40 border border-white/5 rounded-xl">
-                      <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold block">Failed Controls</span>
+                    <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-500 font-bold block">Failed Controls</span>
                       <div className="text-xl font-bold text-red-500 mt-1">{readinessData?.report?.metrics?.failedSecurityControlsCount || 0}</div>
                     </div>
-                    <div className="p-3 bg-black/40 border border-white/5 rounded-xl">
-                      <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold block">Compliance Gaps</span>
+                    <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                      <span className="text-[8px] uppercase tracking-widest text-slate-500 font-bold block">Compliance Gaps</span>
                       <div className="text-xl font-bold text-yellow-500 mt-1">{readinessData?.report?.complianceGaps?.length || 0}</div>
                     </div>
                   </div>
@@ -1717,33 +1717,33 @@ export default function SuperAdminSecuritySOCPage() {
               <div className="space-y-8 animate-fadeIn">
                 {/* SOC Performance Scorecard */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">MTTC (Mean Containment)</span>
-                    <div className="text-2xl font-light text-[#D4AF37] mt-1">{executiveMetrics?.mttcMinutes || 2}m</div>
+                  <div className="bg-white border border-slate-200/80 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">MTTC (Mean Containment)</span>
+                    <div className="text-2xl font-light text-[#0B4C8C] mt-1">{executiveMetrics?.mttcMinutes || 2}m</div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Detection Accuracy</span>
+                  <div className="bg-white border border-slate-200/80 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Detection Accuracy</span>
                     <div className="text-2xl font-light text-green-400 mt-1">{executiveMetrics?.alertAccuracyPercentage || 100}%</div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Automation Success</span>
+                  <div className="bg-white border border-slate-200/80 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Automation Success</span>
                     <div className="text-2xl font-light text-blue-400 mt-1">{executiveMetrics?.automationSuccessRatePercentage || 100}%</div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Playbook Success</span>
+                  <div className="bg-white border border-slate-200/80 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Playbook Success</span>
                     <div className="text-2xl font-light text-purple-400 mt-1">{executiveMetrics?.playbookSuccessRatePercentage || 100}%</div>
                   </div>
-                  <div className="bg-[#121212] border border-white/5 p-4 rounded-xl">
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block font-mono">Rules Active Coverage</span>
+                  <div className="bg-white border border-slate-200/80 p-4 rounded-xl">
+                    <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block font-mono">Rules Active Coverage</span>
                     <div className="text-2xl font-light text-yellow-400 mt-1">{executiveMetrics?.detectionCoveragePercentage || 100}%</div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Playbooks & Simulations Control */}
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4">
                     <div className="flex justify-between items-center">
-                      <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">SOAR Playbooks & Trigger Sandbox</h4>
+                      <h4 className="text-xs uppercase tracking-wider text-[#0B4C8C] font-bold">SOAR Playbooks & Trigger Sandbox</h4>
                       <span className="text-[8px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded font-mono font-bold">ACTIVE ORCHESTRATOR</span>
                     </div>
 
@@ -1754,17 +1754,17 @@ export default function SuperAdminSecuritySOCPage() {
                         { name: 'SESSION_HIJACK_RESPONSE', desc: 'Revokes suspicious target session IDs immediately.' },
                         { name: 'CREDENTIAL_STUFFING_RESPONSE', desc: 'Blocks brute force bots IPs and warns admins.' }
                       ].map((playbook, idx) => (
-                        <div key={idx} className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-3">
+                        <div key={idx} className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg flex items-center justify-between gap-3">
                           <div>
-                            <span className="text-xs font-bold text-white block">{playbook.name}</span>
-                            <span className="text-[10px] text-white/50 block mt-0.5">{playbook.desc}</span>
+                            <span className="text-xs font-bold text-slate-800 block">{playbook.name}</span>
+                            <span className="text-[10px] text-slate-650 block mt-0.5">{playbook.desc}</span>
                           </div>
                           <button
                             onClick={() => {
                               const target = prompt('Enter Target ID (IP, User ID, or Session ID):');
                               if (target) handleTriggerPlaybook(playbook.name, target);
                             }}
-                            className="py-1 px-3 bg-[#D4AF37] hover:bg-[#C29E30] text-black font-bold uppercase tracking-wider text-[9px] rounded shrink-0 transition-colors"
+                            className="py-1 px-3 bg-[#0B4C8C] hover:bg-[#093d70] text-white font-bold uppercase tracking-wider text-[9px] rounded shrink-0 transition-colors"
                           >
                             Simulate
                           </button>
@@ -1773,21 +1773,21 @@ export default function SuperAdminSecuritySOCPage() {
                     </div>
 
                     {/* Playbook Run Logs */}
-                    <div className="border-t border-white/5 pt-4">
-                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block mb-2 font-mono">Recent Playbook Executions</span>
+                    <div className="border-t border-slate-200/80 pt-4">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block mb-2 font-mono">Recent Playbook Executions</span>
                       <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                         {playbookExecs.length === 0 ? (
-                          <div className="text-[10px] text-white/30 text-center py-4">No playbook execution logs found.</div>
+                          <div className="text-[10px] text-slate-400 text-center py-4">No playbook execution logs found.</div>
                         ) : (
                           playbookExecs.map((log, i) => (
-                            <div key={i} className="p-2 bg-black/20 border border-white/5 rounded text-[10px] flex justify-between items-center">
+                            <div key={i} className="p-2 bg-slate-50 border border-slate-200/80 rounded text-[10px] flex justify-between items-center">
                               <div>
-                                <span className="font-bold text-white">{log.playbookName}</span>
-                                <div className="text-white/40 text-[9px] mt-0.5">Trigger: {log.trigger}</div>
+                                <span className="font-bold text-slate-800">{log.playbookName}</span>
+                                <div className="text-slate-500 text-[9px] mt-0.5">Trigger: {log.trigger}</div>
                               </div>
                               <div className="text-right">
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${log.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{log.status}</span>
-                                <div className="text-white/30 text-[8px] font-mono mt-1">{log.durationMs}ms</div>
+                                <div className="text-slate-400 text-[8px] font-mono mt-1">{log.durationMs}ms</div>
                               </div>
                             </div>
                           ))
@@ -1797,9 +1797,9 @@ export default function SuperAdminSecuritySOCPage() {
                   </div>
 
                   {/* Proactive Threat Hunting */}
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4">
                     <div className="flex justify-between items-center">
-                      <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">Proactive Threat Hunting Workspace</h4>
+                      <h4 className="text-xs uppercase tracking-wider text-[#0B4C8C] font-bold">Proactive Threat Hunting Workspace</h4>
                       <span className="text-[8px] bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded font-mono font-bold">THREAT HUNTER</span>
                     </div>
 
@@ -1810,10 +1810,10 @@ export default function SuperAdminSecuritySOCPage() {
                         { name: 'Daily Privilege Hunt', type: 'PRIVILEGE_ESCALATION', desc: 'Audits administrator promotions and permission shifts.' },
                         { name: 'Daily Geographic Hunt', type: 'GEO_ANOMALY', desc: 'Validates sessions coordinates for impossible travel velocity violations.' }
                       ].map((hunt, idx) => (
-                        <div key={idx} className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-3">
+                        <div key={idx} className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg flex items-center justify-between gap-3">
                           <div>
-                            <span className="text-xs font-bold text-white block">{hunt.name}</span>
-                            <span className="text-[10px] text-white/50 block mt-0.5">{hunt.desc}</span>
+                            <span className="text-xs font-bold text-slate-800 block">{hunt.name}</span>
+                            <span className="text-[10px] text-slate-650 block mt-0.5">{hunt.desc}</span>
                           </div>
                           <button
                             onClick={() => handleTriggerHunt(hunt.name, hunt.type)}
@@ -1826,22 +1826,22 @@ export default function SuperAdminSecuritySOCPage() {
                     </div>
 
                     {/* Threat Hunt Execution logs */}
-                    <div className="border-t border-white/5 pt-4">
-                      <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block mb-2 font-mono">Proactive Hunt Run Logs</span>
+                    <div className="border-t border-slate-200/80 pt-4">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block mb-2 font-mono">Proactive Hunt Run Logs</span>
                       <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                         {threatHunts.length === 0 ? (
-                          <div className="text-[10px] text-white/30 text-center py-4">No hunt execution history found.</div>
+                          <div className="text-[10px] text-slate-400 text-center py-4">No hunt execution history found.</div>
                         ) : (
                           threatHunts.map((hunt, i) => (
-                            <div key={i} className="p-2.5 bg-black/20 border border-white/5 rounded text-[10px] space-y-1">
+                            <div key={i} className="p-2.5 bg-slate-50 border border-slate-200/80 rounded text-[10px] space-y-1">
                               <div className="flex justify-between items-center">
-                                <span className="font-bold text-white">{hunt.huntName}</span>
+                                <span className="font-bold text-slate-800">{hunt.huntName}</span>
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${hunt.findingsCount > 0 ? 'bg-orange-500/10 text-orange-400' : 'bg-green-500/10 text-green-400'}`}>
                                   {hunt.findingsCount} Findings
                                 </span>
                               </div>
-                              <p className="text-white/60 text-[9px] font-light">{hunt.summary}</p>
-                              <div className="flex justify-between text-white/30 text-[8px] font-mono">
+                              <p className="text-slate-650 text-[9px] font-light">{hunt.summary}</p>
+                              <div className="flex justify-between text-slate-400 text-[8px] font-mono">
                                 <span>Risk: {hunt.riskScore}/100</span>
                                 <span>Duration: {hunt.durationMs}ms</span>
                               </div>
@@ -1855,32 +1855,32 @@ export default function SuperAdminSecuritySOCPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Automated Containment Approvals (1/3 Width) */}
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
-                    <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">Containment Governance Approvals</h4>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4">
+                    <h4 className="text-xs uppercase tracking-wider text-[#0B4C8C] font-bold">Containment Governance Approvals</h4>
                     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                       {pendingActions.filter(a => a.status === 'PENDING_APPROVAL').length === 0 ? (
-                        <div className="text-[10px] text-white/30 text-center py-12">Zero containment actions pending approval.</div>
+                        <div className="text-[10px] text-slate-400 text-center py-12">Zero containment actions pending approval.</div>
                       ) : (
                         pendingActions.filter(a => a.status === 'PENDING_APPROVAL').map((action) => (
-                          <div key={action.id} className="p-3 bg-black/35 border border-red-500/25 rounded-lg space-y-2">
+                          <div key={action.id} className="p-3 bg-slate-50 border border-red-500/25 rounded-lg space-y-2">
                             <div className="flex justify-between items-start">
                               <div>
                                 <span className="text-xs font-bold text-red-400 block">{action.actionType}</span>
-                                <span className="text-[9px] text-white/40 block mt-0.5">Target: {action.targetId}</span>
+                                <span className="text-[9px] text-slate-500 block mt-0.5">Target: {action.targetId}</span>
                               </div>
                               <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-yellow-500/10 text-yellow-400 uppercase font-mono">PENDING</span>
                             </div>
-                            <p className="text-[9px] text-white/50 leading-normal">Safety check: High-privilege actions require administrative approval before execution.</p>
+                            <p className="text-[9px] text-slate-650 leading-normal">Safety check: High-privilege actions require administrative approval before execution.</p>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleApproveAction(action.id, true)}
-                                className="flex-1 py-1 bg-green-500 hover:bg-green-600 text-black font-bold uppercase tracking-wider text-[8px] rounded transition-colors"
+                                className="flex-1 py-1 bg-green-500 hover:bg-green-600 text-slate-800 font-bold uppercase tracking-wider text-[8px] rounded transition-colors"
                               >
                                 Approve
                               </button>
                               <button
                                 onClick={() => handleApproveAction(action.id, false)}
-                                className="flex-1 py-1 bg-white/5 hover:bg-white/10 text-white/60 font-bold uppercase tracking-wider text-[8px] rounded border border-white/10 transition-all"
+                                className="flex-1 py-1 bg-slate-50 hover:bg-slate-100 text-slate-650 font-bold uppercase tracking-wider text-[8px] rounded border border-slate-200 transition-all"
                               >
                                 Reject
                               </button>
@@ -1892,21 +1892,21 @@ export default function SuperAdminSecuritySOCPage() {
                   </div>
 
                   {/* Detections Rule Config Tuning (2/3 Width) */}
-                  <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4 lg:col-span-2">
-                    <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">Detection Rules Configurations & Tuning</h4>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 lg:col-span-2">
+                    <h4 className="text-xs uppercase tracking-wider text-[#0B4C8C] font-bold">Detection Rules Configurations & Tuning</h4>
                     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                       {detectionRules.map((rule) => (
-                        <div key={rule.id} className="p-3.5 bg-black/40 border border-white/5 rounded-xl space-y-3">
+                        <div key={rule.id} className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3">
                           <div className="flex justify-between items-center">
                             <div>
-                              <span className="text-xs font-bold text-white block">{rule.name}</span>
-                              <span className="text-[8px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded font-mono mt-0.5 block w-max">{rule.category}</span>
+                              <span className="text-xs font-bold text-slate-800 block">{rule.name}</span>
+                              <span className="text-[8px] bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded font-mono mt-0.5 block w-max">{rule.category}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <select
                                 value={rule.state}
                                 onChange={(e) => handleTuneRule(rule.id, e.target.value, rule.severity, rule.thresholds)}
-                                className="bg-black border border-white/10 text-[9px] text-white rounded p-1"
+                                className="bg-slate-50 border border-slate-200 text-[9px] text-slate-800 rounded p-1"
                               >
                                 <option value="ACTIVE">Active</option>
                                 <option value="DISABLED">Disabled</option>
@@ -1918,27 +1918,27 @@ export default function SuperAdminSecuritySOCPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-3 text-center border-t border-white/5 pt-2">
-                            <div className="p-1.5 bg-black/20 rounded">
-                              <span className="text-[7px] uppercase tracking-widest text-white/40 font-bold block">Trigger Count</span>
-                              <span className="text-xs font-mono font-bold text-white">{rule.triggerCount}</span>
+                          <div className="grid grid-cols-3 gap-3 text-center border-t border-slate-200/80 pt-2">
+                            <div className="p-1.5 bg-slate-50 rounded">
+                              <span className="text-[7px] uppercase tracking-widest text-slate-500 font-bold block">Trigger Count</span>
+                              <span className="text-xs font-mono font-bold text-slate-800">{rule.triggerCount}</span>
                             </div>
-                            <div className="p-1.5 bg-black/20 rounded">
-                              <span className="text-[7px] uppercase tracking-widest text-white/40 font-bold block">Rule Precision</span>
+                            <div className="p-1.5 bg-slate-50 rounded">
+                              <span className="text-[7px] uppercase tracking-widest text-slate-500 font-bold block">Rule Precision</span>
                               <span className="text-xs font-mono font-bold text-green-400">{Math.round(rule.precision * 100)}%</span>
                             </div>
-                            <div className="p-1.5 bg-black/20 rounded">
-                              <span className="text-[7px] uppercase tracking-widest text-white/40 font-bold block">False Alarm Rate</span>
+                            <div className="p-1.5 bg-slate-50 rounded">
+                              <span className="text-[7px] uppercase tracking-widest text-slate-500 font-bold block">False Alarm Rate</span>
                               <span className="text-xs font-mono font-bold text-red-400">{Math.round(rule.falsePositiveRate * 100)}%</span>
                             </div>
                           </div>
 
                           {/* Inline thresholds tuner */}
-                          <div className="flex gap-2 items-center flex-wrap bg-black/20 p-2 rounded-lg text-[9px]">
-                            <span className="text-white/40 font-bold font-mono">Tuner Thresholds:</span>
+                          <div className="flex gap-2 items-center flex-wrap bg-slate-50 p-2 rounded-lg text-[9px]">
+                            <span className="text-slate-500 font-bold font-mono">Tuner Thresholds:</span>
                             {Object.entries((rule.thresholds as any) || {}).map(([key, val]: any) => (
                               <div key={key} className="flex gap-1 items-center">
-                                <span className="text-white/60">{key}:</span>
+                                <span className="text-slate-650">{key}:</span>
                                 <input
                                   type="text"
                                   defaultValue={val}
@@ -1948,7 +1948,7 @@ export default function SuperAdminSecuritySOCPage() {
                                     const newThresholds = { ...(rule.thresholds as any), [key]: parsedVal };
                                     handleTuneRule(rule.id, rule.state, rule.severity, newThresholds);
                                   }}
-                                  className="w-10 bg-black border border-white/10 text-white rounded p-0.5 font-mono text-center"
+                                  className="w-10 bg-slate-50 border border-slate-200 text-slate-800 rounded p-0.5 font-mono text-center"
                                 />
                               </div>
                             ))}
@@ -1960,41 +1960,41 @@ export default function SuperAdminSecuritySOCPage() {
                 </div>
 
                 {/* False Positive Recommendations Workspace */}
-                <div className="bg-[#121212] border border-white/5 p-5 rounded-2xl space-y-4">
+                <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-xs uppercase tracking-wider text-[#D4AF37] font-bold">False Positive Auto-Analysis & Rules Tuning Recommendations</h4>
+                    <h4 className="text-xs uppercase tracking-wider text-[#0B4C8C] font-bold">False Positive Auto-Analysis & Rules Tuning Recommendations</h4>
                     <span className="text-[8px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded font-mono font-bold">TUNING ENGINE</span>
                   </div>
 
                   <div className="space-y-3">
                     {fpRecs.length === 0 ? (
-                      <div className="text-[10px] text-white/30 text-center py-6">Zero recommended tuning parameters identified. Detections precision remains optimized.</div>
+                      <div className="text-[10px] text-slate-400 text-center py-6">Zero recommended tuning parameters identified. Detections precision remains optimized.</div>
                     ) : (
                       fpRecs.map((rec) => (
-                        <div key={rec.id} className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-4 flex-wrap">
+                        <div key={rec.id} className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg flex items-center justify-between gap-4 flex-wrap">
                           <div>
                             <div className="flex gap-2 items-center">
-                              <span className="text-xs font-bold text-white">{rec.ruleName}</span>
+                              <span className="text-xs font-bold text-slate-800">{rec.ruleName}</span>
                               <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
                                 rec.recommendation === 'DISABLE_RULE' ? 'bg-red-500/10 text-red-400' :
                                 rec.recommendation === 'TUNE_RULE' ? 'bg-yellow-500/10 text-yellow-400' :
                                 'bg-blue-500/10 text-blue-400'
                               }`}>{rec.recommendation}</span>
                             </div>
-                            <p className="text-[10px] text-white/50 mt-1 leading-normal">{rec.reason}</p>
-                            <span className="text-[8px] text-white/30 font-mono block mt-1">Analyzed: {rec.analyzedAlerts} alerts • Outcomes: {JSON.stringify(rec.resolvedOutcomes)}</span>
+                            <p className="text-[10px] text-slate-650 mt-1 leading-normal">{rec.reason}</p>
+                            <span className="text-[8px] text-slate-400 font-mono block mt-1">Analyzed: {rec.analyzedAlerts} alerts • Outcomes: {JSON.stringify(rec.resolvedOutcomes)}</span>
                           </div>
                           {!rec.accepted && !rec.rejected ? (
                             <div className="flex gap-1.5 shrink-0">
                               <button
                                 onClick={() => handleApplyFpRec(rec.id, true)}
-                                className="py-1 px-3 bg-green-500 hover:bg-green-600 text-black font-bold uppercase tracking-wider text-[9px] rounded transition-colors"
+                                className="py-1 px-3 bg-green-500 hover:bg-green-600 text-slate-800 font-bold uppercase tracking-wider text-[9px] rounded transition-colors"
                               >
                                 Accept & Apply
                               </button>
                               <button
                                 onClick={() => handleApplyFpRec(rec.id, false)}
-                                className="py-1 px-3 bg-white/5 hover:bg-white/10 text-white/50 font-bold uppercase tracking-wider text-[9px] rounded border border-white/10 transition-all"
+                                className="py-1 px-3 bg-slate-50 hover:bg-slate-100 text-slate-650 font-bold uppercase tracking-wider text-[9px] rounded border border-slate-200 transition-all"
                               >
                                 Dismiss
                               </button>

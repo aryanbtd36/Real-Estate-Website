@@ -114,28 +114,28 @@ export function NotificationCenter() {
       case 'INQUIRY':
         return {
           icon: Mail,
-          bgColor: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+          bgColor: 'bg-amber-50 border-amber-250 text-amber-700',
         };
       case 'APPOINTMENT':
         return {
           icon: Calendar,
-          bgColor: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+          bgColor: 'bg-emerald-50 border-emerald-250 text-emerald-700',
         };
       case 'SECURITY':
         return {
           icon: ShieldAlert,
-          bgColor: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
+          bgColor: 'bg-rose-50 border-rose-250 text-rose-700',
         };
       case 'USER_ACTION':
         return {
           icon: User,
-          bgColor: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
+          bgColor: 'bg-blue-50 border-blue-200 text-blue-700',
         };
       case 'SYSTEM':
       default:
         return {
           icon: Sparkles,
-          bgColor: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+          bgColor: 'bg-slate-50 border-slate-200 text-slate-600',
         };
     }
   };
@@ -161,12 +161,12 @@ export function NotificationCenter() {
       {/* Bell Icon Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 rounded-full bg-white/5 border border-white/10 text-white/80 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all focus:outline-none"
+        className="relative p-2.5 rounded-full bg-white border border-slate-200 text-slate-700 hover:text-[#0B4C8C] hover:border-[#0B4C8C]/30 transition-all focus:outline-none focus:ring-2 focus:ring-slate-100"
         aria-label="Toggle notifications"
       >
         <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#D4AF37] text-[9px] font-bold text-black ring-2 ring-[#0A0A0A]">
+          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#0B4C8C] text-[9px] font-bold text-white ring-2 ring-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -180,18 +180,18 @@ export function NotificationCenter() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.95 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute right-0 mt-3 w-80 sm:w-96 max-h-[500px] z-50 rounded-xl bg-[#161616]/95 backdrop-blur-md border border-white/10 shadow-[0_10px_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col"
+            className="absolute right-0 mt-3 w-80 sm:w-96 max-h-[500px] z-50 rounded-2xl bg-white border border-slate-250 shadow-xl overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h3 className="text-sm font-semibold tracking-wide text-white">Concierge Alerts</h3>
-                <p className="text-[10px] text-white/40">{unreadCount} unread notifications</p>
+                <h3 className="text-sm font-bold tracking-wide text-slate-800">Concierge Alerts</h3>
+                <p className="text-[10px] text-slate-500 font-semibold">{unreadCount} unread notifications</p>
               </div>
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
-                  className="text-[10px] flex items-center gap-1 text-[#D4AF37] hover:text-[#F5D67B] transition-colors uppercase tracking-widest font-semibold"
+                  className="text-[10px] flex items-center gap-1 text-[#0B4C8C] hover:text-[#093d70] transition-colors uppercase tracking-widest font-extrabold"
                 >
                   <Check size={12} />
                   <span>Dismiss All</span>
@@ -200,12 +200,12 @@ export function NotificationCenter() {
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-white/5 max-h-[360px] custom-scrollbar">
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 max-h-[360px] custom-scrollbar">
               {notifications.length === 0 ? (
                 <div className="py-12 px-4 text-center">
-                  <Bell className="mx-auto text-white/10 mb-3" size={28} />
-                  <p className="text-xs text-white/40 italic">Your inbox is clear.</p>
-                  <p className="text-[10px] text-white/25 mt-1">Updates on viewings & inquiries will display here.</p>
+                  <Bell className="mx-auto text-slate-300 mb-3" size={28} />
+                  <p className="text-xs text-slate-400 font-medium italic">Your inbox is clear.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Updates on viewings & inquiries will display here.</p>
                 </div>
               ) : (
                 notifications.map((n) => {
@@ -215,13 +215,13 @@ export function NotificationCenter() {
                     <div
                       key={n.id}
                       onClick={() => handleMarkAsRead(n.id, n.link)}
-                      className={`p-4 flex gap-3.5 hover:bg-white/[0.02] cursor-pointer transition-colors relative group ${
-                        !n.read ? 'bg-[#D4AF37]/[0.02]' : ''
+                      className={`p-4 flex gap-3.5 hover:bg-slate-50 cursor-pointer transition-colors relative group ${
+                        !n.read ? 'bg-[#0B4C8C]/[0.02]' : ''
                       }`}
                     >
                       {/* Unread indicator dot */}
                       {!n.read && (
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#D4AF37] rounded-full" />
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#0B4C8C] rounded-full" />
                       )}
 
                       {/* Icon Container */}
@@ -232,18 +232,18 @@ export function NotificationCenter() {
                       {/* Content */}
                       <div className="flex-1 space-y-1 min-w-0 pl-1">
                         <div className="flex justify-between items-start gap-2">
-                          <h4 className={`text-xs font-semibold truncate ${!n.read ? 'text-white' : 'text-white/70'}`}>
+                          <h4 className={`text-xs font-bold truncate ${!n.read ? 'text-slate-900 font-extrabold' : 'text-slate-700'}`}>
                             {n.title}
                           </h4>
-                          <span className="text-[9px] text-white/30 shrink-0 mt-0.5">
+                          <span className="text-[9px] text-slate-400 font-semibold shrink-0 mt-0.5">
                             {formatTimeAgo(n.createdAt)}
                           </span>
                         </div>
-                        <p className="text-[11px] text-white/50 leading-relaxed line-clamp-2">
+                        <p className="text-[11px] text-slate-500 font-medium leading-relaxed line-clamp-2">
                           {n.message}
                         </p>
                         {n.link && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] text-[#D4AF37] opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-[#0B4C8C] opacity-0 group-hover:opacity-100 transition-opacity mt-1 font-semibold">
                             <span>Open Details</span>
                             <ExternalLink size={8} />
                           </span>
@@ -256,8 +256,8 @@ export function NotificationCenter() {
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-white/5 bg-white/[0.01] text-center">
-              <span className="text-[9px] uppercase tracking-widest text-white/30 font-medium">AURA ESTATES CRM SYSTEM</span>
+            <div className="p-3 border-t border-slate-100 bg-slate-50/50 text-center">
+              <span className="text-[9px] uppercase tracking-widest text-slate-400 font-extrabold">AURA ESTATES CRM SYSTEM</span>
             </div>
           </motion.div>
         )}
