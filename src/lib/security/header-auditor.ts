@@ -19,7 +19,7 @@ export class HeaderAuditor {
     }[] = [
       {
         key: 'Content-Security-Policy',
-        expected: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline';",
+        expected: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://unpkg.com https://res.cloudinary.com; connect-src 'self' https://*.tile.openstreetmap.org https://server.arcgisonline.com;",
         validator: (val) => {
           if (!val) return 'FAIL';
           if (val.includes("default-src 'self'") || val.includes("default-src")) return 'PASS';

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-23T16:13:45.580Z",
+  "timestamp": "2026-06-23T17:40:05.427Z",
   "scores": {
     "authentication": 100,
     "authorization": 100,
@@ -118,5 +118,5 @@
     "inactivityTimeoutMinutes": 15,
     "mfaRequiredForAdmin": true
   },
-  "capturedBy": "f01a553c-4469-44fc-9755-fb513c0cbfaf"
+  "capturedBy": "363b81b2-c5d4-4371-90c5-4e9df5712b61"
 }

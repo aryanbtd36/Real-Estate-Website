@@ -109,7 +109,7 @@ export class SecurityPostureService {
     let headers = 100;
     // Query actual audit results
     const activeHeaders = {
-      'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline';",
+      'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://unpkg.com https://res.cloudinary.com; connect-src 'self' https://*.tile.openstreetmap.org https://server.arcgisonline.com;",
       'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
       'x-frame-options': 'DENY',
       'x-content-type-options': 'nosniff',
