@@ -51,17 +51,33 @@ export class LocationIntelligenceService {
    */
   static async geocodeAddress(query: string): Promise<GeocodeResult[]> {
     if (!query || !query.trim()) return [];
+    console.log(`[GIS Diagnostics] geocodeAddress requested for query: "${query}"`);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'AuraEstatesLocationIntelligence/1.0',
-        },
-      });
-      if (!res.ok) {
-        throw new Error(`Nominatim Geocoding API failed with status ${res.status}`);
+      let data: any;
+      if (typeof window !== 'undefined') {
+        const url = `/api/location?q=${encodeURIComponent(query)}`;
+        console.log(`[GIS Diagnostics] Client-side fetch proxying to: ${url}`);
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Location proxy API failed with status ${res.status}`);
+        }
+        data = await res.json();
+      } else {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
+        console.log(`[GIS Diagnostics] Server-side direct fetch to Nominatim: ${url}`);
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'AuraEstatesLocationIntelligence/1.0',
+          },
+        });
+        if (!res.ok) {
+          throw new Error(`Nominatim Geocoding API failed with status ${res.status}`);
+        }
+        data = await res.json();
       }
-      const data = await res.json();
+
+      console.log(`[GIS Diagnostics] geocodeAddress search response received:`, data);
+
       if (!Array.isArray(data)) return [];
       return data.map((item: any) => ({
         lat: parseFloat(item.lat),
@@ -82,7 +98,7 @@ export class LocationIntelligenceService {
         },
       }));
     } catch (err: any) {
-      console.error('[LocationIntelligenceService.geocodeAddress Error]', err);
+      console.error('[GIS Diagnostics] geocodeAddress error:', err);
       throw err;
     }
   }
@@ -91,17 +107,33 @@ export class LocationIntelligenceService {
    * Reverse geocodes coordinates to address details using Nominatim
    */
   static async reverseGeocode(lat: number, lng: number): Promise<GeocodeResult | null> {
+    console.log(`[GIS Diagnostics] reverseGeocode requested for lat: ${lat}, lng: ${lng}`);
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'AuraEstatesLocationIntelligence/1.0',
-        },
-      });
-      if (!res.ok) {
-        throw new Error(`Nominatim Reverse Geocoding API failed with status ${res.status}`);
+      let item: any;
+      if (typeof window !== 'undefined') {
+        const url = `/api/location?lat=${lat}&lng=${lng}`;
+        console.log(`[GIS Diagnostics] Client-side reverse fetch proxying to: ${url}`);
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Location proxy API failed with status ${res.status}`);
+        }
+        item = await res.json();
+      } else {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+        console.log(`[GIS Diagnostics] Server-side direct reverse fetch to Nominatim: ${url}`);
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'AuraEstatesLocationIntelligence/1.0',
+          },
+        });
+        if (!res.ok) {
+          throw new Error(`Nominatim Reverse Geocoding API failed with status ${res.status}`);
+        }
+        item = await res.json();
       }
-      const item = await res.json();
+
+      console.log(`[GIS Diagnostics] reverseGeocode response received:`, item);
+
       if (!item || !item.lat) return null;
       return {
         lat: parseFloat(item.lat),
@@ -122,7 +154,7 @@ export class LocationIntelligenceService {
         },
       };
     } catch (err: any) {
-      console.error('[LocationIntelligenceService.reverseGeocode Error]', err);
+      console.error('[GIS Diagnostics] reverseGeocode error:', err);
       throw err;
     }
   }

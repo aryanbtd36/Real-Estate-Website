@@ -51,6 +51,7 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
 
     // Initialize map
     if (!mapRef.current) {
+      console.log(`[GIS Diagnostics] Initializing Analytics Map at default lat: ${defaultLat}, lng: ${defaultLng}`);
       mapRef.current = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
         zoom: 12,
@@ -58,6 +59,14 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
       });
 
       layersRef.current = L.layerGroup().addTo(mapRef.current);
+
+      // Recalculate size after render
+      setTimeout(() => {
+        if (mapRef.current) {
+          console.log('[GIS Diagnostics] Analytics Map size invalidated on mount');
+          mapRef.current.invalidateSize();
+        }
+      }, 150);
     }
 
     const map = mapRef.current;
@@ -66,6 +75,8 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
     if (layerGroup) {
       layerGroup.clearLayers();
     }
+
+    console.log(`[GIS Diagnostics] Rendering Analytics points: total ${points.length} locations. Type: "${type}"`);
 
     if (points.length > 0) {
       const bounds: L.LatLngExpression[] = [];
@@ -98,15 +109,24 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
       });
 
       if (bounds.length > 0 && map) {
+        console.log(`[GIS Diagnostics] Adjusting Analytics bounds to fit ${bounds.length} plotted points`);
         map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
       }
     }
+
+    // Invalidate size in case of container sizing delays
+    setTimeout(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    }, 200);
   }, [points, type]);
 
   // Clean up on complete unmount
   useEffect(() => {
     return () => {
       if (mapRef.current) {
+        console.log('[GIS Diagnostics] Analytics Map component unmounting. Removing Leaflet map instance.');
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -119,13 +139,29 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
     if (!map) return;
 
     if (baseTileLayerRef.current) {
+      console.log(`[GIS Diagnostics] Analytics Map removing base tile layer`);
       map.removeLayer(baseTileLayerRef.current);
       baseTileLayerRef.current = null;
     }
     if (overlayTileLayerRef.current) {
+      console.log(`[GIS Diagnostics] Analytics Map removing overlay tile layer`);
       map.removeLayer(overlayTileLayerRef.current);
       overlayTileLayerRef.current = null;
     }
+
+    console.log(`[GIS Diagnostics] Analytics Map changing tile provider to: "${mapLayer}"`);
+
+    const setupLayerDiagnostics = (layer: L.TileLayer, name: string) => {
+      layer.on('loading', () => {
+        console.log(`[GIS Diagnostics] Analytics Map Tile Layer "${name}" loading tiles...`);
+      });
+      layer.on('load', () => {
+        console.log(`[GIS Diagnostics] Analytics Map Tile Layer "${name}" loaded all tiles.`);
+      });
+      layer.on('tileerror', (e) => {
+        console.error(`[GIS Diagnostics] Analytics Map Tile Layer "${name}" failed to load tile:`, e.coords, `URL:`, (e.tile as HTMLImageElement).src);
+      });
+    };
 
     if (mapLayer === 'satellite' || mapLayer === 'hybrid') {
       baseTileLayerRef.current = L.tileLayer(
@@ -133,7 +169,9 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
         {
           attribution: '&copy; Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         }
-      ).addTo(map);
+      );
+      setupLayerDiagnostics(baseTileLayerRef.current, 'Esri World Imagery');
+      baseTileLayerRef.current.addTo(map);
 
       if (mapLayer === 'hybrid') {
         overlayTileLayerRef.current = L.tileLayer(
@@ -141,7 +179,9 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
           {
             attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
           }
-        ).addTo(map);
+        );
+        setupLayerDiagnostics(overlayTileLayerRef.current, 'Esri Hybrid Overlays');
+        overlayTileLayerRef.current.addTo(map);
       }
     } else {
       baseTileLayerRef.current = L.tileLayer(
@@ -149,7 +189,9 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
         {
           attribution: '&copy; OpenStreetMap contributors',
         }
-      ).addTo(map);
+      );
+      setupLayerDiagnostics(baseTileLayerRef.current, 'OpenStreetMap');
+      baseTileLayerRef.current.addTo(map);
     }
   }, [mapLayer]);
 

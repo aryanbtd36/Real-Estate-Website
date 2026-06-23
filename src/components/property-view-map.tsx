@@ -45,11 +45,20 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
 
     // Initialize map
     if (!mapRef.current) {
+      console.log(`[GIS Diagnostics] Initializing View Map at lat: ${defaultLat}, lng: ${defaultLng}`);
       mapRef.current = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
         zoom: latitude && longitude ? 15 : 13,
         scrollWheelZoom: false,
       });
+
+      // Recalculate size after render
+      setTimeout(() => {
+        if (mapRef.current) {
+          console.log('[GIS Diagnostics] View Map size invalidated on mount');
+          mapRef.current.invalidateSize();
+        }
+      }, 150);
     }
 
     const map = mapRef.current;
@@ -68,6 +77,7 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
 
     // Draw Pin Marker
     if (latitude && longitude) {
+      console.log(`[GIS Diagnostics] View Map rendering marker at coords: [${latitude}, ${longitude}]`);
       markerRef.current = L.marker([latitude, longitude]).addTo(map);
       map.setView([latitude, longitude], map.getZoom());
     }
@@ -77,6 +87,7 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
       try {
         const coords = JSON.parse(boundary);
         if (Array.isArray(coords) && coords.length > 0) {
+          console.log(`[GIS Diagnostics] View Map drawing boundary polygon with ${coords.length} points`);
           polygonRef.current = L.polygon(coords, {
             color: '#0b4c8c',
             fillColor: '#10b981',
@@ -88,9 +99,16 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
           map.fitBounds(polygonRef.current.getBounds(), { padding: [20, 20] });
         }
       } catch (err) {
-        console.error('Failed to parse boundary JSON:', err);
+        console.error('[GIS Diagnostics] View Map failed to parse boundary JSON:', err);
       }
     }
+
+    // Invalidate size in case of layout shifts
+    setTimeout(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    }, 200);
 
     return () => {
       // Cleanup happens on complete unmount
@@ -101,6 +119,7 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
   useEffect(() => {
     return () => {
       if (mapRef.current) {
+        console.log('[GIS Diagnostics] View Map component unmounting. Removing Leaflet map instance.');
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -113,13 +132,29 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
     if (!map) return;
 
     if (baseTileLayerRef.current) {
+      console.log(`[GIS Diagnostics] View Map removing base tile layer`);
       map.removeLayer(baseTileLayerRef.current);
       baseTileLayerRef.current = null;
     }
     if (overlayTileLayerRef.current) {
+      console.log(`[GIS Diagnostics] View Map removing overlay tile layer`);
       map.removeLayer(overlayTileLayerRef.current);
       overlayTileLayerRef.current = null;
     }
+
+    console.log(`[GIS Diagnostics] View Map changing tile provider to: "${mapLayer}"`);
+
+    const setupLayerDiagnostics = (layer: L.TileLayer, name: string) => {
+      layer.on('loading', () => {
+        console.log(`[GIS Diagnostics] View Map Tile Layer "${name}" loading tiles...`);
+      });
+      layer.on('load', () => {
+        console.log(`[GIS Diagnostics] View Map Tile Layer "${name}" loaded all tiles.`);
+      });
+      layer.on('tileerror', (e) => {
+        console.error(`[GIS Diagnostics] View Map Tile Layer "${name}" failed to load tile:`, e.coords, `URL:`, (e.tile as HTMLImageElement).src);
+      });
+    };
 
     if (mapLayer === 'satellite' || mapLayer === 'hybrid') {
       baseTileLayerRef.current = L.tileLayer(
@@ -127,7 +162,9 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
         {
           attribution: '&copy; Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         }
-      ).addTo(map);
+      );
+      setupLayerDiagnostics(baseTileLayerRef.current, 'Esri World Imagery');
+      baseTileLayerRef.current.addTo(map);
 
       if (mapLayer === 'hybrid') {
         overlayTileLayerRef.current = L.tileLayer(
@@ -135,7 +172,9 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
           {
             attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
           }
-        ).addTo(map);
+        );
+        setupLayerDiagnostics(overlayTileLayerRef.current, 'Esri Hybrid Overlays');
+        overlayTileLayerRef.current.addTo(map);
       }
     } else {
       baseTileLayerRef.current = L.tileLayer(
@@ -143,7 +182,9 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
         {
           attribution: '&copy; OpenStreetMap contributors',
         }
-      ).addTo(map);
+      );
+      setupLayerDiagnostics(baseTileLayerRef.current, 'OpenStreetMap');
+      baseTileLayerRef.current.addTo(map);
     }
   }, [mapLayer]);
 

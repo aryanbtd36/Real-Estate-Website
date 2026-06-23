@@ -289,6 +289,7 @@ export default function PropertyEditMap({
     }
 
     if (!mapRef.current) {
+      console.log(`[GIS Diagnostics] Initializing Edit Map at lat: ${defaultLat}, lng: ${defaultLng}, zoom: ${defaultZoom}`);
       mapRef.current = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
         zoom: defaultZoom,
@@ -297,26 +298,39 @@ export default function PropertyEditMap({
       // Move/zoom event persistence listeners
       mapRef.current.on('zoomend', () => {
         if (mapRef.current) {
-          localStorage.setItem('aura_estates_map_zoom', mapRef.current.getZoom().toString());
+          const z = mapRef.current.getZoom();
+          console.log(`[GIS Diagnostics] Map zoom changed to: ${z}`);
+          localStorage.setItem('aura_estates_map_zoom', z.toString());
         }
       });
 
       mapRef.current.on('moveend', () => {
         if (mapRef.current) {
           const center = mapRef.current.getCenter();
+          console.log(`[GIS Diagnostics] Map center moved to: [${center.lat}, ${center.lng}]`);
           localStorage.setItem('aura_estates_map_center', JSON.stringify([center.lat, center.lng]));
         }
       });
+
+      // Recalculate size after render
+      setTimeout(() => {
+        if (mapRef.current) {
+          console.log('[GIS Diagnostics] Map size invalidated on init mount');
+          mapRef.current.invalidateSize();
+        }
+      }, 150);
     }
 
     const map = mapRef.current;
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
+      console.log(`[GIS Diagnostics] Map clicked at lat: ${lat}, lng: ${lng} under activeTab: "${activeTab}"`);
       
       if (activeTab === 'boundary') {
         setTempPoints((prev) => {
           const next = [...prev, [lat, lng] as [number, number]];
+          console.log(`[GIS Diagnostics] Primary Boundary point added. Perimeter now has ${next.length} nodes.`);
           onChangeBoundary(JSON.stringify(next));
           return next;
         });
@@ -326,6 +340,7 @@ export default function PropertyEditMap({
           const targetZone = updated[selectedZoneIndex];
           if (targetZone) {
             targetZone.points = [...targetZone.points, [lat, lng] as [number, number]];
+            console.log(`[GIS Diagnostics] Zone point added for "${targetZone.name}". Zone has ${targetZone.points.length} nodes.`);
             if (onChangeBoundaryZones) {
               onChangeBoundaryZones(JSON.stringify(updated));
             }
@@ -333,6 +348,7 @@ export default function PropertyEditMap({
           return updated;
         });
       } else if (activeTab === 'pin') {
+        console.log(`[GIS Diagnostics] Updating marker location to clicked coordinates: lat: ${lat}, lng: ${lng}`);
         onChangeLocation(lat, lng);
         triggerReverseGeocode(lat, lng);
       }
@@ -345,19 +361,47 @@ export default function PropertyEditMap({
     };
   }, [latitude, longitude, activeTab, selectedZoneIndex, onChangeLocation, onChangeBoundary, onChangeBoundaryZones]);
 
+  // Tab shift resize handler
+  useEffect(() => {
+    if (mapRef.current) {
+      console.log(`[GIS Diagnostics] Tab shifted to "${activeTab}". Invalidating map container size.`);
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+        }
+      }, 200);
+    }
+  }, [activeTab]);
+
   // Map Tiles Synchronizer Effect
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     if (baseTileLayerRef.current) {
+      console.log(`[GIS Diagnostics] Removing tile layer`);
       map.removeLayer(baseTileLayerRef.current);
       baseTileLayerRef.current = null;
     }
     if (overlayTileLayerRef.current) {
+      console.log(`[GIS Diagnostics] Removing overlay tile layer`);
       map.removeLayer(overlayTileLayerRef.current);
       overlayTileLayerRef.current = null;
     }
+
+    console.log(`[GIS Diagnostics] Changing tile provider to: "${mapLayer}"`);
+
+    const setupLayerDiagnostics = (layer: L.TileLayer, name: string) => {
+      layer.on('loading', () => {
+        console.log(`[GIS Diagnostics] Tile Layer "${name}" started loading tiles.`);
+      });
+      layer.on('load', () => {
+        console.log(`[GIS Diagnostics] Tile Layer "${name}" finished loading all tiles.`);
+      });
+      layer.on('tileerror', (e) => {
+        console.error(`[GIS Diagnostics] Tile Layer "${name}" failed to load tile:`, e.coords, `URL:`, (e.tile as HTMLImageElement).src);
+      });
+    };
 
     if (mapLayer === 'satellite' || mapLayer === 'hybrid') {
       baseTileLayerRef.current = L.tileLayer(
@@ -365,7 +409,9 @@ export default function PropertyEditMap({
         {
           attribution: '&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         }
-      ).addTo(map);
+      );
+      setupLayerDiagnostics(baseTileLayerRef.current, 'Esri World Imagery');
+      baseTileLayerRef.current.addTo(map);
 
       if (mapLayer === 'hybrid') {
         overlayTileLayerRef.current = L.tileLayer(
@@ -373,7 +419,9 @@ export default function PropertyEditMap({
           {
             attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
           }
-        ).addTo(map);
+        );
+        setupLayerDiagnostics(overlayTileLayerRef.current, 'Esri Hybrid Overlays');
+        overlayTileLayerRef.current.addTo(map);
       }
     } else {
       baseTileLayerRef.current = L.tileLayer(
@@ -381,7 +429,9 @@ export default function PropertyEditMap({
         {
           attribution: '&copy; OpenStreetMap contributors',
         }
-      ).addTo(map);
+      );
+      setupLayerDiagnostics(baseTileLayerRef.current, 'OpenStreetMap');
+      baseTileLayerRef.current.addTo(map);
     }
   }, [mapLayer]);
 
@@ -398,6 +448,7 @@ export default function PropertyEditMap({
     }
 
     if (latitude !== null && longitude !== null) {
+      console.log(`[GIS Diagnostics] Rendering Pin marker at coordinates: lat: ${latitude}, lng: ${longitude}`);
       markerRef.current = L.marker([latitude, longitude], {
         draggable: true,
       }).addTo(map);
@@ -405,6 +456,7 @@ export default function PropertyEditMap({
       markerRef.current.on('dragend', (e) => {
         const marker = e.target;
         const position = marker.getLatLng();
+        console.log(`[GIS Diagnostics] Pin marker dragged and dropped at: lat: ${position.lat}, lng: ${position.lng}`);
         onChangeLocation(position.lat, position.lng);
         triggerReverseGeocode(position.lat, position.lng);
       });
@@ -419,6 +471,7 @@ export default function PropertyEditMap({
     primaryPointsRef.current = [];
 
     if (tempPoints.length > 0) {
+      console.log(`[GIS Diagnostics] Drawing primary boundary polygon with ${tempPoints.length} vertices`);
       primaryPolygonRef.current = L.polygon(tempPoints, {
         color: '#0B4C8C',
         fillColor: '#0B4C8C',
@@ -426,7 +479,7 @@ export default function PropertyEditMap({
         weight: 3,
       }).addTo(map);
 
-      tempPoints.forEach((pt) => {
+      tempPoints.forEach((pt, index) => {
         const circle = L.circleMarker(pt, {
           radius: 4,
           color: '#F5D67B',
@@ -451,6 +504,7 @@ export default function PropertyEditMap({
     // Redraw zones
     zones.forEach((zone, idx) => {
       if (zone.points.length > 0) {
+        console.log(`[GIS Diagnostics] Drawing Sub-zone "${zone.name}" polygon with ${zone.points.length} vertices`);
         const polygon = L.polygon(zone.points, {
           color: zone.color,
           fillColor: zone.color,
