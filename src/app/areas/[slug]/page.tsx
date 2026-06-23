@@ -16,7 +16,9 @@ import {
   Building,
   Info,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 
 interface LocalityData {
@@ -231,7 +233,6 @@ export default function LocalityDetailPage() {
         const res = await fetch('/api/properties');
         if (res.ok) {
           const data = await res.json();
-          // Filter properties located in this neighborhood
           const matched = (Array.isArray(data) ? data : []).filter(
             (p: any) =>
               p.location.toLowerCase().includes(details.name.toLowerCase()) &&
@@ -248,16 +249,10 @@ export default function LocalityDetailPage() {
     fetchLocalProperties();
   }, [details.name]);
 
-  const getScoreColor = (score: number) => {
-    if (score >= 8.5) return 'text-soft-green border-soft-green bg-soft-green/10';
-    if (score >= 7.5) return 'text-trust-blue border-trust-blue bg-trust-blue/10';
-    return 'text-slate-500 border-slate-200 bg-slate-50';
-  };
-
   const formatCurrency = (val: number) => `₹${val.toLocaleString()}`;
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased pb-16">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased pb-20">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-6 pt-24 space-y-8">
@@ -266,48 +261,48 @@ export default function LocalityDetailPage() {
           href="/investment-intelligence"
           className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-trust-blue transition-colors"
         >
-          <ArrowLeft size={14} />
+          <ArrowLeft size={12} />
           <span>Back to Locality Reports</span>
         </Link>
 
-        {/* Title Block */}
-        <div className="border-b border-slate-100 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-          <div>
-            <span className="text-soft-green text-xs font-bold uppercase tracking-widest">Aura Locality Intelligence</span>
-            <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight mt-1">{details.name} Report</h1>
-            <p className="text-sm text-slate-500 mt-2 max-w-xl">{details.overview}</p>
+        {/* Title Block as Locality Dossier */}
+        <div className="bg-white rounded-[24px] p-6 border border-slate-200/60 shadow-premium flex flex-col md:flex-row justify-between items-start md:items-end gap-6 text-left">
+          <div className="space-y-3">
+            <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Locality Audit Dossier</span>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mt-1">{details.name} neighborhood</h1>
+            <p className="text-sm text-slate-500 max-w-xl font-normal leading-relaxed">{details.overview}</p>
           </div>
-          <div className="flex flex-col items-center border border-slate-200 p-4 rounded-xl shadow-sm bg-slate-50">
-            <span className="text-[10px] uppercase font-bold text-slate-400">Locality Score</span>
-            <span className="text-4xl font-black text-trust-blue mt-1">{details.scores.overall.toFixed(1)}</span>
-            <span className="text-[9px] uppercase font-bold text-soft-green mt-1">Excellent Decision</span>
+          <div className="flex flex-col items-center border border-slate-200/60 p-4 rounded-xl shadow-premium bg-slate-50 shrink-0">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Overall Score</span>
+            <span className="text-4xl font-black text-trust-blue mt-1">{(details.scores.overall).toFixed(1)}</span>
+            <span className="text-[9px] uppercase font-bold text-soft-green mt-1">Decision Rating</span>
           </div>
         </div>
 
         {/* Locality score cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="border border-slate-200 p-4 rounded-xl space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400">Growth Potential</span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+          <div className="bg-white border border-slate-200/60 p-4 rounded-xl space-y-2 shadow-xs">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Growth Index</span>
             <div className="flex justify-between items-center">
               <span className="text-lg font-black text-slate-900">{details.scores.growth.toFixed(1)}/10</span>
               <span className="text-xs text-soft-green font-bold flex items-center"><TrendingUp size={12} className="mr-0.5" /> High</span>
             </div>
           </div>
-          <div className="border border-slate-200 p-4 rounded-xl space-y-1">
+          <div className="bg-white border border-slate-200/60 p-4 rounded-xl space-y-2 shadow-xs">
             <span className="text-[10px] uppercase font-bold text-slate-400">Buyer Demand</span>
             <div className="flex justify-between items-center">
               <span className="text-lg font-black text-slate-900">{details.scores.demand.toFixed(1)}/10</span>
               <span className="text-xs text-trust-blue font-bold">Active</span>
             </div>
           </div>
-          <div className="border border-slate-200 p-4 rounded-xl space-y-1">
+          <div className="bg-white border border-slate-200/60 p-4 rounded-xl space-y-2 shadow-xs">
             <span className="text-[10px] uppercase font-bold text-slate-400">Rental Performance</span>
             <div className="flex justify-between items-center">
               <span className="text-lg font-black text-slate-900">{details.scores.rental.toFixed(1)}/10</span>
               <span className="text-xs text-soft-green font-bold">{details.rentalYield.toFixed(1)}% Yield</span>
             </div>
           </div>
-          <div className="border border-slate-200 p-4 rounded-xl space-y-1">
+          <div className="bg-white border border-slate-200/60 p-4 rounded-xl space-y-2 shadow-xs">
             <span className="text-[10px] uppercase font-bold text-slate-400">Connectivity Rating</span>
             <div className="flex justify-between items-center">
               <span className="text-lg font-black text-slate-900">{details.scores.connectivity.toFixed(1)}/10</span>
@@ -320,13 +315,13 @@ export default function LocalityDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Market performance, Price trends, and Infra */}
-          <div className="lg:col-span-8 space-y-8">
+          <div className="lg:col-span-8 space-y-8 text-left">
             
             {/* Price Trend Chart preview */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-4">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] shadow-premium space-y-4">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-1.5 border-b border-slate-100 pb-3">
                 <TrendingUp size={18} className="text-trust-blue" />
-                Price Trend History (per Sq Ft)
+                Registry Transaction Price History (per Sq Ft)
               </h3>
               
               <div className="h-44 flex items-end justify-between pt-6 border-b border-slate-200 pb-2">
@@ -335,9 +330,9 @@ export default function LocalityDetailPage() {
                   const pct = (trend.val / maxVal) * 100;
                   return (
                     <div key={trend.year} className="flex flex-col items-center w-12 space-y-2">
-                      <span className="text-[10px] font-bold text-slate-500">{formatCurrency(trend.val)}</span>
+                      <span className="text-[9px] font-bold text-slate-500">{formatCurrency(trend.val)}</span>
                       <div
-                        className="w-8 bg-trust-blue rounded-t"
+                        className="w-8 bg-trust-blue rounded-t transition-all duration-500"
                         style={{ height: `${pct * 0.8}px`, minHeight: '10px' }}
                       />
                       <span className="text-xs font-bold text-slate-600">{trend.year}</span>
@@ -345,86 +340,86 @@ export default function LocalityDetailPage() {
                   );
                 })}
               </div>
-              <p className="text-xs text-slate-400 italic">Values represent median registry sale values indexed from quarter tracking reports.</p>
+              <p className="text-[10px] text-slate-400 italic">Median values compiled from state registrar database audits.</p>
             </div>
 
             {/* Infrastructure Highlights */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-4">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] shadow-premium space-y-4">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-1.5 border-b border-slate-100 pb-3">
                 <Building size={18} className="text-trust-blue" />
-                Infrastructure & Amenities Rating
+                Infrastructure & Public Utilities Assessment
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-700 font-semibold">
                 <div className="space-y-1">
-                  <span className="font-bold text-slate-500 block uppercase text-[10px]">Road Quality</span>
-                  <p className="font-medium text-slate-900">{details.infra.roads}</p>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Road Network Quality</span>
+                  <p className="text-slate-900 font-bold">{details.infra.roads}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="font-bold text-slate-500 block uppercase text-[10px]">Metro & Bus Access</span>
-                  <p className="font-medium text-slate-900">{details.infra.metro}</p>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Metro & Transit Hub Access</span>
+                  <p className="text-slate-900 font-bold">{details.infra.metro}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="font-bold text-slate-500 block uppercase text-[10px]">Commercial & Malls</span>
-                  <p className="font-medium text-slate-900">{details.infra.commercial}</p>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Commercial Hubs</span>
+                  <p className="text-slate-900 font-bold">{details.infra.commercial}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="font-bold text-slate-500 block uppercase text-[10px]">Nearby Schools</span>
-                  <p className="font-medium text-slate-900">{details.infra.schools}</p>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Academic Coverage</span>
+                  <p className="text-slate-900 font-bold">{details.infra.schools}</p>
                 </div>
                 <div className="space-y-1 sm:col-span-2 border-t border-slate-100 pt-3">
-                  <span className="font-bold text-slate-500 block uppercase text-[10px]">Hospitals & Medical Infrastructure</span>
-                  <p className="font-medium text-slate-900">{details.infra.hospitals}</p>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Medical Utilities</span>
+                  <p className="text-slate-900 font-bold">{details.infra.hospitals}</p>
                 </div>
               </div>
             </div>
 
             {/* Connectivity text */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-2 bg-slate-50">
-              <h3 className="text-xs uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+            <div className="bg-slate-900 text-white p-6 rounded-[24px] space-y-2 relative overflow-hidden border border-slate-800">
+              <h3 className="text-[10px] uppercase font-bold tracking-widest text-slate-400 flex items-center gap-1.5 relative z-10">
                 <Compass size={14} className="text-trust-blue" />
                 Connectivity Assessment
               </h3>
-              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+              <p className="text-sm text-slate-300 leading-relaxed font-semibold relative z-10">
                 {details.connectivityText}
               </p>
             </div>
           </div>
 
           {/* Pros, Cons, Opportunities, Available listings */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-6 text-left">
             
             {/* Investment evaluation */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-4">
-              <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-1">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] shadow-premium space-y-4">
+              <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-1.5">
                 <Info size={16} className="text-trust-blue" />
-                Decision Evaluation
+                Investment Recommendation
               </h3>
               
-              <div className="space-y-3 text-xs text-slate-700">
+              <div className="space-y-3.5 text-xs text-slate-700 font-semibold">
                 <div className="space-y-1.5">
-                  <span className="text-soft-green font-bold block uppercase text-[10px]">Pros / Growth Drivers:</span>
-                  <ul className="list-disc pl-4 space-y-1">
+                  <span className="text-soft-green font-bold block uppercase text-[9px]">Pros / Growth Catalyst:</span>
+                  <ul className="list-disc pl-4 space-y-1 font-normal text-slate-600">
                     {details.pros.map((pro, i) => <li key={i}>{pro}</li>)}
                   </ul>
                 </div>
                 <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                  <span className="text-slate-500 font-bold block uppercase text-[10px]">Cons / Trade-offs:</span>
-                  <ul className="list-disc pl-4 space-y-1">
+                  <span className="text-slate-400 font-bold block uppercase text-[9px]">Cons / Trade-offs:</span>
+                  <ul className="list-disc pl-4 space-y-1 font-normal text-slate-600">
                     {details.cons.map((con, i) => <li key={i}>{con}</li>)}
                   </ul>
                 </div>
                 {details.risks.length > 0 && (
                   <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                    <span className="text-red-500 font-bold block uppercase text-[10px]">Risk Factors:</span>
-                    <ul className="list-disc pl-4 space-y-1">
+                    <span className="text-red-500 font-bold block uppercase text-[9px]">Risk Factors:</span>
+                    <ul className="list-disc pl-4 space-y-1 font-normal text-slate-600">
                       {details.risks.map((risk, i) => <li key={i}>{risk}</li>)}
                     </ul>
                   </div>
                 )}
                 {details.opportunities.length > 0 && (
                   <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                    <span className="text-trust-blue font-bold block uppercase text-[10px]">Strategic Opportunities:</span>
-                    <ul className="list-disc pl-4 space-y-1">
+                    <span className="text-trust-blue font-bold block uppercase text-[9px]">Appreciation Opportunities:</span>
+                    <ul className="list-disc pl-4 space-y-1 font-normal text-slate-600">
                       {details.opportunities.map((opp, i) => <li key={i}>{opp}</li>)}
                     </ul>
                   </div>
@@ -433,23 +428,23 @@ export default function LocalityDetailPage() {
             </div>
 
             {/* Related Listings */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-4">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] shadow-premium space-y-4">
               <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
-                Available Listings in {details.name}
+                Active Listings in {details.name}
               </h3>
               {properties.length === 0 ? (
-                <p className="text-xs text-slate-400">No properties actively cataloged in this area. Check neighboring sectors.</p>
+                <p className="text-xs text-slate-400 italic">No properties actively cataloged in this area. Check neighboring sectors.</p>
               ) : (
                 <div className="space-y-3">
                   {properties.slice(0, 3).map((prop) => (
                     <Link
                       key={prop.id}
                       href={`/properties/${prop.id}`}
-                      className="block p-2 border border-slate-100 hover:border-trust-blue rounded-lg bg-slate-50 hover:bg-white transition-colors"
+                      className="block p-3 border border-slate-100 hover:border-trust-blue rounded-xl bg-slate-50 hover:bg-white transition-colors"
                     >
                       <h4 className="font-bold text-slate-800 text-xs truncate">{prop.name}</h4>
-                      <p className="text-[10px] text-slate-500">{prop.type} • {prop.area} Sq Ft</p>
-                      <div className="flex justify-between items-center mt-1 pt-1.5 border-t border-slate-100/50">
+                      <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{prop.type} • {prop.area} Sq Ft</p>
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-200/40">
                         <span className="font-extrabold text-trust-blue text-xs">
                           {prop.price >= 10000000 ? `₹${(prop.price / 10000000).toFixed(2)} Cr` : `₹${(prop.price / 100000).toFixed(1)} L`}
                         </span>

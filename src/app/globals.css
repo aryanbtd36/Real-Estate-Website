@@ -2,15 +2,17 @@
 
 :root {
   --background: #F6F8FB;
-  --foreground: #0f172a;
+  --foreground: #0F172A;
   
-  --trust-blue: #0b4c8c;
-  --trust-blue-hover: #083c70;
-  --soft-green: #10b981;
+  --trust-blue: #0B4C8C;
+  --trust-blue-hover: #083C70;
+  --soft-green: #10B981;
   --soft-green-hover: #059669;
-  --light-gray: #f8fafc;
-  --slate-gray: #64748b;
-  --border-color: #e2e8f0;
+  --deep-navy: #0F172A;
+  --slate-bg: #F6F8FB;
+  --light-gray: #F8FAFC;
+  --slate-gray: #475569;
+  --border-color: rgba(15, 23, 42, 0.08);
 }
 
 @theme inline {
@@ -21,6 +23,8 @@
   --color-trust-blue-hover: var(--trust-blue-hover);
   --color-soft-green: var(--soft-green);
   --color-soft-green-hover: var(--soft-green-hover);
+  --color-deep-navy: var(--deep-navy);
+  --color-slate-bg: var(--slate-bg);
   --color-light-gray: var(--light-gray);
   --color-slate-gray: var(--slate-gray);
   --color-border-color: var(--border-color);
@@ -35,30 +39,65 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Animations */
 @keyframes float-slow {
   0%, 100% {
     transform: translateY(0px) scale(1);
   }
   50% {
-    transform: translateY(-15px) scale(1.03);
+    transform: translateY(-12px) scale(1.02);
   }
 }
 
 @keyframes float-reverse {
   0%, 100% {
-    transform: translateY(0px) scale(1.03);
+    transform: translateY(0px) scale(1.02);
   }
   50% {
-    transform: translateY(15px) scale(1);
+    transform: translateY(12px) scale(1);
   }
 }
 
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes grid-drift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 32px 32px;
+  }
+}
+
+@keyframes radar-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Utilities */
 @utility animate-float-slow {
-  animation: float-slow 8s ease-in-out infinite;
+  animation: float-slow 7s ease-in-out infinite;
 }
 
 @utility animate-float-rev {
-  animation: float-reverse 10s ease-in-out infinite;
+  animation: float-reverse 9s ease-in-out infinite;
+}
+
+@utility animate-pulse-soft {
+  animation: pulse-soft 4s ease-in-out infinite;
 }
 
 @utility grid-pattern {
@@ -66,12 +105,60 @@ body {
     linear-gradient(to right, rgba(11, 76, 140, 0.04) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(11, 76, 140, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
+  animation: grid-drift 30s linear infinite;
+}
+
+@utility dark-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
+  animation: grid-drift 30s linear infinite;
 }
 
 @utility glass-panel {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px) saturate(120%);
-  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+@utility glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.02);
+  border-radius: 24px;
+}
 
+@utility dark-glass-card {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(24px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  border-radius: 24px;
+}
+
+@utility shadow-premium {
+  box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.02);
+}
+
+@utility shadow-premium-hover {
+  box-shadow: 0 20px 50px -12px rgba(11, 76, 140, 0.08), 0 1px 4px rgba(11, 76, 140, 0.03);
+}
+
+@utility radar-sweep-active {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, rgba(16, 185, 129, 0.15) 0deg, rgba(16, 185, 129, 0) 90deg, transparent 360deg);
+    animation: radar-sweep 6s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+}

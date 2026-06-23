@@ -10,12 +10,11 @@ import {
   Maximize2,
   Compass,
   CheckCircle2,
-  ListFilter,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
-  Map
+  Map,
+  Sparkles
 } from 'lucide-react';
 
 const PropertyViewMap = dynamic(() => import('@/components/property-view-map-wrapper'), { ssr: false });
@@ -203,28 +202,29 @@ export default function PlotsCatalogPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased pb-12">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased pb-16">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-6 pt-24 space-y-6">
+      <div className="max-w-7xl mx-auto px-6 pt-24 space-y-8">
         {/* Header */}
-        <div className="border-b border-slate-100 pb-4">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Plots & Land Discovery</h1>
-          <p className="text-sm text-slate-500 mt-1">Discover residential plots, layouts, and zoned tracts with government registry validations.</p>
+        <div className="border-b border-slate-200/60 pb-6 text-left">
+          <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Asset class discovery</span>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mt-1">Verified Land & Plot Registry</h1>
+          <p className="text-sm text-slate-500 mt-1.5 font-medium">Browse boundary-surveyed plots and vacant land listings validated by state registry office audits.</p>
         </div>
 
         {/* Search & Sticky Filters Bar */}
-        <div className="sticky top-[60px] z-30 bg-white border border-slate-200 p-4 rounded-xl shadow-md flex flex-wrap gap-4 items-center">
+        <div className="sticky top-[68px] z-30 bg-white/95 backdrop-blur-md border border-slate-200/60 p-4 rounded-[20px] shadow-premium flex flex-wrap gap-4 items-center">
           <div className="relative flex-1 min-w-[200px]">
             <input
               type="text"
-              placeholder="Search plots by keyword, sector..."
+              placeholder="Search plots by neighborhood or keyword..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full bg-slate-50 border border-slate-200 p-2.5 pl-9 rounded-lg text-xs outline-none focus:border-trust-blue text-slate-700"
+              className="w-full bg-slate-50 border border-slate-200 p-2.5 pl-9 rounded-xl text-xs outline-none focus:border-trust-blue text-slate-700 font-medium"
             />
             <Search className="absolute left-3 top-3 text-slate-400" size={14} />
           </div>
@@ -236,7 +236,7 @@ export default function PlotsCatalogPage() {
                 setFilterLocation(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-medium"
+              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-semibold cursor-pointer"
             >
               <option value="">All Areas</option>
               <option value="gomti">Gomti Nagar</option>
@@ -254,7 +254,7 @@ export default function PlotsCatalogPage() {
                 setFilterBudget(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-medium"
+              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-semibold cursor-pointer"
             >
               <option value="">No Budget Limit</option>
               <option value="3000000">Under ₹30 Lakh</option>
@@ -269,7 +269,7 @@ export default function PlotsCatalogPage() {
                 setFilterMinArea(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-medium"
+              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-semibold cursor-pointer"
             >
               <option value="">Any Size</option>
               <option value="1000">1000+ Sq Ft</option>
@@ -281,7 +281,7 @@ export default function PlotsCatalogPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-medium"
+              className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs outline-none text-slate-700 font-semibold cursor-pointer"
             >
               <option value="price-asc">Price: Low to High</option>
               <option value="price-desc">Price: High to Low</option>
@@ -293,16 +293,16 @@ export default function PlotsCatalogPage() {
         {/* Catalog grid and Split Map layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Listings side */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-6 text-left">
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-64 bg-slate-50 border border-slate-100 rounded-xl animate-pulse" />
+                  <div key={i} className="h-[360px] bg-white border border-slate-200/60 rounded-[24px] animate-pulse" />
                 ))}
               </div>
             ) : paginated.length === 0 ? (
-              <div className="p-12 text-center bg-slate-50 border border-slate-200 rounded-xl">
-                <Compass className="text-slate-400 mx-auto mb-3" size={32} />
+              <div className="p-12 text-center bg-white border border-slate-200/60 rounded-[24px] shadow-premium">
+                <Compass className="text-slate-300 mx-auto mb-3" size={36} />
                 <h3 className="font-bold text-slate-900 text-lg">No matching plots found</h3>
                 <p className="text-sm text-slate-500 mt-1">Try expanding your budget parameters or removing location filters.</p>
               </div>
@@ -313,44 +313,45 @@ export default function PlotsCatalogPage() {
                     <div
                       key={plot.id}
                       onClick={() => setSelectedProp(plot)}
-                      className={`cursor-pointer bg-white border rounded-xl overflow-hidden shadow-sm transition-all flex flex-col justify-between h-[360px] ${
+                      className={`cursor-pointer bg-white border rounded-[24px] overflow-hidden shadow-premium hover:shadow-premium-hover transition-all flex flex-col justify-between h-[360px] ${
                         selectedProp?.id === plot.id
                           ? 'border-trust-blue ring-1 ring-trust-blue/30'
-                          : 'border-slate-100 hover:border-slate-300'
+                          : 'border-slate-200/60 hover:border-slate-300'
                       }`}
                     >
                       <div className="relative h-44 bg-slate-100">
                         <img
-                          src={plot.images ? plot.images.split(',')[0] : 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&auto=format&fit=crop&q=80'}
+                          src={plot.images ? plot.images.split(',')[0] : 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop&q=80'}
                           alt={plot.name}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute top-3 left-3 bg-soft-green text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow flex items-center gap-1">
+                        <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow flex items-center gap-1 border border-emerald-400/25">
                           <CheckCircle2 size={10} />
-                          Verified
+                          Registry Verified
                         </div>
-                        <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] px-2.5 py-1 rounded font-medium">
+                        <div className="absolute bottom-3 right-3 bg-slate-950/70 text-white text-[10px] px-2.5 py-1 rounded font-bold backdrop-blur-xs">
                           {plot.area} {plot.areaUnit || 'Sq Ft'}
                         </div>
                       </div>
-                      <div className="p-4 flex-1 flex flex-col justify-between">
+                      <div className="p-5 flex-1 flex flex-col justify-between">
                         <div>
-                          <h3 className="font-bold text-slate-900 text-sm line-clamp-1">{plot.name}</h3>
-                          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                          <span className="text-[9px] uppercase font-black tracking-widest text-slate-400">Plot Listing</span>
+                          <h3 className="font-bold text-slate-900 text-sm mt-1.5 line-clamp-1">{plot.name}</h3>
+                          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1 font-medium">
                             <MapPin size={12} className="text-slate-400 shrink-0" />
                             <span className="truncate">{plot.location}</span>
                           </p>
                         </div>
                         <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                           <div>
-                            <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Tract Price</span>
+                            <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block">Appraised Price</span>
                             <span className="text-base font-extrabold text-trust-blue">{formatPrice(plot.price)}</span>
                           </div>
                           <Link
                             href={`/properties/${plot.id}`}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-trust-blue hover:text-white rounded text-xs font-semibold text-slate-700 transition-colors"
+                            className="px-3.5 py-1.5 bg-slate-50 hover:bg-trust-blue hover:text-white rounded-lg text-xs font-bold text-slate-700 transition-colors border border-slate-200/40"
                           >
-                            Details
+                            Prospectus
                           </Link>
                         </div>
                       </div>
@@ -360,11 +361,11 @@ export default function PlotsCatalogPage() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-4 pt-6 border-t border-slate-100">
+                  <div className="flex items-center justify-center gap-4 pt-6 border-t border-slate-200/60">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                      className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer"
                     >
                       <ChevronLeft size={16} />
                     </button>
@@ -374,7 +375,7 @@ export default function PlotsCatalogPage() {
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                      className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer"
                     >
                       <ChevronRight size={16} />
                     </button>
@@ -385,20 +386,20 @@ export default function PlotsCatalogPage() {
           </div>
 
           {/* Map Side */}
-          <div className="lg:col-span-5 lg:sticky lg:top-[140px] bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4 shadow-sm">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-2.5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+          <div className="lg:col-span-5 lg:sticky lg:top-[140px] bg-white p-4 border border-slate-200/60 rounded-[24px] space-y-4 shadow-premium text-left">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Map size={14} className="text-trust-blue" />
-                GIS Plot Mapping
+                GIS Spatial Mapping
               </h3>
               {selectedProp && (
-                <span className="text-[10px] text-slate-400 font-mono">
-                  Pin: {selectedProp.name.split(' ')[0]}
+                <span className="text-[9px] text-slate-400 font-mono">
+                  Coords: {selectedProp.latitude?.toFixed(4)}, {selectedProp.longitude?.toFixed(4)}
                 </span>
               )}
             </div>
 
-            <div className="h-[360px] md:h-[420px]">
+            <div className="h-[360px] md:h-[420px] rounded-xl overflow-hidden border border-slate-200/60">
               {selectedProp ? (
                 <PropertyViewMap
                   latitude={selectedProp.latitude}
@@ -406,19 +407,19 @@ export default function PlotsCatalogPage() {
                   boundary={selectedProp.boundary}
                 />
               ) : (
-                <div className="w-full h-full bg-slate-200 rounded-lg flex items-center justify-center text-slate-400">
-                  Select a plot to view boundary details
+                <div className="w-full h-full bg-slate-100 rounded-lg flex items-center justify-center text-slate-400">
+                  Select a plot listing to survey boundary limits
                 </div>
               )}
             </div>
 
             {selectedProp && (
-              <div className="bg-white p-3 border border-slate-200 rounded-lg text-xs space-y-1.5 shadow-sm">
+              <div className="bg-slate-50 p-4 border border-slate-200/60 rounded-xl text-xs space-y-1.5 shadow-2xs">
                 <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{selectedProp.name}</h4>
-                <p className="text-slate-500 text-[11px]">{selectedProp.location}</p>
-                <div className="flex justify-between items-center pt-2">
-                  <span className="font-extrabold text-trust-blue">{formatPrice(selectedProp.price)}</span>
-                  <span className="text-[10px] bg-soft-green/10 text-soft-green font-bold px-2 py-0.5 rounded uppercase">
+                <p className="text-slate-500 text-[11px] font-medium">{selectedProp.location}</p>
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200/40">
+                  <span className="font-extrabold text-trust-blue text-sm">{formatPrice(selectedProp.price)}</span>
+                  <span className="text-[9px] bg-emerald-500/10 text-emerald-600 font-bold px-2 py-0.5 rounded-full uppercase border border-emerald-500/20">
                     Decision Verified
                   </span>
                 </div>

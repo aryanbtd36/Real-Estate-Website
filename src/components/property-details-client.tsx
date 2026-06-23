@@ -24,9 +24,13 @@ import {
   ChevronRight as ChevronRightIcon,
   Navigation,
   ExternalLink,
-  BedDouble
+  BedDouble,
+  Sparkles,
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import PropertyViewMap from '@/components/property-view-map-wrapper';
+import { Turnstile } from '@/components/turnstile';
 
 interface PropertyImage {
   id: string;
@@ -83,6 +87,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [leadLoading, setLeadLoading] = useState(false);
   const [leadError, setLeadError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   // Math for EMI
   const calculateEMI = () => {
@@ -94,36 +99,6 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
     return isNaN(emi) ? 0 : Math.round(emi);
   };
   const emiValue = calculateEMI();
-
-  // Inquiry submission handler
-  const handleLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLeadLoading(true);
-    setLeadError('');
-    try {
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: leadName,
-          email: leadEmail,
-          phone: leadPhone,
-          message: leadMessage,
-          // Bypassing turnstile for simple client post or mock
-          turnstileToken: 'bypass'
-        })
-      });
-      if (res.ok) {
-        setLeadSubmitted(true);
-      } else {
-        setLeadError('Failed to log inquiry. Please try again.');
-      }
-    } catch (err) {
-      setLeadError('Network connection issue.');
-    } finally {
-      setLeadLoading(false);
-    }
-  };
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
@@ -140,6 +115,43 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
     ? `https://www.google.com/maps/dir/?api=1&destination=${property.latitude},${property.longitude}`
     : '#';
 
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLeadError('');
+
+    if (!turnstileToken) {
+      setLeadError('Please complete the Turnstile bot verification check.');
+      return;
+    }
+
+    setLeadLoading(true);
+
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: leadName,
+          email: leadEmail,
+          phone: leadPhone,
+          message: leadMessage,
+          turnstileToken
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setLeadError(data.error || 'Failed to submit inquiry.');
+      } else {
+        setLeadSubmitted(true);
+      }
+    } catch (err) {
+      setLeadError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLeadLoading(false);
+    }
+  };
+
   // Nearby Essentials Mock
   const NEARBY_ESSENTIALS = [
     { type: 'School', name: 'Spring Dale Academy', distance: '1.2 km', rating: 'A' },
@@ -149,47 +161,53 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
   ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased pb-16">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased pb-20">
       <div className="max-w-7xl mx-auto px-6 pt-24 space-y-8">
         
         {/* Back Link */}
         <Link
           href={`/${property.type.toLowerCase() === 'plot' || property.type.toLowerCase() === 'lot' ? 'plots' : property.type.toLowerCase() === 'villa' || property.type.toLowerCase() === 'duplex' ? 'residencies' : 'apartments'}`}
-          className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-trust-blue transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-trust-blue transition-all"
         >
-          <ArrowLeft size={14} />
+          <ArrowLeft size={12} />
           <span>Back to Catalog</span>
         </Link>
 
-        {/* Title Block */}
-        <div className="border-b border-slate-100 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <div className="space-y-2">
-            <span className="px-2.5 py-1 bg-trust-blue/10 border border-trust-blue/20 rounded-full text-xs font-semibold text-trust-blue uppercase tracking-wider">
-              {property.type}
-            </span>
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mt-2">
+        {/* Title Block formatted as Investment Dossier Header */}
+        <div className="bg-white rounded-[24px] p-6 border border-slate-200/60 shadow-premium flex flex-col md:flex-row justify-between items-start md:items-end gap-6 text-left">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 bg-trust-blue/10 border border-trust-blue/20 rounded-full text-[10px] font-bold text-trust-blue uppercase tracking-wider">
+                {property.type}
+              </span>
+              <span className="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle2 size={10} />
+                RERA Registered
+              </span>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
               {property.name}
             </h1>
-            <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-2">
-              <MapPin size={16} className="text-slate-400" />
+            <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
+              <MapPin size={14} className="text-slate-400" />
               <span>{property.location || `${property.address}, ${property.city}, ${property.state}`}</span>
             </p>
           </div>
-          <div className="text-left md:text-right">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Decision Valuation</span>
+          <div className="text-left md:text-right border-l md:border-l-0 md:border-r border-slate-100 pl-4 md:pl-0 md:pr-4">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Indexed Valuation</span>
             <span className="text-3xl font-black text-trust-blue block mt-1">{formatPrice(property.price)}</span>
-            <span className="text-[9px] uppercase font-bold text-soft-green mt-1">Registry Verified</span>
+            <span className="text-[9px] uppercase font-extrabold text-slate-500 block mt-1">Registry Verified</span>
           </div>
         </div>
 
         {/* Two column detail layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Left Column: Image, Stats, Overview, Calc */}
+          {/* Left Column: Image, Specs, Overview, Calc */}
           <div className="lg:col-span-8 space-y-8">
             
             {/* Gallery Image */}
-            <div className="aspect-[16/9] bg-slate-100 rounded-xl overflow-hidden relative shadow-sm border border-slate-200">
+            <div className="aspect-[16/9] bg-slate-100 rounded-[24px] overflow-hidden relative shadow-premium border border-slate-200/60">
               {coverImage ? (
                 <img
                   src={coverImage}
@@ -205,15 +223,15 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
             </div>
 
             {/* Spec grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
               {[
                 { label: 'Bedrooms', val: property.bedrooms > 0 ? `${property.bedrooms} BHK` : 'Land Plot', icon: BedDouble },
                 { label: 'Bathrooms', val: property.bathrooms > 0 ? `${property.bathrooms} Baths` : 'Zoned Land', icon: Activity },
                 { label: 'Area Size', val: `${property.area.toLocaleString()} ${property.areaUnit || 'Sq Ft'}`, icon: Maximize2 },
                 { label: 'Floor Level', val: property.floor > 0 ? `Floor ${property.floor}` : 'Ground level', icon: Compass }
               ].map((spec, idx) => (
-                <div key={idx} className="border border-slate-200 p-4 rounded-xl text-center space-y-2 bg-slate-50">
-                  <spec.icon size={20} className="text-trust-blue mx-auto" />
+                <div key={idx} className="border border-slate-200/60 p-4 rounded-xl space-y-2 bg-white shadow-xs">
+                  <spec.icon size={18} className="text-trust-blue" />
                   <div>
                     <span className="text-[9px] uppercase font-bold text-slate-400 block">{spec.label}</span>
                     <span className="text-xs font-bold text-slate-800 mt-0.5 block">{spec.val}</span>
@@ -223,25 +241,66 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
             </div>
 
             {/* Overview / Description */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-3 bg-white">
-              <h3 className="text-xs uppercase font-bold text-slate-500 tracking-wider">Property Overview</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-3 shadow-premium text-left">
+              <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
+                <FileText size={14} className="text-trust-blue" />
+                Property Overview
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed font-normal">
                 {property.description || 'Verified property description is compiling from RERA filings.'}
               </p>
             </div>
 
+            {/* Decision Confidence Indicators / Registry check list */}
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-4 shadow-premium text-left">
+              <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                <ShieldCheck size={16} className="text-soft-green" />
+                Aura Decision Confidence Indicators
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
+                <div className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <CheckCircle2 size={16} className="text-soft-green shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-slate-900 block">Registry Title Audit</span>
+                    <p className="text-[11px] text-slate-500 font-normal mt-0.5">Deeds match local registry database logs. Free of legal encumbrances.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <CheckCircle2 size={16} className="text-soft-green shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-slate-900 block">Physical GPS Boundary Check</span>
+                    <p className="text-[11px] text-slate-500 font-normal mt-0.5">On-site coordinates surveyed and boundary limits confirmed matching RERA filings.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <CheckCircle2 size={16} className="text-soft-green shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-slate-900 block">Direct Owner Representation</span>
+                    <p className="text-[11px] text-slate-500 font-normal mt-0.5">Direct communication setup bypassing broker pricing commission layers.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <CheckCircle2 size={16} className="text-soft-green shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-slate-900 block">Historical Index Match</span>
+                    <p className="text-[11px] text-slate-500 font-normal mt-0.5">Pricing conforms within standard deviations of neighborhood pricing CAGR indices.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Inline EMI Estimate Calculator */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-4 bg-white">
-              <h3 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-4 shadow-premium text-left">
+              <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
                 <Calculator size={14} className="text-trust-blue" />
-                Affordability Preview — EMI Estimate
+                Affordability Preview — EMI Calculator
               </h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex justify-between text-[11px] font-bold text-slate-500">
                     <span>Down Payment</span>
-                    <span>₹{downPayment.toLocaleString()}</span>
+                    <span className="text-slate-800">₹{downPayment.toLocaleString()}</span>
                   </div>
                   <input
                     type="range"
@@ -254,10 +313,10 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex justify-between text-[11px] font-bold text-slate-500">
                     <span>Interest Rate</span>
-                    <span>{interestRate}%</span>
+                    <span className="text-slate-800">{interestRate}%</span>
                   </div>
                   <input
                     type="range"
@@ -270,10 +329,10 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex justify-between text-[11px] font-bold text-slate-500">
                     <span>Loan Tenure</span>
-                    <span>{tenureYears} Years</span>
+                    <span className="text-slate-800">{tenureYears} Years</span>
                   </div>
                   <input
                     type="range"
@@ -287,28 +346,31 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between border border-slate-100">
+              <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between border border-slate-100 mt-2">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Estimated monthly EMI</span>
-                  <span className="text-2xl font-black text-trust-blue">₹{emiValue.toLocaleString()} / mo</span>
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Monthly Loan Repayment</span>
+                  <span className="text-xl font-black text-trust-blue">₹{emiValue.toLocaleString()} / mo</span>
                 </div>
-                <div className="text-right text-[10px] text-slate-400">
-                  <span>Loan Amount: ₹{Math.max(0, property.price - downPayment).toLocaleString()}</span>
+                <div className="text-right text-[10px] text-slate-500 font-semibold">
+                  <span>Loan Principal: ₹{Math.max(0, property.price - downPayment).toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
             {/* Nearby Essentials */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-4 bg-white">
-              <h3 className="text-xs uppercase font-bold text-slate-500 tracking-wider">Nearby Essentials</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-4 shadow-premium text-left">
+              <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                <Compass size={14} className="text-trust-blue" />
+                Transit & Neighborhood Infrastructure
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
                 {NEARBY_ESSENTIALS.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-3 border border-slate-100 rounded-lg bg-slate-50">
+                  <div key={idx} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl bg-slate-50">
                     <div className="space-y-0.5">
                       <span className="text-[9px] uppercase font-bold text-slate-400 block">{item.type}</span>
                       <span className="font-bold text-slate-800">{item.name}</span>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 pl-4 border-l border-slate-200/60">
                       <span className="font-bold text-slate-700 block">{item.distance}</span>
                       <span className="text-[9px] text-soft-green font-bold uppercase">{item.rating} Grade</span>
                     </div>
@@ -321,50 +383,50 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
           {/* Right Column: Investment Snapshot, Map, Leads Form */}
           <div className="lg:col-span-4 space-y-6">
             
-            {/* Investment Snapshot */}
-            <div className="border border-slate-200 p-6 rounded-xl space-y-4 bg-white shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-1">
+            {/* Investment Snapshot Sidebar */}
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-4 shadow-premium text-left">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-1.5">
                 <TrendingUp size={16} className="text-soft-green" />
                 Investment Snapshot
               </h3>
               
-              <div className="space-y-3 text-xs">
+              <div className="space-y-3.5 text-xs font-semibold text-slate-600">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Expected Yield</span>
+                  <span className="text-slate-400 font-normal">Expected Yield</span>
                   <span className="font-bold text-soft-green">4.2% - 4.8% Yield</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Growth Potential</span>
-                  <span className="font-bold text-trust-blue">High (Locality Index: A)</span>
+                  <span className="text-slate-400 font-normal">Appreciation Rating</span>
+                  <span className="font-bold text-trust-blue">High (CAGR Index: A+)</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Buyer Demand Level</span>
+                  <span className="text-slate-400 font-normal">Buyer Demand</span>
                   <span className="font-bold text-slate-800">Active Search corridors</span>
                 </div>
-                <div className="flex justify-between items-center pt-2.5 border-t border-slate-100">
-                  <span className="text-slate-500 font-medium">Verification Status</span>
-                  <span className="px-2 py-0.5 bg-soft-green/10 text-soft-green font-bold rounded text-[9px] uppercase">
-                    100% Verified
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-normal">RERA Verification</span>
+                  <span className="px-2 py-0.5 bg-soft-green/10 text-soft-green font-bold rounded text-[9px] uppercase tracking-wider border border-soft-green/20">
+                    100% Checked
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Leaflet GIS Map */}
-            <div className="border border-slate-200 p-4 rounded-xl bg-slate-50 shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+            <div className="bg-white border border-slate-200/60 p-4 rounded-[24px] shadow-premium space-y-3 text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                   <Map size={14} className="text-trust-blue" />
                   GIS Property Map
                 </h3>
                 {property.latitude && property.longitude && (
                   <span className="text-[9px] text-slate-400 font-mono">
-                    GPS coords: {property.latitude.toFixed(4)}, {property.longitude.toFixed(4)}
+                    Coords: {property.latitude.toFixed(4)}, {property.longitude.toFixed(4)}
                   </span>
                 )}
               </div>
 
-              <div className="h-[240px]">
+              <div className="h-[240px] rounded-xl overflow-hidden border border-slate-200/60">
                 <PropertyViewMap
                   latitude={property.latitude}
                   longitude={property.longitude}
@@ -378,7 +440,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                     href={googleMapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 py-2 px-3 bg-white border border-slate-200 hover:border-trust-blue hover:text-trust-blue text-slate-700 rounded text-[10px] font-bold uppercase transition-colors"
+                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-50 border border-slate-200 hover:border-trust-blue hover:text-trust-blue text-slate-700 rounded-lg text-[9px] font-bold uppercase transition-all"
                   >
                     <ExternalLink size={10} />
                     Open Google Maps
@@ -387,7 +449,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                     href={directionsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 py-2 px-3 bg-trust-blue text-white hover:bg-trust-blue-hover rounded text-[10px] font-bold uppercase transition-colors"
+                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-trust-blue text-white hover:bg-trust-blue-hover rounded-lg text-[9px] font-bold uppercase transition-all"
                   >
                     <Navigation size={10} />
                     Get Directions
@@ -397,9 +459,9 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
             </div>
 
             {/* Inquiry Form */}
-            <div className="border border-slate-200 p-6 rounded-xl bg-white shadow-sm space-y-4">
+            <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] shadow-premium space-y-4 text-left">
               <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2.5">
-                Request Property Paperwork
+                Request verified Paperwork
               </h3>
 
               {leadSubmitted ? (
@@ -407,7 +469,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                   Inquiry logged. Our locality expert will send title validation and tax documents shortly.
                 </div>
               ) : (
-                <form onSubmit={handleLeadSubmit} className="space-y-3 text-xs">
+                <form onSubmit={handleLeadSubmit} className="space-y-3.5 text-xs text-left">
                   {leadError && (
                     <div className="p-2.5 bg-red-100 border border-red-200 text-red-700 rounded text-[11px]">
                       {leadError}
@@ -421,7 +483,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                       required
                       value={leadName}
                       onChange={(e) => setLeadName(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded text-slate-700 outline-none focus:border-trust-blue font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-slate-700 outline-none focus:border-trust-blue font-semibold"
                     />
                   </div>
 
@@ -432,7 +494,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                       required
                       value={leadEmail}
                       onChange={(e) => setLeadEmail(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded text-slate-700 outline-none focus:border-trust-blue font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-slate-700 outline-none focus:border-trust-blue font-semibold"
                     />
                   </div>
 
@@ -443,7 +505,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                       required
                       value={leadPhone}
                       onChange={(e) => setLeadPhone(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded text-slate-700 outline-none focus:border-trust-blue font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-slate-700 outline-none focus:border-trust-blue font-semibold"
                     />
                   </div>
 
@@ -453,14 +515,18 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                       rows={3}
                       value={leadMessage}
                       onChange={(e) => setLeadMessage(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded text-slate-700 outline-none focus:border-trust-blue font-medium resize-none"
+                      className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-slate-700 outline-none focus:border-trust-blue font-semibold resize-none"
                     />
+                  </div>
+
+                  <div className="py-1">
+                    <Turnstile onVerify={setTurnstileToken} onError={() => setTurnstileToken('')} onExpire={() => setTurnstileToken('')} />
                   </div>
 
                   <button
                     type="submit"
                     disabled={leadLoading}
-                    className="w-full py-2.5 bg-trust-blue hover:bg-trust-blue-hover text-white font-bold rounded uppercase tracking-wider text-[10px] transition-colors"
+                    className="w-full py-2.5 bg-trust-blue hover:bg-trust-blue-hover text-white font-bold rounded-lg uppercase tracking-wider text-[10px] transition-colors cursor-pointer"
                   >
                     {leadLoading ? 'Logging inquiry...' : 'Request verified Paperwork'}
                   </button>
@@ -470,9 +536,9 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
           </div>
         </div>
 
-        {/* Recommended properties carousel */}
+        {/* Recommended properties carousel list */}
         {nearby.length > 0 && (
-          <div className="border-t border-slate-100 pt-8 space-y-6">
+          <div className="border-t border-slate-200/60 pt-8 space-y-6 text-left">
             <h3 className="text-xl font-extrabold text-slate-900">Similar Properties in this corridor</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {nearby.map((prop) => {
@@ -481,7 +547,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                   <Link
                     key={prop.id}
                     href={`/properties/${prop.id}`}
-                    className="group block border border-slate-200 rounded-xl overflow-hidden hover:border-trust-blue transition-colors bg-white shadow-sm"
+                    className="group block border border-slate-200/80 rounded-[24px] overflow-hidden hover:border-trust-blue transition-all bg-white shadow-premium hover:shadow-premium-hover"
                   >
                     <div className="h-44 bg-slate-100 relative overflow-hidden">
                       {propImage ? (
@@ -497,17 +563,17 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                         {prop.type}
                       </div>
                     </div>
-                    <div className="p-4 space-y-2">
+                    <div className="p-5 space-y-2">
                       <h4 className="font-bold text-slate-900 text-sm truncate group-hover:text-trust-blue transition-colors">
                         {prop.name}
                       </h4>
-                      <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                      <p className="text-xs text-slate-500 truncate flex items-center gap-1 font-medium">
                         <MapPin size={12} className="text-slate-400 shrink-0" />
                         <span>{prop.location}</span>
                       </p>
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                      <div className="flex justify-between items-center pt-3 border-t border-slate-100 mt-2">
                         <span className="font-extrabold text-trust-blue text-sm">{formatPrice(prop.price)}</span>
-                        <span className="text-[10px] text-slate-400">{prop.area} Sq Ft</span>
+                        <span className="text-[10px] bg-slate-50 px-2 py-0.5 rounded text-slate-500 font-bold">{prop.area} Sq Ft</span>
                       </div>
                     </div>
                   </Link>
