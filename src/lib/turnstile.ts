@@ -7,6 +7,11 @@ export async function verifyTurnstile(token: string, ip?: string): Promise<boole
     return false;
   }
 
+  // Developer testing bypass for local integration tests
+  if (token === '1x0000000000000000000000000000000AA' && process.env.NODE_ENV !== 'production') {
+    return true;
+  }
+
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
   if (!secretKey) {
     console.warn('[SECURITY MONITOR] Turnstile verification failed: TURNSTILE_SECRET_KEY is not defined in environment variables.');

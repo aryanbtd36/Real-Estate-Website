@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Mail, Phone, Calendar, Trash2, Search, Filter, CheckCircle2, AlertCircle, Eye, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminInquiriesPage() {
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'CONTACTED' | 'CLOSED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEW' | 'CONTACTED' | 'WON' | 'LOST'>('ALL');
   const [selectedInquiry, setSelectedInquiry] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -124,9 +125,10 @@ export default function AdminInquiriesPage() {
             className="w-full md:w-44 bg-white border border-slate-200 p-2.5 rounded-lg text-slate-800 text-xs outline-none focus:border-[#0B4C8C] hover:border-slate-350 cursor-pointer h-10 appearance-none text-center font-semibold"
           >
             <option value="ALL">All Statuses</option>
-            <option value="PENDING">Pending</option>
+            <option value="NEW">New</option>
             <option value="CONTACTED">Contacted</option>
-            <option value="CLOSED">Closed</option>
+            <option value="WON">Won</option>
+            <option value="LOST">Lost</option>
           </select>
         </div>
       </div>
@@ -168,11 +170,13 @@ export default function AdminInquiriesPage() {
                         </td>
                         <td className="p-4 sm:p-6">
                           <span className={`inline-block px-2.5 py-0.5 text-[9px] uppercase tracking-wider font-extrabold rounded border shadow-3xs ${
-                            lead.status === 'PENDING'
+                            lead.status === 'NEW'
                               ? 'border-amber-250 bg-amber-50 text-amber-700'
                               : lead.status === 'CONTACTED'
                               ? 'border-blue-200 bg-blue-50 text-[#0B4C8C]'
-                              : 'border-emerald-250 bg-emerald-50 text-emerald-700'
+                              : lead.status === 'WON'
+                              ? 'border-emerald-250 bg-emerald-50 text-emerald-700'
+                              : 'border-red-200 bg-red-50 text-red-700'
                           }`}>
                             {lead.status}
                           </span>
@@ -215,12 +219,20 @@ export default function AdminInquiriesPage() {
             >
               <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                 <h3 className="text-base font-extrabold text-[#0B4C8C] uppercase tracking-wider">Inquiry Details</h3>
-                <button
-                  onClick={() => setSelectedInquiry(null)}
-                  className="text-slate-400 hover:text-slate-650 p-1"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/admin/leads/${selectedInquiry.id}`}
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-[10px] font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1"
+                  >
+                    View CRM Profile
+                  </Link>
+                  <button
+                    onClick={() => setSelectedInquiry(null)}
+                    className="text-slate-400 hover:text-slate-650 p-1"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -268,15 +280,15 @@ export default function AdminInquiriesPage() {
                   <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Workflow Status Actions</label>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      disabled={actionLoading || selectedInquiry.status === 'PENDING'}
-                      onClick={() => handleUpdateStatus(selectedInquiry.id, 'PENDING')}
+                      disabled={actionLoading || selectedInquiry.status === 'NEW'}
+                      onClick={() => handleUpdateStatus(selectedInquiry.id, 'NEW')}
                       className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-extrabold rounded-lg transition-all shadow-3xs ${
-                        selectedInquiry.status === 'PENDING'
+                        selectedInquiry.status === 'NEW'
                           ? 'bg-amber-50 text-amber-700 border border-amber-250'
                           : 'bg-white border border-slate-250 text-slate-500 hover:bg-slate-50'
                       }`}
                     >
-                      Pending
+                      New
                     </button>
                     <button
                       disabled={actionLoading || selectedInquiry.status === 'CONTACTED'}
@@ -290,15 +302,26 @@ export default function AdminInquiriesPage() {
                       Contacted
                     </button>
                     <button
-                      disabled={actionLoading || selectedInquiry.status === 'CLOSED'}
-                      onClick={() => handleUpdateStatus(selectedInquiry.id, 'CLOSED')}
+                      disabled={actionLoading || selectedInquiry.status === 'WON'}
+                      onClick={() => handleUpdateStatus(selectedInquiry.id, 'WON')}
                       className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-extrabold rounded-lg transition-all shadow-3xs ${
-                        selectedInquiry.status === 'CLOSED'
+                        selectedInquiry.status === 'WON'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-250'
                           : 'bg-white border border-slate-250 text-slate-500 hover:bg-slate-50'
                       }`}
                     >
-                      Closed
+                      Won
+                    </button>
+                    <button
+                      disabled={actionLoading || selectedInquiry.status === 'LOST'}
+                      onClick={() => handleUpdateStatus(selectedInquiry.id, 'LOST')}
+                      className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-extrabold rounded-lg transition-all shadow-3xs ${
+                        selectedInquiry.status === 'LOST'
+                          ? 'bg-red-50 text-red-700 border border-red-200'
+                          : 'bg-white border border-slate-250 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      Lost
                     </button>
                   </div>
                 </div>

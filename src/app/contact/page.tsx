@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Navbar } from '@/components/navbar';
+import { Turnstile } from '@/components/turnstile';
 import {
   Mail,
   Phone,
@@ -21,15 +22,53 @@ export default function ContactPage() {
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && email && message) {
-      setSubmitted(true);
-      setName('');
-      setEmail('');
-      setPhone('');
-      setMessage('');
+    setError('');
+
+    if (!name || !email || !message) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError('Please complete the Turnstile bot verification check.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          message,
+          turnstileToken,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to submit inquiry.');
+      } else {
+        setSubmitted(true);
+        setName('');
+        setEmail('');
+        setPhone('');
+        setMessage('');
+        setTurnstileToken('');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,6 +110,11 @@ export default function ContactPage() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+                  {error && (
+                    <div className="p-3 bg-red-550/10 border border-red-500/20 text-red-700 rounded-lg text-xs font-medium">
+                      {error}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-slate-400">Full Name *</label>
@@ -115,14 +159,24 @@ export default function ContactPage() {
                     />
                   </div>
 
+                  <div className="py-1">
+                    <Turnstile
+                      onVerify={setTurnstileToken}
+                      onError={() => setTurnstileToken('')}
+                      onExpire={() => setTurnstileToken('')}
+                    />
+                  </div>
+
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-trust-blue text-white hover:bg-trust-blue-hover rounded-lg font-semibold shadow-sm transition-colors text-xs uppercase tracking-wider"
+                    disabled={loading}
+                    className="px-6 py-2.5 bg-trust-blue text-white hover:bg-trust-blue-hover rounded-lg font-semibold shadow-sm transition-colors text-xs uppercase tracking-wider disabled:opacity-50"
                   >
-                    Submit Inquiry
+                    {loading ? 'Submitting...' : 'Submit Inquiry'}
                   </button>
                 </form>
-              )}
+              )
+}
             </div>
 
             {/* FAQ widget */}

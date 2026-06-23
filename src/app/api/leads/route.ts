@@ -26,6 +26,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // 1.5 Prevent duplicate inquiries within a 2-minute window
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    const existingInquiry = await db.lead.findFirst({
+      where: {
+        email,
+        message,
+        createdAt: {
+          gte: twoMinutesAgo
+        }
+      }
+    });
+
+    if (existingInquiry) {
+      return NextResponse.json(
+        { error: 'Duplicate inquiry detected. Please wait a moment before resubmitting.' },
+        { status: 409 }
+      );
+    }
+
     const lead = await db.lead.create({
       data: {
         name,
@@ -105,6 +124,11 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Missing lead ID or status' }, { status: 400 });
     }
 
+    // Validate that the status is a valid LeadStatus enum member
+    if (!Object.values(LeadStatus).includes(status as LeadStatus)) {
+      return NextResponse.json({ error: `Invalid status value: ${status}` }, { status: 400 });
+    }
+
     const lead = await db.lead.findUnique({ where: { id } });
     if (!lead) {
       return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 });
@@ -117,6 +141,28 @@ export async function PUT(req: Request) {
 
     // Logging & Notification (Decoupled side effects)
     const actorId = (session?.user as any)?.id;
+
+    if (lead.status !== status) {
+      // Record status history inside LeadStatusHistory
+      await db.leadStatusHistory.create({
+        data: {
+          leadId: id,
+          fromStatus: lead.status,
+          toStatus: status as LeadStatus,
+          changedById: actorId,
+        }
+      });
+
+      eventEmitter.emit(EVENTS.LEAD_STATUS_CHANGED, {
+        actorId,
+        leadId: id,
+        name: updated.name,
+        email: updated.email,
+        fromStatus: lead.status,
+        toStatus: status,
+      });
+    }
+
     eventEmitter.emit(EVENTS.INQUIRY_UPDATED, {
       actorId,
       leadId: id,
