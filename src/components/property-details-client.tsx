@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import PropertyViewMap from '@/components/property-view-map-wrapper';
 import { Turnstile } from '@/components/turnstile';
+import { handleImageError, isValidCloudinaryUrl } from '@/lib/images';
 
 interface PropertyImage {
   id: string;
@@ -60,6 +61,9 @@ interface Property {
   amenities: string[];
   imagesRelation: PropertyImage[];
   images: string;
+  videoUrl?: string | null;
+  brochureUrl?: string | null;
+  virtualTourUrl?: string | null;
 }
 
 interface ClientProps {
@@ -69,10 +73,26 @@ interface ClientProps {
 }
 
 export default function PropertyDetailsClient({ property, nearby, sessionUser }: ClientProps) {
-  // Gallery cover state
-  const coverImage = property.imagesRelation?.find(img => img.isCover)?.url || 
-                     property.imagesRelation?.[0]?.url || 
-                     (property.images ? property.images.split(',')[0] : null);
+  // Get all images
+  const allImages = property.imagesRelation && property.imagesRelation.length > 0
+    ? property.imagesRelation.map(img => img.url)
+    : (property.images ? property.images.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+
+  const coverUrl = property.imagesRelation?.find(img => img.isCover)?.url || 
+                   property.imagesRelation?.[0]?.url || 
+                   (property.images ? property.images.split(',')[0] : null);
+  const initialIndex = allImages.indexOf(coverUrl || '') !== -1 ? allImages.indexOf(coverUrl || '') : 0;
+  
+  const [activeImageIndex, setActiveImageIndex] = useState(initialIndex >= 0 ? initialIndex : 0);
+  const activeImageUrl = allImages[activeImageIndex] || null;
+
+  const handlePrev = () => {
+    setActiveImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setActiveImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+  };
 
   // EMI Calculator State
   const [downPayment, setDownPayment] = useState(Math.round(property.price * 0.2));
@@ -206,18 +226,66 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
           {/* Left Column: Image, Specs, Overview, Calc */}
           <div className="lg:col-span-8 space-y-8">
             
-            {/* Gallery Image */}
-            <div className="aspect-[16/9] bg-slate-100 rounded-[24px] overflow-hidden relative shadow-premium border border-slate-200/60">
-              {coverImage ? (
-                <img
-                  src={coverImage}
-                  alt={property.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                  <Maximize2 size={36} />
-                  <span className="text-xs mt-2">No image loaded</span>
+            {/* Gallery Image Carousel */}
+            <div className="space-y-4">
+              <div className="aspect-[16/9] bg-slate-100 rounded-[24px] overflow-hidden relative shadow-premium border border-slate-200/60 group">
+                {activeImageUrl ? (
+                  <>
+                    <img
+                      src={activeImageUrl}
+                      alt={property.name}
+                      className="w-full h-full object-cover transition-all duration-500"
+                      onError={(e) => handleImageError(e, property.type)}
+                    />
+                    {allImages.length > 1 && (
+                      <>
+                        {/* Left Control Chevron */}
+                        <button
+                          type="button"
+                          onClick={handlePrev}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md border border-white/30 text-white rounded-full p-2.5 transition-all hover:scale-105 active:scale-95 opacity-0 group-hover:opacity-100 shadow-lg cursor-pointer"
+                        >
+                          <ChevronLeft size={20} />
+                        </button>
+                        {/* Right Control Chevron */}
+                        <button
+                          type="button"
+                          onClick={handleNext}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md border border-white/30 text-white rounded-full p-2.5 transition-all hover:scale-105 active:scale-95 opacity-0 group-hover:opacity-100 shadow-lg cursor-pointer"
+                        >
+                          <ChevronRight size={20} />
+                        </button>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-100">
+                    <Maximize2 size={36} />
+                    <span className="text-xs mt-2">No image loaded</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnails Row */}
+              {allImages.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto py-2 px-1 scrollbar-thin scrollbar-thumb-slate-200">
+                  {allImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`w-20 h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all relative ${
+                        activeImageIndex === idx ? 'border-trust-blue scale-102 shadow-md' : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => handleImageError(e, property.type)}
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -250,6 +318,76 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                 {property.description || 'Verified property description is compiling from RERA filings.'}
               </p>
             </div>
+
+            {/* Media & Documents Catalog */}
+            {(property.videoUrl || property.brochureUrl) && (
+              <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-5 shadow-premium text-left">
+                <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-trust-blue" />
+                  Media & Documents Catalog
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Video Tour Player / Link */}
+                  {property.videoUrl && (property.videoUrl.startsWith('http://') || property.videoUrl.startsWith('https://')) && (
+                    <div className="space-y-3">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Showcase Video Tour</span>
+                      {property.videoUrl.toLowerCase().includes('.mp4') || property.videoUrl.toLowerCase().includes('res.cloudinary.com') ? (
+                        <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden relative border border-slate-800 shadow-sm">
+                          <video
+                            src={property.videoUrl}
+                            controls
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <a
+                          href={property.videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl transition-all group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-red-50 text-red-500 rounded-lg flex items-center justify-center border border-red-100">
+                              <Compass size={18} />
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-800 text-xs block group-hover:text-trust-blue transition-colors">Virtual Video Tour</span>
+                              <span className="text-[10px] text-slate-400 block font-normal">Click to play dynamic walkthrough</span>
+                            </div>
+                          </div>
+                          <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Brochure Download Card */}
+                  {property.brochureUrl && (property.brochureUrl.startsWith('http://') || property.brochureUrl.startsWith('https://')) && (
+                    <div className="space-y-3">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Property Brochure PDF</span>
+                      <a
+                        href={property.brochureUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl transition-all group h-[74px]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-trust-blue/5 text-trust-blue rounded-lg flex items-center justify-center border border-trust-blue/10">
+                            <FileText size={18} />
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-800 text-xs block group-hover:text-trust-blue transition-colors">Download Brochure</span>
+                            <span className="text-[10px] text-slate-400 block font-normal">Download verified specifications</span>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Decision Confidence Indicators / Registry check list */}
             <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-4 shadow-premium text-left">
@@ -555,6 +693,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                           src={propImage}
                           alt={prop.name}
                           className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                          onError={(e) => handleImageError(e, prop.type)}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-300"><Maximize2 size={24} /></div>

@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-06-23T17:40:05.427Z",
+  "timestamp": "2026-06-23T20:18:37.360Z",
   "scores": {
     "authentication": 100,
     "authorization": 100,
     "mfa": 100,
     "sessions": 100,
     "threatDetection": 50,
-    "soc": 90,
+    "soc": 80,
     "compliance": 90,
     "headers": 100
   },
-  "overallScore": 93,
+  "overallScore": 92,
   "controls": [
     {
       "name": "Authentication",
@@ -118,5 +118,5 @@
     "inactivityTimeoutMinutes": 15,
     "mfaRequiredForAdmin": true
   },
-  "capturedBy": "363b81b2-c5d4-4371-90c5-4e9df5712b61"
+  "capturedBy": "93d5c012-92c5-4334-b80f-e4184012ba68"
 }

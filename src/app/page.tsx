@@ -40,6 +40,7 @@ import {
   TrendingDown
 } from 'lucide-react';
 import { formatIndianRealEstatePrice } from '@/lib/currency';
+import { handleImageError } from '@/lib/images';
 
 interface Property {
   id: string;
@@ -986,6 +987,7 @@ export default function HomePage() {
                     src={spotlightProperty.images ? spotlightProperty.images.split(',')[0] : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&auto=format&fit=crop&q=80'}
                     alt={spotlightProperty.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => handleImageError(e, spotlightProperty.type)}
                   />
                   <div className="absolute top-4 left-4 bg-trust-blue text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md flex items-center gap-1">
                     <CheckCircle2 size={12} />

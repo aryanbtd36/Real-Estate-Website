@@ -31,6 +31,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { handleImageError } from '@/lib/images';
 
 // Dynamically import Leaflet components with SSR disabled to prevent window-undefined errors
 const PropertyEditMap = dynamic(() => import('@/components/property-edit-map'), { ssr: false });
@@ -1132,7 +1133,12 @@ export default function AdminPropertiesPage() {
                         img.isCover ? 'border-emerald-350 bg-emerald-50 text-emerald-700 shadow-xs' : 'border-slate-200 hover:border-slate-350'
                       }`}>
                         <div className="w-14 h-14 bg-slate-200/50 rounded-lg overflow-hidden shrink-0 relative border border-slate-200">
-                          <img src={img.url} alt="Uploaded preview" className="w-full h-full object-cover" />
+                          <img
+                            src={img.url}
+                            alt="Uploaded preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => handleImageError(e, type)}
+                          />
                         </div>
                         
                         <div className="flex-1 min-w-0 space-y-1">
@@ -1378,7 +1384,12 @@ export default function AdminPropertiesPage() {
                             <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-lg overflow-hidden shrink-0 relative">
                                 {prop.imagesRelation?.[0] ? (
-                                  <img src={prop.imagesRelation.find((img: any) => img.isCover)?.url || prop.imagesRelation[0].url} alt="Cover" className="w-full h-full object-cover" />
+                                  <img
+                                    src={prop.imagesRelation.find((img: any) => img.isCover)?.url || prop.imagesRelation[0].url}
+                                    alt="Cover"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => handleImageError(e, prop.type)}
+                                  />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon size={16} /></div>
                                 )}

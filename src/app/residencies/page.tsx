@@ -16,6 +16,7 @@ import {
   Map,
   Sparkles
 } from 'lucide-react';
+import { handleImageError } from '@/lib/images';
 
 const PropertyViewMap = dynamic(() => import('@/components/property-view-map-wrapper'), { ssr: false });
 
@@ -34,6 +35,7 @@ interface Property {
   longitude: number | null;
   boundary: string | null;
   images: string;
+  imagesRelation?: { id: string; url: string; isCover: boolean; }[];
   status: string;
 }
 
@@ -298,11 +300,19 @@ export default function ResidenciesCatalogPage() {
                       }`}
                     >
                       <div className="relative h-44 bg-slate-100">
-                        <img
-                          src={res.images ? res.images.split(',')[0] : 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600&auto=format&fit=crop&q=80'}
-                          alt={res.name}
-                          className="w-full h-full object-cover"
-                        />
+                        {(() => {
+                          const coverImg = res.imagesRelation?.find(img => img.isCover)?.url || 
+                                           res.imagesRelation?.[0]?.url || 
+                                           (res.images ? res.images.split(',')[0] : 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600&auto=format&fit=crop&q=80');
+                          return (
+                            <img
+                              src={coverImg}
+                              alt={res.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => handleImageError(e, res.type)}
+                            />
+                          );
+                        })()}
                         <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow flex items-center gap-1 border border-emerald-400/25">
                           <CheckCircle2 size={10} />
                           Registry Verified

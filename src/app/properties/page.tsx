@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatIndianRealEstatePrice } from '@/lib/currency';
+import { handleImageError } from '@/lib/images';
 
 export default function PropertiesCatalogPage() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -217,7 +218,12 @@ export default function PropertiesCatalogPage() {
                   {/* Photo area */}
                   <div className="relative h-48 bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
                     {coverImg ? (
-                      <img src={coverImg} alt={prop.name} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
+                      <img
+                        src={coverImg}
+                        alt={prop.name}
+                        className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                        onError={(e) => handleImageError(e, prop.type)}
+                      />
                     ) : (
                       <div className="text-slate-300"><ImageIcon size={36} /></div>
                     )}
