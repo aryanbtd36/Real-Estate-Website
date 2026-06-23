@@ -129,6 +129,25 @@ export default function AdminPropertiesPage() {
     fetchTemplates();
   }, []);
 
+  // Auto-select template based on property type on creation/opening
+  useEffect(() => {
+    if (showForm && !editingId && !templateId && templates.length > 0) {
+      if (type === 'Apartment') {
+        const t = templates.find(temp => temp.type === 'APARTMENT');
+        if (t) setTemplateId(t.id);
+      } else if (type === 'Villa' || type === 'Duplex' || type === 'Penthouse') {
+        const t = templates.find(temp => temp.type === 'RESIDENCY');
+        if (t) setTemplateId(t.id);
+      } else if (type === 'Plot' || type === 'Lot') {
+        const t = templates.find(temp => temp.type === 'PLOT');
+        if (t) setTemplateId(t.id);
+      } else if (type === 'Commercial') {
+        const t = templates.find(temp => temp.type === 'COMMERCIAL');
+        if (t) setTemplateId(t.id);
+      }
+    }
+  }, [showForm, editingId, templateId, type, templates]);
+
   // Open Form for Adding
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -158,7 +177,8 @@ export default function AdminPropertiesPage() {
     setVirtualTourUrl('');
     setSelectedAmenities([]);
     setImagesList([]);
-    setTemplateId(null);
+    const t = templates.find(temp => temp.type === 'APARTMENT');
+    setTemplateId(t ? t.id : null);
     setTemplateFields({});
     setShowForm(true);
   };
@@ -624,12 +644,21 @@ export default function AdminPropertiesPage() {
                             setTemplateId(t.id);
                             setTemplateFields({});
                           }
-                        } else if (newType === 'Lot') {
+                        } else if (newType === 'Plot' || newType === 'Lot') {
                           const t = templates.find(temp => temp.type === 'PLOT');
                           if (t) {
                             setTemplateId(t.id);
                             setTemplateFields({});
                           }
+                        } else if (newType === 'Commercial') {
+                          const t = templates.find(temp => temp.type === 'COMMERCIAL');
+                          if (t) {
+                            setTemplateId(t.id);
+                            setTemplateFields({});
+                          }
+                        } else {
+                          setTemplateId(null);
+                          setTemplateFields({});
                         }
                       }}
                       className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-800 text-sm outline-none focus:border-[#0B4C8C] h-12"
@@ -638,7 +667,9 @@ export default function AdminPropertiesPage() {
                       <option value="Villa">Villa</option>
                       <option value="Penthouse">Penthouse</option>
                       <option value="Duplex">Duplex</option>
+                      <option value="Plot">Plot</option>
                       <option value="Lot">Estate Lot</option>
+                      <option value="Commercial">Commercial</option>
                     </select>
                   </div>
                   
@@ -1212,7 +1243,9 @@ export default function AdminPropertiesPage() {
                   <option value="Villa">Villas</option>
                   <option value="Penthouse">Penthouses</option>
                   <option value="Duplex">Duplexes</option>
+                  <option value="Plot">Plots</option>
                   <option value="Lot">Estate Lots</option>
+                  <option value="Commercial">Commercial</option>
                 </select>
 
                 <select

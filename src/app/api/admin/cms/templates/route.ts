@@ -4,65 +4,49 @@ import { requireFounderSuperAdmin } from '@/lib/permissions';
 import { ActivityService } from '@/lib/activity';
 import { ActivityAction } from '@prisma/client';
 
-// Helper to bootstrap standard templates if they don't exist
 async function bootstrapDefaultTemplates() {
   const defaults = [
     {
       name: 'Plot Template',
       type: 'PLOT',
       fields: [
-        { name: 'width', label: 'Plot Width (Ft)', type: 'number', required: false },
-        { name: 'length', label: 'Plot Length (Ft)', type: 'number', required: false },
-        { name: 'roadFacing', label: 'Road Facing Width (Ft)', type: 'number', required: false },
+        { name: 'roadWidth', label: 'Road Width (Ft)', type: 'number', required: false },
+        { name: 'facing', label: 'Facing', type: 'dropdown', required: false, options: ['North', 'East', 'South', 'West', 'North-East', 'South-East', 'North-West', 'South-West'] },
+        { name: 'registryStatus', label: 'Registry Status', type: 'dropdown', required: true, options: ['Freehold', 'Leasehold', 'Power of Attorney'] },
+        { name: 'boundaryCoordinates', label: 'Boundary Coordinates', type: 'text', required: false },
         { name: 'cornerPlot', label: 'Corner Plot', type: 'checkbox', required: false },
-        { name: 'boundaryWall', label: 'Boundary Wall Built', type: 'checkbox', required: false },
-        { name: 'landUse', label: 'Land Zoned Use', type: 'dropdown', required: true, options: ['Residential', 'Commercial', 'Agricultural', 'Mixed-Use'] },
-        { name: 'ownershipType', label: 'Ownership Type', type: 'dropdown', required: true, options: ['Freehold', 'Leasehold', 'Power of Attorney'] },
-        { name: 'electricity', label: 'Electricity Available', type: 'checkbox', required: false },
-        { name: 'waterConnection', label: 'Water Connection Available', type: 'checkbox', required: false }
+        { name: 'dimensions', label: 'Dimensions', type: 'text', required: false }
       ]
     },
     {
       name: 'Apartment Template',
       type: 'APARTMENT',
       fields: [
-        { name: 'bhk', label: 'BHK Configurations', type: 'dropdown', required: true, options: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK+'] },
-        { name: 'balconies', label: 'Number of Balconies', type: 'number', required: false },
-        { name: 'floorNumber', label: 'Floor Number', type: 'number', required: false },
-        { name: 'totalFloors', label: 'Total Floors in Building', type: 'number', required: false },
-        { name: 'lift', label: 'Lift Available', type: 'checkbox', required: false },
-        { name: 'parking', label: 'Covered Parking Allocated', type: 'checkbox', required: false },
-        { name: 'powerBackup', label: 'Power Backup Included', type: 'checkbox', required: false },
-        { name: 'furnishing', label: 'Furnishing State', type: 'dropdown', required: true, options: ['Unfurnished', 'Semi-Furnished', 'Fully Furnished'] },
-        { name: 'societyName', label: 'Society/Project Name', type: 'text', required: true },
-        { name: 'maintenanceCharges', label: 'Monthly Maintenance (₹)', type: 'number', required: false }
+        { name: 'bhk', label: 'BHK', type: 'dropdown', required: true, options: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK+'] },
+        { name: 'floor', label: 'Floor', type: 'number', required: false },
+        { name: 'tower', label: 'Tower', type: 'text', required: false },
+        { name: 'amenities', label: 'Amenities', type: 'multiselect', required: false, options: ['Lift', 'Gym', 'Swimming Pool', 'Clubhouse', 'Power Backup'] },
+        { name: 'balcony', label: 'Balcony', type: 'number', required: false }
       ]
     },
     {
       name: 'Residency Template',
       type: 'RESIDENCY',
       fields: [
-        { name: 'balconies', label: 'Number of Balconies', type: 'number', required: false },
-        { name: 'plotArea', label: 'Plot Land Area (Sq Ft)', type: 'number', required: true },
-        { name: 'builtUpArea', label: 'Built Up Area (Sq Ft)', type: 'number', required: true },
-        { name: 'garden', label: 'Private Garden Space', type: 'checkbox', required: false },
-        { name: 'parking', label: 'Private Parking Spaces', type: 'number', required: false },
-        { name: 'servantRoom', label: 'Servant Quarters Included', type: 'checkbox', required: false },
-        { name: 'facing', label: 'Property Facing Direction', type: 'dropdown', required: false, options: ['North', 'East', 'South', 'West', 'North-East', 'South-East', 'North-West', 'South-West'] },
-        { name: 'propertyAge', label: 'Property Age (Years)', type: 'number', required: false },
-        { name: 'furnishing', label: 'Furnishing State', type: 'dropdown', required: true, options: ['Unfurnished', 'Semi-Furnished', 'Fully Furnished'] }
+        { name: 'bedrooms', label: 'Bedrooms', type: 'number', required: true },
+        { name: 'bathrooms', label: 'Bathrooms', type: 'number', required: true },
+        { name: 'parking', label: 'Parking', type: 'number', required: false },
+        { name: 'garden', label: 'Garden', type: 'checkbox', required: false }
       ]
     },
     {
       name: 'Commercial Template',
       type: 'COMMERCIAL',
       fields: [
-        { name: 'commercialType', label: 'Commercial Sub-Type', type: 'dropdown', required: true, options: ['Shop', 'Office', 'Showroom', 'Warehouse'] },
-        { name: 'carpetArea', label: 'Carpet Area (Sq Ft)', type: 'number', required: true },
-        { name: 'frontage', label: 'Frontage Width (Ft)', type: 'number', required: false },
-        { name: 'powerLoad', label: 'Power Load Capacity (KVA)', type: 'number', required: false },
-        { name: 'washrooms', label: 'Private Washrooms Count', type: 'number', required: false },
-        { name: 'parking', label: 'Public/Visitor Parking Spaces', type: 'checkbox', required: false }
+        { name: 'officeArea', label: 'Office Area', type: 'number', required: true },
+        { name: 'floor', label: 'Floor', type: 'number', required: false },
+        { name: 'powerBackup', label: 'Power Backup', type: 'checkbox', required: false },
+        { name: 'parkingCapacity', label: 'Parking Capacity', type: 'number', required: false }
       ]
     }
   ];
@@ -88,6 +72,15 @@ async function bootstrapDefaultTemplates() {
           version: 1,
           fields: item.fields,
           changedBy: 'System Bootstrapper'
+        }
+      });
+    } else {
+      // Synchronize standard templates fields & name
+      await db.propertyTemplate.update({
+        where: { id: existing.id },
+        data: {
+          name: item.name,
+          fields: item.fields
         }
       });
     }
