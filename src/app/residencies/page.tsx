@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import {
   Search,
@@ -39,15 +40,28 @@ interface Property {
   status: string;
 }
 
-export default function ResidenciesCatalogPage() {
+function ResidenciesCatalogContent() {
+  const searchParams = useSearchParams();
+
+  // Extract initial values from URL query parameters
+  const initialLocParam = searchParams.get('location') || '';
+  let initialLoc = '';
+  if (initialLocParam.includes('gomti')) initialLoc = 'gomti';
+  else if (initialLocParam.includes('indira')) initialLoc = 'indira';
+  else if (initialLocParam.includes('aliganj')) initialLoc = 'aliganj';
+  else if (initialLocParam.includes('mahanagar')) initialLoc = 'mahanagar';
+  else if (initialLocParam.includes('jankipuram')) initialLoc = 'jankipuram';
+  else if (initialLocParam.includes('sultanpur')) initialLoc = 'sultanpur';
+  else if (initialLocParam.includes('deva')) initialLoc = 'deva';
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterLocation, setFilterLocation] = useState('');
-  const [filterBudget, setFilterBudget] = useState('');
-  const [filterMinArea, setFilterMinArea] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [filterLocation, setFilterLocation] = useState(initialLoc);
+  const [filterBudget, setFilterBudget] = useState(searchParams.get('budget') || '');
+  const [filterMinArea, setFilterMinArea] = useState(searchParams.get('minArea') || '');
   const [sortBy, setSortBy] = useState('price-asc');
   
   // Map coordinates state
@@ -417,5 +431,17 @@ export default function ResidenciesCatalogPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResidenciesCatalogPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400">
+        <div className="w-8 h-8 border-2 border-trust-blue border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ResidenciesCatalogContent />
+    </Suspense>
   );
 }

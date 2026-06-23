@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-06-23T20:18:37.360Z",
+  "timestamp": "2026-06-23T20:46:04.296Z",
   "scores": {
     "authentication": 100,
     "authorization": 100,
     "mfa": 100,
     "sessions": 100,
     "threatDetection": 50,
-    "soc": 80,
+    "soc": 90,
     "compliance": 90,
     "headers": 100
   },
-  "overallScore": 92,
+  "overallScore": 93,
   "controls": [
     {
       "name": "Authentication",
@@ -46,7 +46,7 @@
     },
     {
       "name": "Threat Intelligence",
-      "status": "WARNING"
+      "status": "ACTIVE"
     },
     {
       "name": "Incident Response",
@@ -118,5 +118,5 @@
     "inactivityTimeoutMinutes": 15,
     "mfaRequiredForAdmin": true
   },
-  "capturedBy": "93d5c012-92c5-4334-b80f-e4184012ba68"
+  "capturedBy": "1aed2880-4096-4c5b-863b-f528a98fe0f1"
 }

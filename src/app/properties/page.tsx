@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   MapPin,
@@ -18,15 +19,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatIndianRealEstatePrice } from '@/lib/currency';
 import { handleImageError } from '@/lib/images';
 
-export default function PropertiesCatalogPage() {
+function PropertiesCatalogContent() {
+  const searchParams = useSearchParams();
+
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [filterBudget, setFilterBudget] = useState('');
-  const [filterBedrooms, setFilterBedrooms] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || searchParams.get('location') || '');
+  const [filterType, setFilterType] = useState(searchParams.get('type') || '');
+  const [filterBudget, setFilterBudget] = useState(searchParams.get('budget') || '');
+  const [filterBedrooms, setFilterBedrooms] = useState(searchParams.get('bedrooms') || '');
 
   // Geolocation / Near Me State
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -285,5 +288,17 @@ export default function PropertiesCatalogPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PropertiesCatalogPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400">
+        <div className="w-8 h-8 border-2 border-trust-blue border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <PropertiesCatalogContent />
+    </Suspense>
   );
 }
