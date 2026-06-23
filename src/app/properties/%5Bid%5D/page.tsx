@@ -67,6 +67,7 @@ export default async function PropertyDetailPage({ params }: PropertyPageProps) 
     videoUrl: property.videoUrl,
     brochureUrl: property.brochureUrl,
     virtualTourUrl: property.virtualTourUrl,
+    floorPlan: property.floorPlan,
     imagesRelation: property.imagesRelation.map(img => ({
       id: img.id,
       url: img.url,
@@ -98,6 +99,7 @@ export default async function PropertyDetailPage({ params }: PropertyPageProps) 
     videoUrl: p.videoUrl,
     brochureUrl: p.brochureUrl,
     virtualTourUrl: p.virtualTourUrl,
+    floorPlan: p.floorPlan,
     imagesRelation: p.imagesRelation.map((img: any) => ({
       id: img.id,
       url: img.url,

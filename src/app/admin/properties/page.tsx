@@ -87,6 +87,7 @@ export default function AdminPropertiesPage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [brochureUrl, setBrochureUrl] = useState('');
   const [virtualTourUrl, setVirtualTourUrl] = useState('');
+  const [floorPlan, setFloorPlan] = useState('');
 
   // Wave 8B Template states
   const [templates, setTemplates] = useState<any[]>([]);
@@ -176,6 +177,7 @@ export default function AdminPropertiesPage() {
     setVideoUrl('');
     setBrochureUrl('');
     setVirtualTourUrl('');
+    setFloorPlan('');
     setSelectedAmenities([]);
     setImagesList([]);
     const t = templates.find(temp => temp.type === 'APARTMENT');
@@ -229,6 +231,7 @@ export default function AdminPropertiesPage() {
     setVideoUrl(prop.videoUrl || '');
     setBrochureUrl(prop.brochureUrl || '');
     setVirtualTourUrl(prop.virtualTourUrl || '');
+    setFloorPlan(prop.floorPlan || '');
     setSelectedAmenities(prop.amenities || []);
     setTemplateId(prop.templateId || null);
     setTemplateFields(prop.templateFields || {});
@@ -290,8 +293,8 @@ export default function AdminPropertiesPage() {
     setUploadLoading(false);
   };
 
-  // Media (Video / Brochure) upload handler
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'video' | 'brochure') => {
+  // Media (Video / Brochure / Floor Plan) upload handler
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'video' | 'brochure' | 'floorPlan') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -309,6 +312,7 @@ export default function AdminPropertiesPage() {
         const data = await res.json();
         if (target === 'video') setVideoUrl(data.url);
         if (target === 'brochure') setBrochureUrl(data.url);
+        if (target === 'floorPlan') setFloorPlan(data.url);
       } else {
         const err = await res.json();
         alert(err.error || 'Failed to upload media.');
@@ -399,6 +403,7 @@ export default function AdminPropertiesPage() {
       videoUrl,
       brochureUrl,
       virtualTourUrl,
+      floorPlan,
       templateId,
       templateFields
     };
@@ -978,6 +983,65 @@ export default function AdminPropertiesPage() {
                         </button>
                       </div>
                     </div>
+                    {brochureUrl && (
+                      <div className="p-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between shadow-3xs">
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          <FileText size={14} className="text-[#0B4C8C] shrink-0" />
+                          <span className="text-[10px] font-semibold text-slate-600 truncate max-w-[180px]">
+                            {brochureUrl.split('/').pop()}
+                          </span>
+                        </div>
+                        <a
+                          href={brochureUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[9px] uppercase font-bold text-[#0B4C8C] hover:underline flex items-center gap-0.5 shrink-0"
+                        >
+                          View PDF
+                          <ExternalLink size={8} />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Floor Plan URL & Upload */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Property Floor Plan Image</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={floorPlan}
+                        onChange={(e) => setFloorPlan(e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none"
+                        placeholder="Floor Plan Image URL (or upload below)"
+                      />
+                      <div className="relative shrink-0">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleMediaUpload(e, 'floorPlan')}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploadLoading}
+                        />
+                        <button type="button" className="px-3 py-2.5 bg-white hover:bg-slate-50 border border-slate-250 text-[#0B4C8C] rounded-lg text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider shadow-xs">
+                          <Upload size={14} className="text-[#0B4C8C]" />
+                          <span>Upload</span>
+                        </button>
+                      </div>
+                    </div>
+                    {floorPlan && (
+                      <div className="p-2 bg-white border border-slate-200 rounded-lg space-y-1 shadow-3xs text-left">
+                        <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Floor Plan Preview</span>
+                        <div className="w-32 h-20 bg-slate-100 rounded-md overflow-hidden border border-slate-100 relative">
+                          <img
+                            src={floorPlan}
+                            alt="Floor plan preview"
+                            className="w-full h-full object-contain"
+                            onError={(e) => handleImageError(e, 'plot')}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Virtual Tour URL */}

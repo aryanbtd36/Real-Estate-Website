@@ -64,6 +64,7 @@ interface Property {
   videoUrl?: string | null;
   brochureUrl?: string | null;
   virtualTourUrl?: string | null;
+  floorPlan?: string | null;
 }
 
 interface ClientProps {
@@ -320,7 +321,7 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
             </div>
 
             {/* Media & Documents Catalog */}
-            {(property.videoUrl || property.brochureUrl) && (
+            {(property.videoUrl || property.brochureUrl || property.floorPlan) && (
               <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-5 shadow-premium text-left">
                 <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
                   <Sparkles size={14} className="text-trust-blue" />
@@ -383,6 +384,35 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                         </div>
                         <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                       </a>
+                    </div>
+                  )}
+
+                  {/* Floor Plan Card */}
+                  {property.floorPlan && (property.floorPlan.startsWith('http://') || property.floorPlan.startsWith('https://') || property.floorPlan.startsWith('/')) && (
+                    <div className="space-y-3 md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Property Layout & Floor Plan</span>
+                      <div className="bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl p-4 transition-all duration-300">
+                        <div className="aspect-[16/10] max-h-[400px] w-full rounded-lg overflow-hidden border border-slate-200 bg-white relative flex items-center justify-center">
+                          <img
+                            src={property.floorPlan}
+                            alt={`${property.name} Floor Plan`}
+                            className="h-full w-full object-contain"
+                            onError={(e) => handleImageError(e, property.type)}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center mt-3 text-xs font-semibold text-slate-500">
+                          <span>Verified Architectural Blueprints</span>
+                          <a
+                            href={property.floorPlan}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-trust-blue hover:underline flex items-center gap-1"
+                          >
+                            Open High-Res Image
+                            <ExternalLink size={12} />
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

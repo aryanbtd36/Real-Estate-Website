@@ -51,7 +51,8 @@ export async function POST(req: Request) {
       virtualTourUrl,
       boundaryZones,
       templateId,
-      templateFields
+      templateFields,
+      floorPlan
     } = body;
 
     if (!name || !price || !area || !bedrooms) {
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
         boundaryZones: boundaryZones || null,
         templateId: templateId || null,
         templateFields: templateFields || null,
+        floorPlan: floorPlan || null,
         imagesRelation: {
           create: Array.isArray(imagesList) ? imagesList.map((img: any) => ({
             publicId: img.publicId,
@@ -170,7 +172,8 @@ export async function PUT(req: Request) {
       virtualTourUrl,
       boundaryZones,
       templateId,
-      templateFields
+      templateFields,
+      floorPlan
     } = body;
 
     if (!id || !name || !price || !area || !bedrooms) {
@@ -242,6 +245,7 @@ export async function PUT(req: Request) {
         boundaryZones: boundaryZones || null,
         templateId: templateId || null,
         templateFields: templateFields || null,
+        floorPlan: floorPlan || null,
         imagesRelation: {
           create: Array.isArray(imagesList) ? imagesList.map((img: any) => ({
             publicId: img.publicId,
