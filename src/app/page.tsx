@@ -123,10 +123,38 @@ export default function HomePage() {
   useEffect(() => {
     if (cmsData?.seo) {
       document.title = cmsData.seo.metaTitle || 'Aura Estates';
-      const descMeta = document.querySelector('meta[name="description"]');
-      if (descMeta) descMeta.setAttribute('content', cmsData.seo.metaDescription || '');
-      const kwMeta = document.querySelector('meta[name="keywords"]');
-      if (kwMeta) kwMeta.setAttribute('content', cmsData.seo.keywords || '');
+      
+      const setMetaTag = (attrName: string, attrVal: string, content: string) => {
+        let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
+        if (!el) {
+          el = document.createElement('meta');
+          el.setAttribute(attrName, attrVal);
+          document.head.appendChild(el);
+        }
+        el.setAttribute('content', content);
+      };
+
+      const setLinkTag = (rel: string, href: string) => {
+        let el = document.querySelector(`link[rel="${rel}"]`);
+        if (!el) {
+          el = document.createElement('link');
+          el.setAttribute('rel', rel);
+          document.head.appendChild(el);
+        }
+        el.setAttribute('href', href);
+      };
+
+      setMetaTag('name', 'description', cmsData.seo.metaDescription || '');
+      setMetaTag('name', 'keywords', cmsData.seo.keywords || '');
+      setMetaTag('property', 'og:title', cmsData.seo.metaTitle || '');
+      setMetaTag('property', 'og:description', cmsData.seo.metaDescription || '');
+      
+      if (cmsData.seo.ogImage) {
+        setMetaTag('property', 'og:image', cmsData.seo.ogImage);
+      }
+      if (cmsData.seo.canonicalUrl) {
+        setLinkTag('canonical', cmsData.seo.canonicalUrl);
+      }
     }
   }, [cmsData]);
 

@@ -38,6 +38,24 @@ const PropertyEditMap = dynamic(() => import('@/components/property-edit-map'), 
 const PropertyViewMap = dynamic(() => import('@/components/property-view-map'), { ssr: false });
 import { formatIndianRealEstatePrice } from '@/lib/currency';
 
+const ProgressBar = ({ value, max, label, color = 'bg-[#0B4C8C]' }: { value: number, max: number, label: string, color?: string }) => {
+  const percentage = Math.min(Math.round((value / max) * 100), 100);
+  return (
+    <div className="space-y-1 bg-white p-3 rounded-lg border border-slate-200 shadow-3xs text-left">
+      <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+        <span>{label}</span>
+        <span>{value}/{max}</span>
+      </div>
+      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div 
+          className={`h-full transition-all duration-300 ${color}`} 
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
 export default function AdminPropertiesPage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +117,361 @@ export default function AdminPropertiesPage() {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
   // Images state
-  const [imagesList, setImagesList] = useState<any[]>([]); // { publicId, url, order, isCover }
+  const [imagesList, setImagesList] = useState<any[]>([]); // { publicId, url, order, isCover, size }
+  
+  // Wave 8D Multi-upload states
+  const [floorPlansList, setFloorPlansList] = useState<any[]>([]); // { url, size }
+  const [brochuresList, setBrochuresList] = useState<any[]>([]); // { url, size }
+  const [uploadQueue, setUploadQueue] = useState<any[]>([]); // { id, file, name, size, uploadType, status, progress, url, error }
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+
+  // Helper to fetch size of existing uploaded media
+  const fetchUrlSize = async (url: string): Promise<number> => {
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      const len = res.headers.get('content-length');
+      if (len) return parseInt(len, 10);
+    } catch (e) {
+      console.warn('Failed to fetch size for URL', url, e);
+    }
+    // Fallbacks
+    if (url.toLowerCase().endsWith('.pdf')) return 1500000;
+    return 350000;
+  };
+
+  // Client-side image WebP compression pipeline
+  const optimizeImageFile = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (!['jpg', 'jpeg', 'webp', 'png'].includes(ext || '')) {
+        return resolve(file);
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          const maxDimension = 1600;
+          
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            return resolve(file);
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                return resolve(file);
+              }
+              const newName = file.name.substring(0, file.name.lastIndexOf('.')) + '.webp';
+              const optimizedFile = new File([blob], newName, {
+                type: 'image/webp',
+                lastModified: Date.now(),
+              });
+              resolve(optimizedFile);
+            },
+            'image/webp',
+            0.8
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Helper to parse Cloudinary Public ID from URL
+  const getCloudinaryPublicId = (url: string) => {
+    if (!url || !url.includes('cloudinary.com')) return null;
+    const parts = url.split('/upload/');
+    if (parts.length < 2) return null;
+    const pathPart = parts[1];
+    const subParts = pathPart.split('/');
+    if (subParts[0].startsWith('v') && /^\d+$/.test(subParts[0].substring(1))) {
+      subParts.shift();
+    }
+    const fullPath = subParts.join('/');
+    const dotIdx = fullPath.lastIndexOf('.');
+    if (dotIdx !== -1) {
+      return fullPath.substring(0, dotIdx);
+    }
+    return fullPath;
+  };
+
+  // Add files to local validation queue
+  const addFilesToQueue = async (filesList: FileList | File[], type: 'image' | 'floorPlan' | 'brochure') => {
+    const files = Array.from(filesList);
+    const newQueueItems: any[] = [];
+    
+    const currentImages = imagesList.length;
+    const currentFloorPlans = floorPlansList.length;
+    const currentBrochures = brochuresList.length;
+    
+    const queueImages = uploadQueue.filter(q => q.uploadType === 'image').length;
+    const queueFloorPlans = uploadQueue.filter(q => q.uploadType === 'floorPlan').length;
+    const queueBrochures = uploadQueue.filter(q => q.uploadType === 'brochure').length;
+    
+    let typeMax = 15;
+    if (type === 'floorPlan') typeMax = 5;
+    if (type === 'brochure') typeMax = 2;
+    
+    const currentCount = type === 'image' ? currentImages : type === 'floorPlan' ? currentFloorPlans : currentBrochures;
+    const queueCount = type === 'image' ? queueImages : type === 'floorPlan' ? queueFloorPlans : queueBrochures;
+    
+    if (currentCount + queueCount + files.length > typeMax) {
+      alert(`Cannot add files. Maximum limit of ${typeMax} ${type}s would be exceeded.`);
+      return;
+    }
+    
+    const uploadedSize = 
+      imagesList.reduce((acc, img) => acc + (img.size || 350000), 0) +
+      floorPlansList.reduce((acc, f) => acc + (f.size || 500000), 0) +
+      brochuresList.reduce((acc, b) => acc + (b.size || 1500000), 0);
+    
+    const queueSize = uploadQueue.reduce((acc, item) => acc + item.size, 0);
+    let cumulativeSize = uploadedSize + queueSize;
+    
+    for (const file of files) {
+      // Validation: Format
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      let allowedExts: string[] = [];
+      if (type === 'image') allowedExts = ['jpg', 'jpeg', 'webp'];
+      else if (type === 'floorPlan') allowedExts = ['pdf', 'jpg', 'jpeg', 'png'];
+      else if (type === 'brochure') allowedExts = ['pdf'];
+      
+      if (!allowedExts.includes(ext)) {
+        alert(`Format not allowed: "${file.name}" is not supported for ${type}.`);
+        continue;
+      }
+      
+      // Validation: Size
+      let maxLimit = 2 * 1024 * 1024;
+      if (type === 'floorPlan') maxLimit = 3 * 1024 * 1024;
+      if (type === 'brochure') maxLimit = 5 * 1024 * 1024;
+      
+      if (file.size > maxLimit) {
+        const limitStr = type === 'image' ? '2MB' : type === 'floorPlan' ? '3MB' : '5MB';
+        alert(`File too large: "${file.name}" exceeds the ${limitStr} limit.`);
+        continue;
+      }
+      
+      // Validation: Duplicate Detection
+      const inQueueDup = uploadQueue.some(q => q.name === file.name && q.size === file.size);
+      let isUploadedDup = false;
+      if (type === 'image') {
+        isUploadedDup = imagesList.some(img => img.url.endsWith(file.name) || (img.size === file.size && img.url.includes(file.name.split('.')[0])));
+      } else if (type === 'floorPlan') {
+        isUploadedDup = floorPlansList.some(f => f.url.endsWith(file.name) || f.size === file.size);
+      } else if (type === 'brochure') {
+        isUploadedDup = brochuresList.some(b => b.url.endsWith(file.name) || b.size === file.size);
+      }
+      
+      if (inQueueDup || isUploadedDup) {
+        alert(`Duplicate skipped: "${file.name}" has already been queued or uploaded.`);
+        continue;
+      }
+      
+      // Validation: Total Budget
+      if (cumulativeSize + file.size > 40 * 1024 * 1024) {
+        alert(`Budget exceeded: Adding "${file.name}" would exceed the 40MB total property payload limit.`);
+        break;
+      }
+      
+      cumulativeSize += file.size;
+      
+      newQueueItems.push({
+        id: Date.now() + Math.random(),
+        file,
+        name: file.name,
+        size: file.size,
+        uploadType: type,
+        status: 'pending',
+        progress: 0
+      });
+    }
+    
+    if (newQueueItems.length > 0) {
+      setUploadQueue(prev => [...prev, ...newQueueItems]);
+    }
+  };
+
+  // Sequentially process queue uploads with metadata matching server schema
+  const processQueue = async () => {
+    const pendingItems = uploadQueue.filter(item => item.status === 'pending' || item.status === 'failed');
+    if (pendingItems.length === 0) return;
+    
+    setFormLoading(true);
+    
+    for (const item of pendingItems) {
+      let fileToUpload = item.file;
+      if (item.uploadType === 'image') {
+        setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'compressing' } : q));
+        try {
+          fileToUpload = await optimizeImageFile(item.file);
+          setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, size: fileToUpload.size } : q));
+        } catch (err) {
+          console.error('Optimization error:', err);
+        }
+      }
+      
+      setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'uploading', progress: 0 } : q));
+      
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
+      formData.append('uploadType', item.uploadType);
+      formData.append('currentImagesCount', imagesList.length.toString());
+      formData.append('currentFloorPlansCount', floorPlansList.length.toString());
+      formData.append('currentBrochuresCount', brochuresList.length.toString());
+      
+      const uploadedSize = 
+        imagesList.reduce((acc, img) => acc + (img.size || 350000), 0) +
+        floorPlansList.reduce((acc, f) => acc + (f.size || 500000), 0) +
+        brochuresList.reduce((acc, b) => acc + (b.size || 1500000), 0);
+      formData.append('currentTotalSize', uploadedSize.toString());
+      
+      try {
+        const result = await new Promise<{ publicId?: string; url: string }>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/admin/cloudinary');
+          
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: percent } : q));
+            }
+          });
+          
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const resJson = JSON.parse(xhr.responseText);
+                resolve(resJson);
+              } catch (err) {
+                reject(new Error('Invalid server response'));
+              }
+            } else {
+              try {
+                const resJson = JSON.parse(xhr.responseText);
+                reject(new Error(resJson.error || 'Upload failed'));
+              } catch (err) {
+                reject(new Error(`Server error: ${xhr.statusText || xhr.status}`));
+              }
+            }
+          });
+          
+          xhr.addEventListener('error', () => {
+            reject(new Error('Network connection error'));
+          });
+          
+          xhr.send(formData);
+        });
+        
+        if (item.uploadType === 'image') {
+          setImagesList(prev => {
+            const nextOrder = prev.length;
+            const isFirst = nextOrder === 0;
+            return [
+              ...prev,
+              {
+                publicId: result.publicId!,
+                url: result.url,
+                order: nextOrder,
+                isCover: isFirst,
+                size: fileToUpload.size
+              }
+            ];
+          });
+        } else if (item.uploadType === 'floorPlan') {
+          setFloorPlansList(prev => [
+            ...prev,
+            { url: result.url, size: fileToUpload.size }
+          ]);
+        } else if (item.uploadType === 'brochure') {
+          setBrochuresList(prev => [
+            ...prev,
+            { url: result.url, size: fileToUpload.size }
+          ]);
+        }
+        
+        setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'completed', progress: 100, url: result.url } : q));
+        
+      } catch (err: any) {
+        console.error('File upload failed in queue:', err);
+        setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'failed', error: err.message || 'Upload failed' } : q));
+      }
+    }
+    
+    setFormLoading(false);
+  };
+
+  // Delete already uploaded media from Cloudinary and state
+  const handleDeleteUploadedMedia = async (type: 'floorPlan' | 'brochure', index: number, url: string) => {
+    if (!confirm(`Are you sure you want to delete this ${type}?`)) return;
+    
+    const publicId = getCloudinaryPublicId(url);
+    if (publicId) {
+      try {
+        await fetch(`/api/admin/cloudinary?publicId=${encodeURIComponent(publicId)}`, {
+          method: 'DELETE',
+        });
+      } catch (err) {
+        console.error('Failed to delete media from Cloudinary:', err);
+      }
+    }
+    
+    if (type === 'floorPlan') {
+      setFloorPlansList(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setBrochuresList(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  // Standalone upload handler for showcase video
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('uploadType', 'video');
+    try {
+      const res = await fetch('/api/admin/cloudinary', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVideoUrl(data.url);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to upload video.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Upload failed.');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
 
   const fetchProperties = async () => {
     try {
@@ -180,6 +552,9 @@ export default function AdminPropertiesPage() {
     setFloorPlan('');
     setSelectedAmenities([]);
     setImagesList([]);
+    setFloorPlansList([]);
+    setBrochuresList([]);
+    setUploadQueue([]);
     const t = templates.find(temp => temp.type === 'APARTMENT');
     setTemplateId(t ? t.id : null);
     setTemplateFields({});
@@ -237,92 +612,53 @@ export default function AdminPropertiesPage() {
     setTemplateFields(prop.templateFields || {});
 
     // Load related images
-    if (prop.imagesRelation) {
-      setImagesList(prop.imagesRelation.map((img: any) => ({
-        publicId: img.publicId,
-        url: img.url,
-        order: img.order,
-        isCover: img.isCover
-      })).sort((a: any, b: any) => a.order - b.order));
-    } else {
-      setImagesList([]);
-    }
+    const initialImages = prop.imagesRelation ? prop.imagesRelation.map((img: any) => ({
+      publicId: img.publicId,
+      url: img.url,
+      order: img.order,
+      isCover: img.isCover,
+      size: 350000
+    })).sort((a: any, b: any) => a.order - b.order) : [];
+    setImagesList(initialImages);
+
+    const initialFloorPlans = prop.floorPlan ? prop.floorPlan.split(',').filter(Boolean).map((url: string) => ({ url, size: 500000 })) : [];
+    const initialBrochures = prop.brochureUrl ? prop.brochureUrl.split(',').filter(Boolean).map((url: string) => ({ url, size: 1500000 })) : [];
+    setFloorPlansList(initialFloorPlans);
+    setBrochuresList(initialBrochures);
+    setUploadQueue([]);
+
+    // Asynchronously fetch exact sizes to update budget accurately
+    initialImages.forEach((item: any, idx: number) => {
+      fetchUrlSize(item.url).then(size => {
+        setImagesList(prev => {
+          const next = [...prev];
+          if (next[idx]) next[idx] = { ...next[idx], size };
+          return next;
+        });
+      });
+    });
+
+    initialFloorPlans.forEach((item: any, idx: number) => {
+      fetchUrlSize(item.url).then(size => {
+        setFloorPlansList(prev => {
+          const next = [...prev];
+          if (next[idx]) next[idx] = { ...next[idx], size };
+          return next;
+        });
+      });
+    });
+
+    initialBrochures.forEach((item: any, idx: number) => {
+      fetchUrlSize(item.url).then(size => {
+        setBrochuresList(prev => {
+          const next = [...prev];
+          if (next[idx]) next[idx] = { ...next[idx], size };
+          return next;
+        });
+      });
+    });
 
     setShowForm(true);
-  };
-
-  // Cloudinary image upload handler
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploadLoading(true);
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const res = await fetch('/api/admin/cloudinary', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setImagesList((prev) => {
-            const nextOrder = prev.length;
-            const isFirst = nextOrder === 0;
-            return [
-              ...prev,
-              {
-                publicId: data.publicId,
-                url: data.url,
-                order: nextOrder,
-                isCover: isFirst,
-              },
-            ];
-          });
-        }
-      } catch (err) {
-        console.error('Image upload failed:', err);
-      }
-    }
-
-    setUploadLoading(false);
-  };
-
-  // Media (Video / Brochure / Floor Plan) upload handler
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'video' | 'brochure' | 'floorPlan') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadLoading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/admin/cloudinary', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (target === 'video') setVideoUrl(data.url);
-        if (target === 'brochure') setBrochureUrl(data.url);
-        if (target === 'floorPlan') setFloorPlan(data.url);
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to upload media.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Upload failed.');
-    } finally {
-      setUploadLoading(false);
-    }
   };
 
   // Delete image
@@ -401,9 +737,9 @@ export default function AdminPropertiesPage() {
       imagesList,
       status,
       videoUrl,
-      brochureUrl,
+      brochureUrl: brochuresList.map(b => b.url).join(','),
       virtualTourUrl,
-      floorPlan,
+      floorPlan: floorPlansList.map(f => f.url).join(','),
       templateId,
       templateFields
     };
@@ -946,7 +1282,7 @@ export default function AdminPropertiesPage() {
                         <input
                            type="file"
                            accept="video/*"
-                           onChange={(e) => handleMediaUpload(e, 'video')}
+                           onChange={handleVideoUpload}
                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                            disabled={uploadLoading}
                         />
@@ -958,87 +1294,124 @@ export default function AdminPropertiesPage() {
                     </div>
                   </div>
 
-                  {/* Brochure URL & Upload */}
+                  {/* Brochure PDF Select */}
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Property Brochure PDF</label>
-                    <div className="flex gap-2">
+                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Property Brochures (PDF only)</label>
+                    <div className="border border-dashed border-slate-200 bg-white p-4 text-center rounded-lg relative hover:border-[#0B4C8C] transition-colors cursor-pointer shadow-3xs">
                       <input
-                        type="text"
-                        value={brochureUrl}
-                        onChange={(e) => setBrochureUrl(e.target.value)}
-                        className="flex-1 bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none"
-                        placeholder="Brochure PDF URL (or upload below)"
+                        type="file"
+                        accept="application/pdf"
+                        multiple
+                        onChange={(e) => {
+                          if (e.target.files) addFilesToQueue(e.target.files, 'brochure');
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
-                      <div className="relative shrink-0">
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          onChange={(e) => handleMediaUpload(e, 'brochure')}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          disabled={uploadLoading}
-                        />
-                        <button type="button" className="px-3 py-2.5 bg-white hover:bg-slate-50 border border-slate-250 text-[#0B4C8C] rounded-lg text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider shadow-xs">
-                          <FileCheck size={14} className="text-[#0B4C8C]" />
-                          <span>Upload</span>
-                        </button>
+                      <div className="flex flex-col items-center gap-1">
+                        <FileCheck size={20} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-700">Add Brochure PDFs</span>
+                        <span className="text-[9px] text-slate-400 block font-semibold">Max 2 brochures, ≤ 5MB each</span>
                       </div>
                     </div>
-                    {brochureUrl && (
-                      <div className="p-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between shadow-3xs">
-                        <div className="flex items-center gap-1.5 overflow-hidden">
-                          <FileText size={14} className="text-[#0B4C8C] shrink-0" />
-                          <span className="text-[10px] font-semibold text-slate-600 truncate max-w-[180px]">
-                            {brochureUrl.split('/').pop()}
-                          </span>
-                        </div>
-                        <a
-                          href={brochureUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[9px] uppercase font-bold text-[#0B4C8C] hover:underline flex items-center gap-0.5 shrink-0"
-                        >
-                          View PDF
-                          <ExternalLink size={8} />
-                        </a>
+                    
+                    {/* Render List of Already Uploaded Brochures */}
+                    {brochuresList.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Uploaded Brochures</span>
+                        {brochuresList.map((b, idx) => (
+                          <div key={b.url} className="p-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between shadow-3xs">
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                              <FileText size={14} className="text-[#0B4C8C] shrink-0" />
+                              <span className="text-[10px] font-semibold text-slate-600 truncate max-w-[180px]">
+                                {b.url.split('/').pop()} ({b.size ? (b.size / 1024 / 1024).toFixed(2) + ' MB' : 'Size N/A'})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={b.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] uppercase font-bold text-[#0B4C8C] hover:underline flex items-center gap-0.5 shrink-0"
+                              >
+                                View PDF
+                                <ExternalLink size={8} />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUploadedMedia('brochure', idx, b.url)}
+                                className="text-slate-400 hover:text-rose-650"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Floor Plan URL & Upload */}
+                  {/* Floor Plan Select */}
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Property Floor Plan Image</label>
-                    <div className="flex gap-2">
+                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Property Floor Plans (PDF, PNG, JPG)</label>
+                    <div className="border border-dashed border-slate-200 bg-white p-4 text-center rounded-lg relative hover:border-[#0B4C8C] transition-colors cursor-pointer shadow-3xs">
                       <input
-                        type="text"
-                        value={floorPlan}
-                        onChange={(e) => setFloorPlan(e.target.value)}
-                        className="flex-1 bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none"
-                        placeholder="Floor Plan Image URL (or upload below)"
+                        type="file"
+                        accept="application/pdf,image/*"
+                        multiple
+                        onChange={(e) => {
+                          if (e.target.files) addFilesToQueue(e.target.files, 'floorPlan');
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
-                      <div className="relative shrink-0">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleMediaUpload(e, 'floorPlan')}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          disabled={uploadLoading}
-                        />
-                        <button type="button" className="px-3 py-2.5 bg-white hover:bg-slate-50 border border-slate-250 text-[#0B4C8C] rounded-lg text-xs flex items-center gap-1.5 font-bold uppercase tracking-wider shadow-xs">
-                          <Upload size={14} className="text-[#0B4C8C]" />
-                          <span>Upload</span>
-                        </button>
+                      <div className="flex flex-col items-center gap-1">
+                        <Upload size={20} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-700">Add Floor Plans</span>
+                        <span className="text-[9px] text-slate-400 block font-semibold">Max 5 floor plans, ≤ 3MB each</span>
                       </div>
                     </div>
-                    {floorPlan && (
-                      <div className="p-2 bg-white border border-slate-200 rounded-lg space-y-1 shadow-3xs text-left">
-                        <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Floor Plan Preview</span>
-                        <div className="w-32 h-20 bg-slate-100 rounded-md overflow-hidden border border-slate-100 relative">
-                          <img
-                            src={floorPlan}
-                            alt="Floor plan preview"
-                            className="w-full h-full object-contain"
-                            onError={(e) => handleImageError(e, 'plot')}
-                          />
+                    
+                    {/* Render List of Already Uploaded Floor Plans */}
+                    {floorPlansList.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Uploaded Floor Plans</span>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {floorPlansList.map((f, idx) => {
+                            const isPdf = f.url.toLowerCase().endsWith('.pdf');
+                            return (
+                              <div key={f.url} className="p-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between shadow-3xs">
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                  {isPdf ? (
+                                    <FileText size={14} className="text-[#0B4C8C] shrink-0" />
+                                  ) : (
+                                    <div className="w-6 h-6 bg-slate-100 rounded overflow-hidden shrink-0 border border-slate-100">
+                                      <img src={f.url} className="w-full h-full object-cover" alt="floor plan" onError={(e) => handleImageError(e, 'plot')} />
+                                    </div>
+                                  )}
+                                  <span className="text-[10px] font-semibold text-slate-600 truncate max-w-[180px]">
+                                    {f.url.split('/').pop()} ({f.size ? (f.size / 1024 / 1024).toFixed(2) + ' MB' : 'Size N/A'})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[9px] uppercase font-bold text-[#0B4C8C] hover:underline flex items-center gap-0.5 shrink-0"
+                                  >
+                                    View
+                                    <ExternalLink size={8} />
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteUploadedMedia('floorPlan', idx, f.url)}
+                                    className="text-slate-400 hover:text-rose-650"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -1172,21 +1545,29 @@ export default function AdminPropertiesPage() {
               <div className="space-y-4">
                 <h4 className="text-xs font-extrabold uppercase tracking-widest text-[#0B4C8C] border-l-2 border-[#0B4C8C] pl-2">Portfolio Images (Cloudinary)</h4>
                 
-                <div className="border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center rounded-xl hover:border-[#0B4C8C] transition-colors relative cursor-pointer shadow-2xs">
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingImage(true); }}
+                  onDragLeave={() => setIsDraggingImage(false)}
+                  onDrop={(e) => { e.preventDefault(); setIsDraggingImage(false); if (e.dataTransfer.files) addFilesToQueue(e.dataTransfer.files, 'image'); }}
+                  className={`border-2 border-dashed p-8 text-center rounded-xl transition-all relative cursor-pointer shadow-2xs ${
+                    isDraggingImage ? 'border-[#0B4C8C] bg-blue-50/50' : 'border-slate-200 bg-slate-50 hover:border-[#0B4C8C]'
+                  }`}
+                >
                   <input
                     type="file"
                     multiple
                     accept="image/*"
-                    onChange={handleImageUpload}
+                    onChange={(e) => {
+                      if (e.target.files) addFilesToQueue(e.target.files, 'image');
+                    }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    disabled={uploadLoading}
                   />
-                  <div className="space-y-2">
-                    <Upload className="mx-auto text-slate-400" size={32} />
+                  <div className="space-y-2 select-none pointer-events-none">
+                    <Upload className={`mx-auto transition-colors ${isDraggingImage ? 'text-[#0B4C8C]' : 'text-slate-400'}`} size={32} />
                     <span className="text-sm font-semibold text-slate-700 block">
-                      {uploadLoading ? 'Uploading to secure servers...' : 'Click or Drag images to upload'}
+                      {isDraggingImage ? 'Drop images here!' : 'Click or Drag images to queue for upload'}
                     </span>
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold">Supports JPG, PNG, WEBP (Max 5MB)</span>
+                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold">Supports JPG, JPEG, WEBP (Max 2MB per image)</span>
                   </div>
                 </div>
 
@@ -1206,7 +1587,9 @@ export default function AdminPropertiesPage() {
                         </div>
                         
                         <div className="flex-1 min-w-0 space-y-1">
-                          <span className="text-[9px] uppercase tracking-wider text-slate-400 block font-bold">Order: {img.order + 1}</span>
+                          <span className="text-[9px] uppercase tracking-wider text-slate-400 block font-bold">
+                            Order: {img.order + 1} {img.size ? `(${ (img.size / 1024 / 1024).toFixed(2) } MB)` : ''}
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleSetCover(idx)}
@@ -1246,6 +1629,153 @@ export default function AdminPropertiesPage() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Media Queue Dashboard */}
+                {uploadQueue.length > 0 && (
+                  <div className="space-y-4 border border-slate-200 rounded-[20px] p-6 bg-slate-50/50 shadow-2xs pt-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                          <Upload size={16} className="text-[#0B4C8C]" />
+                          <span>Upload Queue Dashboard</span>
+                        </h4>
+                        <p className="text-[10px] text-slate-500 font-semibold">Review, optimize, and publish queued media assets.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={processQueue}
+                          disabled={formLoading || !uploadQueue.some(q => q.status === 'pending' || q.status === 'failed')}
+                          className="px-3.5 py-2 bg-[#0B4C8C] hover:bg-[#0B4C8C]/90 text-white rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-xs"
+                        >
+                          {formLoading ? (
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <CheckCircle size={14} />
+                          )}
+                          <span>Confirm & Upload Files</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUploadQueue([])}
+                          disabled={formLoading}
+                          className="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-250 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50 transition-all shadow-3xs"
+                        >
+                          Clear Queue
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Capacity Gauges */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <ProgressBar 
+                        value={imagesList.length + uploadQueue.filter(q => q.uploadType === 'image').length} 
+                        max={15} 
+                        label="Images Count" 
+                        color={imagesList.length + uploadQueue.filter(q => q.uploadType === 'image').length > 12 ? 'bg-amber-500' : 'bg-[#0B4C8C]'} 
+                      />
+                      <ProgressBar 
+                        value={floorPlansList.length + uploadQueue.filter(q => q.uploadType === 'floorPlan').length} 
+                        max={5} 
+                        label="Floor Plans" 
+                        color={floorPlansList.length + uploadQueue.filter(q => q.uploadType === 'floorPlan').length > 4 ? 'bg-amber-500' : 'bg-[#0B4C8C]'} 
+                      />
+                      <ProgressBar 
+                        value={brochuresList.length + uploadQueue.filter(q => q.uploadType === 'brochure').length} 
+                        max={2} 
+                        label="Brochures" 
+                        color={brochuresList.length + uploadQueue.filter(q => q.uploadType === 'brochure').length > 1 ? 'bg-amber-500' : 'bg-[#0B4C8C]'} 
+                      />
+                      <ProgressBar 
+                        value={parseFloat(((uploadQueue.reduce((acc, q) => acc + q.size, 0) + 
+                              imagesList.reduce((acc, img) => acc + (img.size || 350000), 0) +
+                              floorPlansList.reduce((acc, f) => acc + (f.size || 500000), 0) +
+                              brochuresList.reduce((acc, b) => acc + (b.size || 1500000), 0)
+                            ) / 1024 / 1024).toFixed(2))} 
+                        max={40} 
+                        label="Payload (MB)" 
+                        color={
+                          (uploadQueue.reduce((acc, q) => acc + q.size, 0) + 
+                            imagesList.reduce((acc, img) => acc + (img.size || 350000), 0) +
+                            floorPlansList.reduce((acc, f) => acc + (f.size || 500000), 0) +
+                            brochuresList.reduce((acc, b) => acc + (b.size || 1500000), 0)
+                          ) > 35 * 1024 * 1024 ? 'bg-rose-500' : 'bg-emerald-500'
+                        } 
+                      />
+                    </div>
+
+                    {/* Queue Items List */}
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                      {uploadQueue.map((item) => {
+                        const isImage = item.uploadType === 'image';
+                        return (
+                          <div key={item.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-4 shadow-3xs hover:border-slate-300 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {isImage && item.status !== 'completed' ? (
+                                <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200 relative flex items-center justify-center">
+                                  <span className="text-[10px] text-slate-400 font-bold">Image</span>
+                                </div>
+                              ) : (
+                                <div className="w-10 h-10 bg-slate-50 rounded-lg shrink-0 border border-slate-200 flex items-center justify-center text-slate-450">
+                                  <FileText size={16} />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-slate-800 block truncate max-w-[240px]" title={item.name}>{item.name}</span>
+                                <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                                  <span>{item.uploadType}</span>
+                                  <span>•</span>
+                                  <span>{ (item.size / 1024 / 1024).toFixed(2) } MB</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              {/* Status Indicator */}
+                              <div className="text-right">
+                                {item.status === 'pending' && (
+                                  <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-500 text-[9px] font-extrabold uppercase tracking-wider rounded-md">Pending</span>
+                                )}
+                                {item.status === 'compressing' && (
+                                  <span className="px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-extrabold uppercase tracking-wider rounded-md animate-pulse">Compressing</span>
+                                )}
+                                {item.status === 'uploading' && (
+                                  <div className="space-y-1">
+                                    <span className="px-2 py-0.5 bg-blue-50 border border-blue-200 text-[#0B4C8C] text-[9px] font-extrabold uppercase tracking-wider rounded-md">Uploading {item.progress}%</span>
+                                    <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-[#0B4C8C] transition-all duration-150" style={{ width: `${item.progress}%` }} />
+                                    </div>
+                                  </div>
+                                )}
+                                {item.status === 'completed' && (
+                                  <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-250 text-emerald-700 text-[9px] font-extrabold uppercase tracking-wider rounded-md">Completed</span>
+                                )}
+                                {item.status === 'failed' && (
+                                  <div className="space-y-0.5">
+                                    <span className="px-2 py-0.5 bg-rose-50 border border-rose-250 text-rose-700 text-[9px] font-extrabold uppercase tracking-wider rounded-md">Failed</span>
+                                    <span className="text-[8px] text-rose-500 block max-w-[120px] truncate leading-none mt-0.5" title={item.error}>{item.error}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Remove button */}
+                              {(item.status === 'pending' || item.status === 'failed') && (
+                                <button
+                                  type="button"
+                                  onClick={() => setUploadQueue(prev => prev.filter(q => q.id !== item.id))}
+                                  className="p-1.5 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 text-slate-400 hover:text-rose-650 rounded-lg shadow-3xs"
+                                  title="Remove from Queue"
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

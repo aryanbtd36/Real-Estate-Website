@@ -226,6 +226,50 @@ export default function LocalityDetailPage() {
     rentalYield: 3.2
   };
 
+  // Dynamic SEO Tag Synchronization
+  useEffect(() => {
+    if (details) {
+      const pageTitle = `${details.name} Property Investment Dossier | Aura Estates`;
+      document.title = pageTitle;
+
+      const setMetaTag = (attrName: string, attrVal: string, content: string) => {
+        let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
+        if (!el) {
+          el = document.createElement('meta');
+          el.setAttribute(attrName, attrVal);
+          document.head.appendChild(el);
+        }
+        el.setAttribute('content', content);
+      };
+
+      const setLinkTag = (rel: string, href: string) => {
+        let el = document.querySelector(`link[rel="${rel}"]`);
+        if (!el) {
+          el = document.createElement('link');
+          el.setAttribute('rel', rel);
+          document.head.appendChild(el);
+        }
+        el.setAttribute('href', href);
+      };
+
+      const canonicalUrl = `https://auraestates.com/areas/${slug}`;
+      const ogImage = 'https://auraestates.com/og-image.jpg';
+
+      setMetaTag('name', 'description', details.overview);
+      setMetaTag('property', 'og:title', pageTitle);
+      setMetaTag('property', 'og:description', details.overview);
+      setMetaTag('property', 'og:url', canonicalUrl);
+      setMetaTag('property', 'og:image', ogImage);
+
+      setMetaTag('name', 'twitter:title', pageTitle);
+      setMetaTag('name', 'twitter:description', details.overview);
+      setMetaTag('name', 'twitter:image', ogImage);
+      setMetaTag('name', 'twitter:card', 'summary_large_image');
+
+      setLinkTag('canonical', canonicalUrl);
+    }
+  }, [details, slug]);
+
   useEffect(() => {
     async function fetchLocalProperties() {
       try {
@@ -251,8 +295,31 @@ export default function LocalityDetailPage() {
 
   const formatCurrency = (val: number) => `₹${val.toLocaleString()}`;
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://auraestates.com"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": details.name,
+        "item": `https://auraestates.com/areas/${slug}`
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-6 pt-24 space-y-8">
