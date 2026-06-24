@@ -28,7 +28,7 @@ async function testUpload({
   
   // Create file blob
   const buffer = typeof content === 'string' ? Buffer.from(content) : content;
-  const blob = new Blob([buffer], { type: mimeType });
+  const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
   
   formData.append('file', blob, filename);
   formData.append('uploadType', uploadType);

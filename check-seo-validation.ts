@@ -175,7 +175,10 @@ async function runSeoValidation() {
 
     // Check Open Graph tags
     const ogTitle = getMetaTag(html, 'property', 'og:title');
-    assert(ogTitle && ogTitle.includes(tempProp.name), 'Property Page: og:title tag rendered correctly');
+    assert(
+      ogTitle?.includes(tempProp.name) ?? false,
+      'Property Page: og:title tag rendered correctly'
+    );
     
     const ogUrl = getMetaTag(html, 'property', 'og:url');
     assert(ogUrl === `https://auraestates.com/properties/${tempProp.id}`, 'Property Page: og:url matches canonical');
