@@ -126,6 +126,24 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
     };
   }, []);
 
+  // Automatically invalidate size on container dimension changes (e.g., late CSS load, tab shifts, modal transitions)
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // Update map tile layers
   useEffect(() => {
     const map = mapRef.current;
@@ -161,6 +179,7 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
           attribution: '&copy; Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          crossOrigin: true,
         }
       );
       setupLayerDiagnostics(baseTileLayerRef.current, 'Esri World Imagery');
@@ -171,6 +190,7 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
           {
             attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
+            crossOrigin: true,
           }
         );
         setupLayerDiagnostics(overlayTileLayerRef.current, 'Esri Hybrid Overlays');
@@ -181,6 +201,7 @@ export default function PropertyViewMap({ latitude, longitude, boundary }: Prope
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
           attribution: '&copy; OpenStreetMap contributors',
+          crossOrigin: true,
         }
       );
       setupLayerDiagnostics(baseTileLayerRef.current, 'OpenStreetMap');

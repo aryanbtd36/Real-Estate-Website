@@ -373,6 +373,35 @@ export default function PropertyEditMap({
     }
   }, [activeTab]);
 
+  // Automatically invalidate size on container dimension changes (e.g., late CSS load, tab shifts, modal transitions)
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Clean up Leaflet map instance on complete component unmount
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        console.log('[GIS Diagnostics] Edit Map component unmounting. Removing Leaflet map instance.');
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
   // Map Tiles Synchronizer Effect
   useEffect(() => {
     const map = mapRef.current;
@@ -408,6 +437,7 @@ export default function PropertyEditMap({
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
           attribution: '&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          crossOrigin: true,
         }
       );
       setupLayerDiagnostics(baseTileLayerRef.current, 'Esri World Imagery');
@@ -418,6 +448,7 @@ export default function PropertyEditMap({
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
           {
             attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
+            crossOrigin: true,
           }
         );
         setupLayerDiagnostics(overlayTileLayerRef.current, 'Esri Hybrid Overlays');
@@ -428,6 +459,7 @@ export default function PropertyEditMap({
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
           attribution: '&copy; OpenStreetMap contributors',
+          crossOrigin: true,
         }
       );
       setupLayerDiagnostics(baseTileLayerRef.current, 'OpenStreetMap');

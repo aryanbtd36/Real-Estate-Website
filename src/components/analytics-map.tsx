@@ -168,6 +168,7 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
           attribution: '&copy; Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          crossOrigin: true,
         }
       );
       setupLayerDiagnostics(baseTileLayerRef.current, 'Esri World Imagery');
@@ -178,6 +179,7 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
           {
             attribution: '&copy; Esri, HERE, Garmin, OpenStreetMap contributors',
+            crossOrigin: true,
           }
         );
         setupLayerDiagnostics(overlayTileLayerRef.current, 'Esri Hybrid Overlays');
@@ -188,6 +190,7 @@ export default function AnalyticsMap({ points, type }: AnalyticsMapProps) {
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
           attribution: '&copy; OpenStreetMap contributors',
+          crossOrigin: true,
         }
       );
       setupLayerDiagnostics(baseTileLayerRef.current, 'OpenStreetMap');
