@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '@/components/navbar';
+import 'leaflet/dist/leaflet.css';
 import {
   Search,
   MapPin,
@@ -41,6 +43,39 @@ import {
 } from 'lucide-react';
 import { formatIndianRealEstatePrice } from '@/lib/currency';
 import { handleImageError } from '@/lib/images';
+
+// Lightweight frame loop counter hook for real-time calculation animations
+function useAnimatedCounter(targetValue: number, duration: number = 400) {
+  const [count, setCount] = useState(targetValue);
+
+  useEffect(() => {
+    let startTime: number | null = null;
+    const startValue = count;
+
+    if (startValue === targetValue) return;
+
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+
+      const easeProgress = progress * (2 - progress);
+      const currentValue = Math.round(startValue + (targetValue - startValue) * easeProgress);
+
+      setCount(currentValue);
+
+      if (progress < 1) {
+        animationFrameId = window.requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(animationFrameId);
+  }, [targetValue, duration]);
+
+  return count;
+}
 
 interface Property {
   id: string;
@@ -84,7 +119,6 @@ export default function HomePage() {
   const [radarLocality, setRadarLocality] = useState<'gomti-nagar' | 'shaheed-path' | 'indira-nagar' | 'hazratganj'>('gomti-nagar');
   const [hoveredRadarPillar, setHoveredRadarPillar] = useState<string | null>(null);
 
-  // Load properties and CMS data on mount
   useEffect(() => {
     async function fetchProperties() {
       try {
@@ -119,11 +153,10 @@ export default function HomePage() {
     fetchCms();
   }, []);
 
-  // Update SEO Meta Tags from CMS config in DOM
   useEffect(() => {
     if (cmsData?.seo) {
       document.title = cmsData.seo.metaTitle || 'Aura Estates';
-      
+
       const setMetaTag = (attrName: string, attrVal: string, content: string) => {
         let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
         if (!el) {
@@ -148,7 +181,7 @@ export default function HomePage() {
       setMetaTag('name', 'keywords', cmsData.seo.keywords || '');
       setMetaTag('property', 'og:title', cmsData.seo.metaTitle || '');
       setMetaTag('property', 'og:description', cmsData.seo.metaDescription || '');
-      
+
       if (cmsData.seo.ogImage) {
         setMetaTag('property', 'og:image', cmsData.seo.ogImage);
       }
@@ -158,7 +191,6 @@ export default function HomePage() {
     }
   }, [cmsData]);
 
-  // Pricing format utility
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
       return `₹${(price / 10000000).toFixed(2)} Crore`;
@@ -166,7 +198,6 @@ export default function HomePage() {
     return `₹${(price / 100000).toFixed(1)} Lakh`;
   };
 
-  // Math calculations for inline widgets
   const calculateMiniEMI = () => {
     const P = miniEmiPrincipal;
     const r = (miniEmiRate / 12) / 100;
@@ -182,7 +213,8 @@ export default function HomePage() {
     return yieldPct.toFixed(2);
   };
 
-  // MOCK FALLBACK DATA
+  const animatedEmiResult = useAnimatedCounter(calculateMiniEMI());
+
   const fallbackPlots: Property[] = [
     {
       id: 'mock-plot-1',
@@ -244,15 +276,14 @@ export default function HomePage() {
     }
   ];
 
-  // Logic to calculate spotlight & carousel based on Featured Property Config
   const getFeaturedCollection = () => {
     if (properties.length === 0) return [...fallbackPlots, ...fallbackResidencies, ...fallbackApartments];
-    
+
     if (cmsData?.featuredConfig?.mode === 'MANUAL' && Array.isArray(cmsData.featuredConfig.manualIds) && cmsData.featuredConfig.manualIds.length > 0) {
       const manual = properties.filter(p => cmsData.featuredConfig.manualIds.includes(p.id));
       if (manual.length > 0) return manual;
     }
-    
+
     const featured = properties.filter(p => p.featured);
     return featured.length > 0 ? featured : properties;
   };
@@ -261,7 +292,6 @@ export default function HomePage() {
   const spotlightProperty = featuredCollection[0] || fallbackResidencies[0];
   const carouselProperties = featuredCollection.slice(1).length > 0 ? featuredCollection.slice(1) : fallbackPlots;
 
-  // Dynamic Metrics mapping helper
   const getHeroMetrics = () => {
     if (cmsData?.heroMetrics && cmsData.heroMetrics.length > 0) {
       return cmsData.heroMetrics;
@@ -284,7 +314,6 @@ export default function HomePage() {
     ];
   };
 
-  // Locality scoreboard rendering helper
   const getLocalitiesScorecards = () => {
     if (cmsData?.localities && cmsData.localities.length > 0) {
       return cmsData.localities;
@@ -297,7 +326,6 @@ export default function HomePage() {
     ];
   };
 
-  // Testimonial selector
   const getTestimonialList = () => {
     if (cmsData?.testimonials && cmsData.testimonials.length > 0) {
       return cmsData.testimonials;
@@ -318,7 +346,6 @@ export default function HomePage() {
     return true;
   });
 
-  // RADAR RADIAL DATA benchmark
   const RADAR_BENCHMARKS = {
     'gomti-nagar': { growth: 92, demand: 88, connectivity: 85, yield: 90, infra: 94, verification: 98, cagr: '12.2%', rating: 'A+' },
     'shaheed-path': { growth: 96, demand: 96, connectivity: 88, yield: 85, infra: 90, verification: 95, cagr: '14.5%', rating: 'A+' },
@@ -326,10 +353,9 @@ export default function HomePage() {
     'hazratganj': { growth: 88, demand: 91, connectivity: 95, yield: 95, infra: 92, verification: 96, cagr: '7.8%', rating: 'A+' }
   };
 
-  // Convert radar points to polygon path
   const getRadarPath = (data: typeof RADAR_BENCHMARKS['gomti-nagar']) => {
     const center = 100;
-    const rScale = 0.8; // max radius is 80
+    const rScale = 0.8;
     const points = [
       { angle: 0, val: data.growth },
       { angle: 60, val: data.demand },
@@ -350,248 +376,229 @@ export default function HomePage() {
 
   const currentRadarData = RADAR_BENCHMARKS[radarLocality];
 
+  const chartTrends = {
+    gomti: [4200, 4900, 5600, 7100, 8900],
+    indira: [5100, 5400, 5900, 6400, 7000],
+    shaheed: [3100, 4200, 5800, 7900, 10200]
+  };
+
+  const parseCoordinatesPath = (dataPoints: number[]) => {
+    const width = 400;
+    const height = 150;
+    const maxVal = 11000;
+    const minVal = 2000;
+
+    return dataPoints.map((val, index) => {
+      const x = (index / (dataPoints.length - 1)) * width;
+      const y = height - ((val - minVal) / (maxVal - minVal)) * (height - 20) - 10;
+      return { x, y };
+    });
+  };
+
+  const generateSvgCurve = (dataPoints: number[]) => {
+    const coords = parseCoordinatesPath(dataPoints);
+    if (coords.length === 0) return '';
+    return coords.reduce((acc, curr, idx) => {
+      if (idx === 0) return `M ${curr.x} ${curr.y}`;
+      const prev = coords[idx - 1];
+      const cpX1 = prev.x + (curr.x - prev.x) / 2;
+      const cpY1 = prev.y;
+      const cpX2 = prev.x + (curr.x - prev.x) / 2;
+      const cpY2 = curr.y;
+      return `${acc} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
+    }, '');
+  };
+
   const renderCmsSection = (sectionId: string) => {
     switch (sectionId) {
       case 'hero':
         if (cmsData?.hero && !cmsData.hero.visible) return null;
-        
-        const headline = cmsData?.hero?.headline || "Find the Right Property. Backed by Data, Not Guesswork.";
-        const subheadline = cmsData?.hero?.subheadline || "Discover verified opportunities using market intelligence, area insights, investment analytics, and transparent pricing.";
-        const primaryText = cmsData?.hero?.primaryCtaText || "Explore Properties";
-        const primaryUrl = cmsData?.hero?.primaryCtaUrl || "/plots";
-        const secondaryText = cmsData?.hero?.secondaryCtaText || "View Market Intelligence";
-        const secondaryUrl = cmsData?.hero?.secondaryCtaUrl || "/investment-intelligence";
 
         return (
-          <section key="hero" className="relative min-h-screen flex items-center pt-28 pb-20 overflow-hidden bg-gradient-to-br from-slate-900 via-deep-navy to-slate-950 text-white dark-grid-pattern">
-            {/* Cinematic overlay masks and lighting effects */}
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-tr from-trust-blue/15 via-emerald-500/5 to-transparent blur-[130px] pointer-events-none -z-10" />
-            <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-trust-blue/20 blur-3xl animate-float-slow -z-10" />
-            <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl animate-float-rev -z-10" />
+          <section key="hero" className="relative min-h-[92vh] flex items-center justify-center overflow-hidden pt-16" style={{ background: 'radial-gradient(circle at top, rgba(37, 99, 235, 0.12), transparent 45%), #F8FAFC' }}>
 
-            {/* Cityscape backdrop elements */}
-            <div className="absolute inset-0 bg-cover bg-center opacity-[0.03] pointer-events-none -z-20 mix-blend-overlay" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600&auto=format&fit=crop&q=80')" }} />
+            {/* ══ Z-1: Lucknow SVG map — true full-bleed background ══ */}
+            <div
+              className="absolute inset-0 pointer-events-none select-none overflow-hidden"
+              style={{ zIndex: 1 }}
+            >
+              <img
+                src="/maps/lucknow-map.svg"
+                alt=""
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  width: '100%',
+                  height: '100%',
+                  minWidth: '100%',
+                  minHeight: '100%',
+                  objectFit: 'cover',
+                  transform: 'translate(-50%, -50%) scale(1.35)',
+                  transformOrigin: 'center center',
+                  opacity: 0.42,
+                  filter: 'saturate(0.55) contrast(1.15) brightness(1.02) drop-shadow(0 0 32px rgba(37,99,235,0.1))',
+                  display: 'block',
+                }}
+              />
+            </div>
 
-            <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center z-10">
-              {/* Hero Left */}
-              <div className="lg:col-span-6 flex flex-col space-y-8 text-left">
-                {/* Search -> Analyze -> Compare -> Invest visual journey */}
-                <div className="flex items-center gap-2 text-[10px] tracking-widest font-black uppercase text-slate-400">
-                  <span className="text-trust-blue">Search</span>
-                  <span className="text-slate-600">→</span>
-                  <span>Analyze</span>
-                  <span className="text-slate-600">→</span>
-                  <span>Compare</span>
-                  <span className="text-slate-600">→</span>
-                  <span>Invest</span>
-                </div>
+            {/* ══ Z-2: Light colour wash — tints map to match hero bg, keeps it elegant ══ */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ zIndex: 2, background: 'rgba(248,250,252,0.28)' }}
+            />
 
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] text-white"
-                >
-                  {headline}
-                </motion.h1>
+            {/* ══ Z-3: Soft edge vignette — gentle fade at perimeter only ══ */}
+            {/* Top fade (into navbar) */}
+            <div className="absolute inset-x-0 top-0 pointer-events-none" style={{ zIndex: 3, height: '90px', background: 'linear-gradient(to bottom, rgba(248,250,252,0.95) 0%, transparent 100%)' }} />
+            {/* Bottom fade (into next section) */}
+            <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ zIndex: 3, height: '80px', background: 'linear-gradient(to top, rgba(248,250,252,0.90) 0%, transparent 100%)' }} />
+            {/* Left fade */}
+            <div className="absolute inset-y-0 left-0 pointer-events-none" style={{ zIndex: 3, width: '80px', background: 'linear-gradient(to right, rgba(248,250,252,0.75) 0%, transparent 100%)' }} />
+            {/* Right fade */}
+            <div className="absolute inset-y-0 right-0 pointer-events-none" style={{ zIndex: 3, width: '80px', background: 'linear-gradient(to left, rgba(248,250,252,0.75) 0%, transparent 100%)' }} />
 
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.15 }}
-                  className="text-sm sm:text-base text-slate-400 font-medium leading-relaxed max-w-xl"
-                >
-                  {subheadline}
-                </motion.p>
+            {/* ══ Z-10: Locality markers — pushed to outer ring, away from centre text ══ */}
 
-                {/* SaaS-Style Large search panel */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  className="w-full bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-2xl relative"
-                >
-                  <form 
-                    action={`/${searchType.toLowerCase() === 'plot' ? 'plots' : searchType.toLowerCase() === 'villa' || searchType.toLowerCase() === 'duplex' ? 'residencies' : 'apartments'}`}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center"
-                  >
-                    <div className="md:col-span-3 flex flex-col space-y-1">
-                      <label className="text-[9px] uppercase font-black text-slate-500 tracking-wider pl-1">Locality</label>
-                      <select
-                        value={searchLocation}
-                        onChange={(e) => setSearchLocation(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs font-semibold text-slate-300 outline-none focus:border-trust-blue"
-                        name="location"
-                      >
-                        <option value="">All Areas</option>
-                        <option value="gomti-nagar">Gomti Nagar</option>
-                        <option value="indira-nagar">Indira Nagar</option>
-                        <option value="hazratganj">Hazratganj</option>
-                        <option value="aliganj">Aliganj</option>
-                      </select>
-                    </div>
-                    <div className="md:col-span-3 flex flex-col space-y-1">
-                      <label className="text-[9px] uppercase font-black text-slate-500 tracking-wider pl-1">Category</label>
-                      <select
-                        value={searchType}
-                        onChange={(e) => setSearchType(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs font-semibold text-slate-300 outline-none focus:border-trust-blue"
-                        name="type"
-                      >
-                        <option value="Plot">Plot / Land</option>
-                        <option value="Apartment">Apartment</option>
-                        <option value="Residency">Independent House / Villa</option>
-                      </select>
-                    </div>
-                    <div className="md:col-span-3 flex flex-col space-y-1">
-                      <label className="text-[9px] uppercase font-black text-slate-500 tracking-wider pl-1">Budget</label>
-                      <select
-                        value={searchBudget}
-                        onChange={(e) => setSearchBudget(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs font-semibold text-slate-300 outline-none focus:border-trust-blue"
-                        name="budget"
-                      >
-                        <option value="">No Limit</option>
-                        <option value="5000000">Under ₹50 L</option>
-                        <option value="10000000">Under ₹1 Cr</option>
-                        <option value="20000000">Under ₹2 Cr</option>
-                      </select>
-                    </div>
-                    <div className="md:col-span-3 pt-3.5">
-                      <button
-                        type="submit"
-                        className="w-full h-9 bg-trust-blue text-white hover:bg-trust-blue-hover rounded-lg font-bold flex items-center justify-center gap-1.5 shadow transition-all text-xs cursor-pointer hover:shadow-premium-hover"
-                      >
-                        <Search size={14} />
-                        <span>Search Data</span>
-                      </button>
-                    </div>
-                  </form>
-                </motion.div>
+            {/* TOP-LEFT: Indira Nagar — Blue / Verified locality */}
+            <div className="absolute hidden sm:flex flex-col items-center gap-1" style={{ zIndex: 10, top: '14%', left: '14%' }}>
+              <div className="group relative flex flex-col items-center gap-1">
+                <span className="absolute rounded-full bg-blue-400/20 animate-ping" style={{ width: 28, height: 28, top: -8, left: -8, animationDuration: '2.6s' }} />
+                <span className="relative w-3 h-3 rounded-full bg-blue-600 border-2 border-white shadow-lg" style={{ boxShadow: '0 0 10px 2px rgba(37,99,235,0.35)' }} />
+                <span className="text-[9px] font-bold text-blue-800 bg-white/85 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap tracking-wide mt-0.5">
+                  Indira Nagar
+                </span>
+              </div>
+            </div>
 
-                {/* Action CTAs */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                  className="flex flex-wrap gap-4 pt-2"
-                >
-                  <Link
-                    href={primaryUrl}
-                    className="px-6 py-3 bg-trust-blue hover:bg-trust-blue-hover text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center gap-2 hover:shadow-premium-hover"
-                  >
-                    <span>{primaryText}</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                  <Link
-                    href={secondaryUrl}
-                    className="px-6 py-3 bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors border border-slate-700/60 flex items-center gap-2"
-                  >
-                    <span>{secondaryText}</span>
-                    <ArrowUpRight size={14} />
-                  </Link>
-                </motion.div>
+            {/* TOP-RIGHT: Gomti Nagar — Blue / Verified locality */}
+            <div className="absolute flex flex-col items-center gap-1" style={{ zIndex: 10, top: '12%', right: '14%' }}>
+              <div className="group relative flex flex-col items-center gap-1">
+                <span className="absolute rounded-full bg-blue-400/20 animate-ping" style={{ width: 32, height: 32, top: -10, left: -10, animationDuration: '2.2s' }} />
+                <span className="relative w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-lg" style={{ boxShadow: '0 0 12px 3px rgba(37,99,235,0.40)' }} />
+                <span className="text-[9px] font-bold text-blue-800 bg-white/85 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap tracking-wide mt-0.5">
+                  Gomti Nagar
+                </span>
+              </div>
+            </div>
+
+            {/* RIGHT: Vibhuti Khand — Blue / Verified locality */}
+            <div className="absolute hidden lg:flex flex-col items-center gap-1" style={{ zIndex: 10, top: '38%', right: '7%' }}>
+              <div className="group relative flex flex-col items-center gap-1">
+                <span className="relative w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-md" style={{ boxShadow: '0 0 8px 2px rgba(37,99,235,0.28)' }} />
+                <span className="text-[8px] font-semibold text-blue-700 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md shadow-sm whitespace-nowrap mt-0.5">
+                  Vibhuti Khand
+                </span>
+              </div>
+            </div>
+
+            {/* FAR RIGHT: Chinhat — Orange / Commercial hub */}
+            <div className="absolute hidden lg:flex flex-col items-center gap-1" style={{ zIndex: 10, top: '26%', right: '5%' }}>
+              <div className="group relative flex flex-col items-center gap-1">
+                <span className="absolute rounded-full bg-orange-400/20 animate-ping" style={{ width: 26, height: 26, top: -7, left: -7, animationDuration: '3.0s' }} />
+                <span className="relative w-2.5 h-2.5 rounded-full bg-orange-500 border-2 border-white shadow-md" style={{ boxShadow: '0 0 8px 2px rgba(234,88,12,0.30)' }} />
+                <span className="text-[8px] font-semibold text-orange-700 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md shadow-sm whitespace-nowrap mt-0.5">
+                  Chinhat
+                </span>
+              </div>
+            </div>
+
+            {/* BOTTOM-LEFT: Shaheed Path — Green / High growth */}
+            <div className="absolute hidden sm:flex flex-col items-center gap-1" style={{ zIndex: 10, bottom: '16%', left: '16%' }}>
+              <div className="group relative flex flex-col items-center gap-1">
+                <span className="absolute rounded-full bg-emerald-400/20 animate-ping" style={{ width: 30, height: 30, top: -9, left: -9, animationDuration: '2.9s' }} />
+                <span className="relative w-3 h-3 rounded-full bg-emerald-600 border-2 border-white shadow-lg" style={{ boxShadow: '0 0 10px 2px rgba(5,150,105,0.35)' }} />
+                <span className="text-[9px] font-bold text-emerald-800 bg-white/85 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap tracking-wide mt-0.5">
+                  Shaheed Path
+                </span>
+              </div>
+            </div>
+
+            {/* BOTTOM-CENTER: Sushant Golf City — Green / High growth */}
+            <div className="absolute hidden sm:flex flex-col items-center gap-1" style={{ zIndex: 10, bottom: '12%', left: '52%' }}>
+              <div className="group relative flex flex-col items-center gap-1">
+                <span className="relative w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-md" style={{ boxShadow: '0 0 8px 2px rgba(5,150,105,0.28)' }} />
+                <span className="text-[8px] font-semibold text-emerald-700 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md shadow-sm whitespace-nowrap mt-0.5">
+                  Sushant Golf City
+                </span>
+              </div>
+            </div>
+
+            {/* Hazratganj — Purple / Premium — bottom right, away from centre */}
+            <div className="absolute hidden sm:flex flex-col items-center gap-1" style={{ zIndex: 10, bottom: '20%', right: '18%' }}>
+              <div className="group relative flex flex-col items-center gap-1">
+                <span className="absolute rounded-full bg-purple-400/18 animate-ping" style={{ width: 28, height: 28, top: -8, left: -8, animationDuration: '3.2s' }} />
+                <span className="relative w-3 h-3 rounded-full bg-purple-600 border-2 border-white shadow-lg" style={{ boxShadow: '0 0 10px 2px rgba(124,58,237,0.32)' }} />
+                <span className="text-[9px] font-bold text-purple-800 bg-white/85 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap tracking-wide mt-0.5">
+                  Hazratganj
+                </span>
+              </div>
+            </div>
+
+            {/* ══ Z-20: Hero content — centred, clear of all markers ══ */}
+            <div className="relative flex flex-col items-center text-center px-6 max-w-3xl mx-auto" style={{ zIndex: 20, paddingTop: '5vh', paddingBottom: '6vh' }}>
+
+              {/* Frosted halo — subtle glow behind the text block so it reads cleanly over the map */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  inset: '-48px -80px',
+                  background: 'radial-gradient(ellipse 80% 75% at 50% 50%, rgba(248,250,252,0.72) 0%, transparent 100%)',
+                  filter: 'blur(24px)',
+                  zIndex: -1,
+                }}
+              />
+
+              {/* Eyebrow pill */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 mb-10 bg-white/80 backdrop-blur-md border border-slate-200/70 rounded-full shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                <span className="text-[10px] font-black tracking-[0.20em] text-slate-500 uppercase">
+                  YOUR TRUSTED REAL ESTATE PARTNER
+                </span>
               </div>
 
-              {/* Hero Right: Large Intelligence Command Center */}
-              <div className="lg:col-span-6 flex justify-center">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.7, delay: 0.2 }}
-                  className="w-full max-w-lg bg-slate-900/95 border border-slate-800/80 rounded-[32px] p-6 shadow-2xl relative space-y-6 text-left"
+              {/* Headline */}
+              <h1 className="text-[36px] sm:text-[52px] lg:text-[60px] font-black tracking-tight leading-[1.08] text-slate-900 mb-7">
+                Discover Properties That Feel Like Home
+                <br />
+                <span className="text-blue-600">Across Lucknow</span>
+              </h1>
+
+              {/* Subtitle */}
+              <p className="text-[15px] sm:text-base text-slate-650 max-w-xl leading-relaxed font-medium mb-12">
+                Whether you are buying your first home, searching for the perfect family space, or exploring investment opportunities, Aura Estates helps you discover verified properties with trusted guidance.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                <Link
+                  href="/properties"
+                  className="px-9 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-blue-600/20 transition-all duration-200 inline-block text-center"
                 >
-                  {/* Status signal */}
-                  <div className="absolute -top-3 -right-3 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow flex items-center gap-1.5 border border-emerald-400/25">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
-                    Live feed active
-                  </div>
-
-                  <div className="flex justify-between items-start border-b border-slate-800 pb-4">
-                    <div>
-                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Appreciation Pulse</span>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <span className="text-2xl font-bold text-white">Lucknow Index</span>
-                        <span className="text-xs font-bold text-soft-green flex items-center gap-0.5">
-                          <TrendingUp size={12} />
-                          ↑ 18.4% YoY
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Verified Database</span>
-                      <span className="text-xl font-bold text-trust-blue mt-1 block">{properties.length > 0 ? properties.length : '1,200+'} Listings</span>
-                    </div>
-                  </div>
-
-                  {/* Growth chart (SVG) */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold">
-                      <span>Index valuation trajectory (2022 - 2026)</span>
-                      <span className="text-slate-400">Mean: ₹5,450/Sq Ft</span>
-                    </div>
-                    <div className="h-28 w-full bg-slate-950/80 rounded-xl p-2 relative overflow-hidden border border-slate-800/40">
-                      <svg className="w-full h-full text-trust-blue" viewBox="0 0 200 60" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="heroChartGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="var(--trust-blue)" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="var(--trust-blue)" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        <line x1="0" y1="15" x2="200" y2="15" stroke="rgba(255, 255, 255, 0.05)" strokeDasharray="3" />
-                        <line x1="0" y1="35" x2="200" y2="35" stroke="rgba(255, 255, 255, 0.05)" strokeDasharray="3" />
-                        <path d="M0,50 Q30,42 60,35 T120,20 T170,12 T200,5 L200,60 L0,60 Z" fill="url(#heroChartGrad)" />
-                        <motion.path
-                          d="M0,50 Q30,42 60,35 T120,20 T170,12 T200,5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          initial={{ pathLength: 0 }}
-                          animate={{ pathLength: 1 }}
-                          transition={{ duration: 1.5, ease: 'easeOut' }}
-                        />
-                        <circle cx="200" cy="5" r="3.5" fill="var(--color-soft-green)" />
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Indicators Grid */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800/60 space-y-1">
-                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Top growth neighborhood</span>
-                      <span className="text-xs font-bold text-slate-300 block truncate">Gomti Nagar Ext.</span>
-                      <span className="text-[10px] text-soft-green block font-bold">12.2% CAGR</span>
-                    </div>
-                    <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800/60 space-y-1">
-                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Top lease performance</span>
-                      <span className="text-xs font-bold text-slate-300 block truncate">Hazratganj Central</span>
-                      <span className="text-[10px] text-trust-blue block font-bold">5.2% Net Yield</span>
-                    </div>
-                    <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800/60 space-y-1">
-                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Locality search volume</span>
-                      <span className="text-xs font-bold text-slate-300 block truncate">Vibhuti Khand</span>
-                      <span className="text-[10px] text-slate-400 block font-semibold">92/100 Index</span>
-                    </div>
-                    <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800/60 space-y-1">
-                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">Registry Audit grade</span>
-                      <span className="text-xs font-bold text-slate-300 block truncate">Shaheed Path</span>
-                      <span className="text-[10px] text-emerald-400 block font-bold">A+ Rated opportunities</span>
-                    </div>
-                  </div>
-                </motion.div>
+                  Explore Properties
+                </Link>
+                <Link
+                  href="/investment-intelligence"
+                  className="px-9 py-4 text-slate-700 text-[13px] font-bold uppercase tracking-widest rounded-xl transition-all duration-200 border border-slate-200 bg-white hover:bg-slate-50 shadow-sm inline-block text-center"
+                >
+                  Explore Market Insights
+                </Link>
               </div>
+
             </div>
           </section>
         );
 
-      case 'trust-bar':
+    case 'trust-bar':
         return (
-          <section key="trust-bar" className="bg-slate-50 border-y border-slate-200/60 py-12">
-            <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-slate-200">
+          <section key="trust-bar" className="bg-white border-y border-slate-200/50 py-12">
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-slate-200/70">
               {getTrustMetrics().map((m: any) => (
                 <div key={m.id} className="first:pl-0 pl-6">
-                  <div className="text-3xl font-black text-trust-blue tracking-tight">{m.value}{m.suffix}</div>
-                  <div className="text-[9px] uppercase tracking-widest text-slate-400 font-black mt-1.5">{m.title}</div>
+                  <div className="text-3xl font-black text-blue-600 tracking-tight">{m.value}{m.suffix}</div>
+                  <div className="text-[9px] uppercase tracking-widest text-slate-500 font-black mt-1.5">{m.title}</div>
                 </div>
               ))}
             </div>
@@ -600,16 +607,16 @@ export default function HomePage() {
 
       case 'categories':
         return (
-          <section key="categories" className="py-24 border-b border-slate-100 bg-white">
+          <section key="categories" className="py-28 border-b border-slate-200/60 bg-[#F1F5F9]">
             <div className="max-w-7xl mx-auto px-6 text-center space-y-12">
               <div className="space-y-2">
-                <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Structural asset classes</span>
+                <span className="text-blue-600 text-xs font-bold uppercase tracking-widest block">Structural asset classes</span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Intelligence Catalog Categories</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <Link href="/plots" className="group relative h-96 rounded-[24px] overflow-hidden shadow-premium hover:shadow-premium-hover transition-all block">
-                  <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop&q=80" alt="Plots" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <Image src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop&q=80" alt="Plots" fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, 33vw" priority />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                   <div className="absolute bottom-6 left-6 right-6 text-left space-y-2 text-white">
                     <div className="flex justify-between items-center">
@@ -622,7 +629,7 @@ export default function HomePage() {
                 </Link>
 
                 <Link href="/residencies" className="group relative h-96 rounded-[24px] overflow-hidden shadow-premium hover:shadow-premium-hover transition-all block">
-                  <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80" alt="Residencies" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <Image src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80" alt="Residencies" fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, 33vw" />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                   <div className="absolute bottom-6 left-6 right-6 text-left space-y-2 text-white">
                     <div className="flex justify-between items-center">
@@ -635,12 +642,12 @@ export default function HomePage() {
                 </Link>
 
                 <Link href="/apartments" className="group relative h-96 rounded-[24px] overflow-hidden shadow-premium hover:shadow-premium-hover transition-all block">
-                  <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&auto=format&fit=crop&q=80" alt="Apartments" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <Image src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&auto=format&fit=crop&q=80" alt="Apartments" fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, 33vw" />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                   <div className="absolute bottom-6 left-6 right-6 text-left space-y-2 text-white">
                     <div className="flex justify-between items-center">
                       <span className="text-[9px] bg-sky-500 px-2.5 py-0.5 font-bold uppercase tracking-wider rounded-full">Lease Yield</span>
-                      <span className="text-[10px] text-sky-400 font-bold">4.5% Yield</span>
+<span className="text-[10px] text-sky-400 font-bold">4.5% Yield</span>
                     </div>
                     <h3 className="text-xl font-bold">Modern Flats & Apartments</h3>
                     <p className="text-xs text-slate-300 leading-relaxed font-light">High-rise housing societies, 2/3 BHK flats, and premium condominiums.</p>
@@ -653,19 +660,17 @@ export default function HomePage() {
 
       case 'how-we-help':
         return (
-          <section key="how-we-help" className="py-24 border-b border-slate-100 bg-slate-50">
-            {/* Signature experience widget insertion point: Aura Intelligence Radar */}
+          <section key="how-we-help" className="py-28 border-b border-slate-200/60 bg-[#F1F5F9]">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               <div className="lg:col-span-5 text-left space-y-6">
-                <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Signature Experience</span>
+                <span className="text-blue-600 text-xs font-bold uppercase tracking-widest block">Signature Experience</span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
                   The Aura Intelligence Radar
                 </h2>
-                <p className="text-sm text-slate-500 leading-relaxed">
+                <p className="text-sm text-slate-600 leading-relaxed">
                   Hover or select a neighborhood benchmark to examine visual metrics. Our database dynamically indexes connectivity, appreciation growth index, land boundary checks, and registry auditing records.
                 </p>
 
-                {/* Neighborhood selector buttons */}
                 <div className="flex flex-wrap gap-2 pt-2">
                   {[
                     { id: 'gomti-nagar', label: 'Gomti Nagar' },
@@ -676,49 +681,44 @@ export default function HomePage() {
                     <button
                       key={btn.id}
                       onClick={() => setRadarLocality(btn.id as any)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all tracking-wider ${
-                        radarLocality === btn.id
-                          ? 'bg-trust-blue text-white shadow-sm'
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all tracking-wider ${radarLocality === btn.id
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/15'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-xs'
+                        }`}
                     >
                       {btn.label}
                     </button>
                   ))}
                 </div>
 
-                {/* Benchmark scores */}
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200/60 text-xs">
                   <div>
-                    <span className="text-slate-400 block uppercase font-bold text-[9px]">Growth Index</span>
-                    <span className="text-sm font-extrabold text-slate-800">{currentRadarData.growth}/100</span>
+                    <span className="text-slate-500 block uppercase font-bold text-[9px]">Growth Index</span>
+                    <span className="text-sm font-extrabold text-slate-900">{currentRadarData.growth}/100</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block uppercase font-bold text-[9px]">Historical CAGR</span>
-                    <span className="text-sm font-extrabold text-soft-green">{currentRadarData.cagr}</span>
+                    <span className="text-slate-500 block uppercase font-bold text-[9px]">Historical CAGR</span>
+                    <span className="text-sm font-extrabold text-green-600">{currentRadarData.cagr}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block uppercase font-bold text-[9px]">Lease Yield</span>
-                    <span className="text-sm font-extrabold text-trust-blue">{currentRadarData.yield === 90 ? '4.8%' : currentRadarData.yield === 95 ? '5.2%' : currentRadarData.yield === 85 ? '4.5%' : '3.8%'}</span>
+                    <span className="text-slate-500 block uppercase font-bold text-[9px]">Lease Yield</span>
+                    <span className="text-sm font-extrabold text-blue-600">{currentRadarData.yield === 90 ? '4.8%' : currentRadarData.yield === 95 ? '5.2%' : currentRadarData.yield === 85 ? '4.5%' : '3.8%'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block uppercase font-bold text-[9px]">Risk Assessment</span>
-                    <span className="text-sm font-extrabold text-indigo-500">{currentRadarData.rating} Stable</span>
+                    <span className="text-slate-500 block uppercase font-bold text-[9px]">Risk Assessment</span>
+                    <span className="text-sm font-extrabold text-violet-600">{currentRadarData.rating} Stable</span>
                   </div>
                 </div>
               </div>
 
-              {/* Radar visualization SVG */}
               <div className="lg:col-span-7 flex justify-center relative">
-                <div className="w-80 h-80 sm:w-96 sm:h-96 bg-white rounded-[32px] border border-slate-200/60 p-6 shadow-xl flex items-center justify-center relative overflow-hidden radar-sweep-active">
+                <div className="w-80 h-80 sm:w-96 sm:h-96 bg-white/80 backdrop-blur-xl rounded-[32px] border border-slate-200/70 p-6 shadow-sm flex items-center justify-center relative overflow-hidden radar-sweep-active">
                   <svg className="w-full h-full relative z-10" viewBox="0 0 200 200">
-                    {/* Grid circles */}
                     <circle cx="100" cy="100" r="80" fill="none" stroke="#e2e8f0" strokeWidth="0.5" />
                     <circle cx="100" cy="100" r="60" fill="none" stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="2" />
                     <circle cx="100" cy="100" r="40" fill="none" stroke="#e2e8f0" strokeWidth="0.5" />
                     <circle cx="100" cy="100" r="20" fill="none" stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="2" />
 
-                    {/* Radial lines */}
                     {[0, 60, 120, 180, 240, 300].map(angle => {
                       const rad = (angle * Math.PI) / 180;
                       const x2 = 100 + 80 * Math.sin(rad);
@@ -726,16 +726,14 @@ export default function HomePage() {
                       return <line key={angle} x1="100" y1="100" x2={x2} y2={y2} stroke="#cbd5e1" strokeWidth="0.5" />;
                     })}
 
-                    {/* Polygon path representation */}
                     <polygon
                       points={getRadarPath(currentRadarData)}
-                      fill="rgba(11, 76, 140, 0.2)"
+                      fill="rgba(37, 99, 235, 0.15)"
                       stroke="var(--color-trust-blue)"
                       strokeWidth="1.5"
                       className="transition-all duration-500 ease-in-out"
                     />
 
-                    {/* Polygon dots */}
                     {getRadarPath(currentRadarData).split(' ').map((coord, idx) => {
                       const [x, y] = coord.split(',').map(Number);
                       const labels = ['Growth', 'Demand', 'Connectivity', 'Yield', 'Infrastructure', 'Verification'];
@@ -743,7 +741,7 @@ export default function HomePage() {
                         <g key={idx} className="cursor-pointer" onMouseEnter={() => setHoveredRadarPillar(labels[idx])} onMouseLeave={() => setHoveredRadarPillar(null)}>
                           <circle cx={x} cy={y} r="3.5" fill="var(--color-trust-blue)" stroke="#ffffff" strokeWidth="1" />
                           {hoveredRadarPillar === labels[idx] && (
-                            <text x={x} y={y - 8} textAnchor="middle" fill="#0f172a" fontSize="8" fontWeight="bold" className="bg-white p-1 rounded">
+                            <text x={x} y={y - 8} textAnchor="middle" fill="#0f172a" fontSize="8" fontWeight="bold">
                               {labels[idx]} ({Object.values(currentRadarData)[idx]})
                             </text>
                           )}
@@ -751,7 +749,6 @@ export default function HomePage() {
                       );
                     })}
 
-                    {/* Outer text markers */}
                     <text x="100" y="12" textAnchor="middle" fontSize="6.5" fontWeight="bold" fill="#64748b">GROWTH</text>
                     <text x="180" y="55" textAnchor="start" fontSize="6.5" fontWeight="bold" fill="#64748b">DEMAND</text>
                     <text x="180" y="152" textAnchor="start" fontSize="6.5" fontWeight="bold" fill="#64748b">TRANSIT</text>
@@ -767,12 +764,12 @@ export default function HomePage() {
 
       case 'why-trust':
         return (
-          <section key="why-trust" className="py-24 border-b border-slate-100 bg-white">
+          <section key="why-trust" className="py-28 border-b border-slate-200/60 bg-[#F8FAFC]">
             <div className="max-w-6xl mx-auto px-6 text-center space-y-12">
               <div className="space-y-2">
-                <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Veracity Framework</span>
+                <span className="text-blue-600 text-xs font-bold uppercase tracking-widest block">Veracity Framework</span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Decide with Empirical Certainty</h2>
-                <p className="text-sm text-slate-500 max-w-xl mx-auto font-medium leading-relaxed">
+                <p className="text-sm text-slate-600 max-w-xl mx-auto font-medium leading-relaxed">
                   We verify coordinates and registry deeds before cataloging.
                 </p>
               </div>
@@ -780,31 +777,31 @@ export default function HomePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                   {
-                    title: 'Direct Registry Auditing',
-                    desc: 'Every listing is cross-referenced directly with state registry records, ensuring absolute ownership and clean, dispute-free title deeds.',
-                    icon: <ShieldCheck size={22} className="text-trust-blue" />
+                    title: 'Verified Properties',
+                    desc: 'Every property goes through careful verification so you can make decisions with confidence.',
+                    icon: <ShieldCheck size={22} className="text-blue-600" />
                   },
                   {
-                    title: 'Physical Boundary Surveys',
-                    desc: 'We physically map plot limits and boundary fences, surveying GPS coordinates on-site to guarantee zero layout encroachment disputes.',
-                    icon: <MapPin size={22} className="text-trust-blue" />
+                    title: 'Transparent Process',
+                    desc: 'Clear information, honest communication, and a simple buying journey.',
+                    icon: <MapPin size={22} className="text-blue-600" />
                   },
                   {
-                    title: 'Zero Broker Intermediary',
-                    desc: 'Connect directly with verified owners without pushy agent sales pitches, commission markups, or hidden transactional costs.',
-                    icon: <Users size={22} className="text-trust-blue" />
+                    title: 'Trusted Guidance',
+                    desc: 'Support from discovery to decision, helping you choose the right property.',
+                    icon: <Users size={22} className="text-blue-600" />
                   },
                   {
-                    title: 'Empirical Price Indexing',
-                    desc: 'Decide based on transaction history and growth index charts, evaluating localities on actual registry indices rather than broker estimates.',
-                    icon: <TrendingUp size={22} className="text-trust-blue" />
+                    title: 'Local Expertise',
+                    desc: 'Deep understanding of Lucknow\'s neighborhoods, opportunities, and growth areas.',
+                    icon: <TrendingUp size={22} className="text-blue-600" />
                   }
                 ].map((pillar, idx) => (
-                  <div key={idx} className="bg-slate-50 border border-slate-200/80 p-6 rounded-[24px] text-left hover:-translate-y-1 transition-all shadow-premium hover:shadow-premium-hover flex flex-col justify-between h-64">
+                  <div key={idx} className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-6 rounded-[24px] text-left hover:-translate-y-1 transition-all shadow-sm hover:shadow-md flex flex-col justify-between h-64">
                     <div className="space-y-4">
-                      <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-sm">{pillar.icon}</div>
+                      <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200/70 shadow-2xs">{pillar.icon}</div>
                       <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">{pillar.title}</h3>
-                      <p className="text-xs text-slate-500 leading-relaxed font-normal">{pillar.desc}</p>
+                      <p className="text-xs text-slate-600 leading-relaxed font-normal">{pillar.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -815,49 +812,60 @@ export default function HomePage() {
 
       case 'investment':
         return (
-          <section key="investment" className="py-24 border-b border-slate-950 bg-[#0F172A] text-white">
+          <section key="investment" className="py-28 border-b border-slate-200/60 bg-[#F8FAFC] text-slate-900">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
-              <div className="flex justify-between items-end border-b border-slate-800 pb-4">
+              <div className="flex justify-between items-end border-b border-slate-200/60 pb-4">
                 <div>
-                  <span className="text-soft-green text-xs font-bold uppercase tracking-widest">Bloomberg Meets Zillow</span>
-                  <h2 className="text-3xl font-extrabold text-white tracking-tight mt-1">Market Appreciation Dashboard</h2>
+                  <span className="text-emerald-600 text-xs font-bold uppercase tracking-widest">Bloomberg Meets Zillow</span>
+                  <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">Market Appreciation Dashboard</h2>
                 </div>
-                <Link href="/investment-intelligence" className="text-xs font-bold text-blue-400 hover:underline flex items-center gap-1">
+                <Link href="/investment-intelligence" className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
                   <span>Open Market Intelligence</span>
                   <ArrowUpRight size={14} />
                 </Link>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-8 bg-slate-900 p-6 rounded-[24px] border border-slate-800 shadow-2xl space-y-4 text-left">
+                <div className="lg:col-span-8 bg-white/80 backdrop-blur-xl p-6 rounded-[24px] border border-slate-200/70 shadow-sm space-y-4 text-left">
                   <div className="flex justify-between items-center flex-wrap gap-2 text-xs font-bold">
-                    <div className="text-slate-300">Corridor Price Indexes (5 Yr Registry History)</div>
+                    <div className="text-slate-600">Corridor Price Indexes (5 Yr Registry History)</div>
                     <div className="flex gap-4">
-                      <span className="flex items-center gap-1.5 text-blue-400">
-                        <span className="w-2 h-2 bg-blue-400 rounded-full"></span> Gomti Nagar (+28%)
+                      <span className="flex items-center gap-1.5 text-blue-600">
+                        <span className="w-2 h-2 bg-blue-600 rounded-full"></span> Gomti Nagar (+28%)
                       </span>
-                      <span className="flex items-center gap-1.5 text-slate-400">
+                      <span className="flex items-center gap-1.5 text-slate-500">
                         <span className="w-2 h-2 bg-slate-500 rounded-full"></span> Indira Nagar (+17%)
                       </span>
-                      <span className="flex items-center gap-1.5 text-emerald-400">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Shaheed Path (+35%)
+                      <span className="flex items-center gap-1.5 text-emerald-600">
+                        <span className="w-2 h-2 bg-emerald-600 rounded-full"></span> Shaheed Path (+35%)
                       </span>
                     </div>
                   </div>
 
-                  <div className="h-64 bg-slate-950 rounded-xl border border-slate-800 p-4 relative">
-                    <svg className="w-full h-full text-blue-500 animate-pulse-soft" viewBox="0 0 400 150" preserveAspectRatio="none">
-                      <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255, 255, 255, 0.03)" strokeDasharray="3" />
-                      <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255, 255, 255, 0.03)" strokeDasharray="3" />
-                      <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(255, 255, 255, 0.03)" strokeDasharray="3" />
-                      <path d="M0,130 Q100,115 200,90 T400,60" fill="none" stroke="var(--color-trust-blue)" strokeWidth="2.5" />
-                      <path d="M0,130 Q100,123 200,110 T400,95" fill="none" stroke="#64748b" strokeWidth="2" />
-                      <path d="M0,130 Q100,105 200,75 T400,45" fill="none" stroke="var(--color-soft-green)" strokeWidth="2.5" />
-                      <circle cx="400" cy="60" r="3.5" fill="var(--color-trust-blue)" />
-                      <circle cx="400" cy="95" r="3" fill="#64748b" />
-                      <circle cx="400" cy="45" r="3.5" fill="var(--color-soft-green)" />
+                  <div className="h-64 bg-slate-50/50 rounded-xl border border-slate-200/70 p-4 relative">
+                    <svg className="w-full h-full text-blue-500" viewBox="0 0 400 150" preserveAspectRatio="none">
+                      <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(15, 23, 42, 0.05)" strokeDasharray="3" />
+                      <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(15, 23, 42, 0.05)" strokeDasharray="3" />
+                      <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(15, 23, 42, 0.05)" strokeDasharray="3" />
+
+                      <path d={generateSvgCurve(chartTrends.gomti)} fill="none" stroke="var(--color-trust-blue)" strokeWidth="2.5" />
+                      <path d={generateSvgCurve(chartTrends.indira)} fill="none" stroke="#64748b" strokeWidth="2" />
+                      <path d={generateSvgCurve(chartTrends.shaheed)} fill="none" stroke="var(--color-soft-green)" strokeWidth="2.5" />
+
+                      {(() => {
+                        const gCoords = parseCoordinatesPath(chartTrends.gomti);
+                        const iCoords = parseCoordinatesPath(chartTrends.indira);
+                        const sCoords = parseCoordinatesPath(chartTrends.shaheed);
+                        return (
+                          <>
+                            <circle cx={gCoords[gCoords.length - 1].x} cy={gCoords[gCoords.length - 1].y} r="3.5" fill="var(--color-trust-blue)" />
+                            <circle cx={iCoords[iCoords.length - 1].x} cy={iCoords[iCoords.length - 1].y} r="3" fill="#64748b" />
+                            <circle cx={sCoords[sCoords.length - 1].x} cy={sCoords[sCoords.length - 1].y} r="3.5" fill="var(--color-soft-green)" />
+                          </>
+                        );
+                      })()}
                     </svg>
-                    <div className="absolute top-4 left-4 p-2 bg-slate-900 border border-slate-800 text-white rounded text-[8px] font-mono leading-relaxed space-y-0.5">
+                    <div className="absolute top-4 left-4 p-2 bg-white border border-slate-200/70 text-slate-700 rounded text-[8px] font-mono leading-relaxed space-y-0.5 shadow-xs">
                       <div>REGISTRY STATS ACTIVE</div>
                       <div>TRACKED COMMITTED TRACTS: {properties.length}</div>
                     </div>
@@ -865,27 +873,27 @@ export default function HomePage() {
                 </div>
 
                 <div className="lg:col-span-4 space-y-4 text-left">
-                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex gap-3 shadow-md hover:border-slate-700 transition-all">
-                    <div className="w-9 h-9 rounded bg-emerald-950/50 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-900/35"><Star size={16} /></div>
+                  <div className="p-4 bg-white/80 border border-slate-200/70 rounded-xl flex gap-3 shadow-xs hover:border-slate-350 transition-all">
+                    <div className="w-9 h-9 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200/50"><Star size={16} /></div>
                     <div>
-                      <h4 className="text-xs font-bold text-white">Demand Catalyst Locality</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">Vibhuti Khand holds average growth multiplier scores of 9.2.</p>
+                      <h4 className="text-xs font-bold text-slate-900">Demand Catalyst Locality</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Vibhuti Khand holds average growth multiplier scores of 9.2.</p>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex gap-3 shadow-md hover:border-slate-700 transition-all">
-                    <div className="w-9 h-9 rounded bg-blue-950/50 text-blue-400 flex items-center justify-center shrink-0 border border-blue-900/35"><TrendingUp size={16} /></div>
+                  <div className="p-4 bg-white/80 border border-slate-200/70 rounded-xl flex gap-3 shadow-xs hover:border-slate-350 transition-all">
+                    <div className="w-9 h-9 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200/50"><TrendingUp size={16} /></div>
                     <div>
-                      <h4 className="text-xs font-bold text-white">Transit Corridor Surge</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">Shaheed Path corridor has appreciated +35% in total transaction index rates.</p>
+                      <h4 className="text-xs font-bold text-slate-900">Transit Corridor Surge</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Shaheed Path corridor has appreciated +35% in total transaction index rates.</p>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex gap-3 shadow-md hover:border-slate-700 transition-all">
-                    <div className="w-9 h-9 rounded bg-indigo-950/50 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-900/35"><Percent size={16} /></div>
+                  <div className="p-4 bg-white/80 border border-slate-200/70 rounded-xl flex gap-3 shadow-xs hover:border-slate-350 transition-all">
+                    <div className="w-9 h-9 rounded bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-200/50"><Percent size={16} /></div>
                     <div>
-                      <h4 className="text-xs font-bold text-white">Yield Core Zones</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">Central commercial corridors in Indira Nagar return 3.8% annual net yields.</p>
+                      <h4 className="text-xs font-bold text-slate-900">Yield Core Zones</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Central commercial corridors in Indira Nagar return 3.8% annual net yields.</p>
                     </div>
                   </div>
                 </div>
@@ -896,23 +904,23 @@ export default function HomePage() {
 
       case 'tools':
         return (
-          <section key="tools" className="py-24 border-b border-slate-100 bg-white">
+          <section key="tools" className="py-28 border-b border-slate-200/60 bg-[#F8FAFC]">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="space-y-2 text-center">
-                <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">SaaS decision tools</span>
+                <span className="text-blue-600 text-xs font-bold uppercase tracking-widest block">SaaS decision tools</span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Interactive Financial Simulators</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="border border-slate-200 p-6 rounded-[24px] bg-slate-50 flex flex-col justify-between shadow-premium hover:shadow-premium-hover transition-all text-left relative overflow-hidden space-y-4">
+                <div className="border border-slate-200/70 p-6 rounded-[24px] bg-white/80 backdrop-blur-xl flex flex-col justify-between shadow-sm hover:shadow-md transition-all text-left relative overflow-hidden space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-trust-blue/10 rounded-lg text-trust-blue"><Calculator size={18} /></div>
+                      <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Calculator size={18} /></div>
                       <h3 className="font-extrabold text-slate-900 text-sm">EMI Estimator</h3>
                     </div>
-                    <p className="text-[11px] text-slate-500">Estimate monthly outgoings. Drag the slider to test loan size variations.</p>
+                    <p className="text-[11px] text-slate-600">Estimate monthly outgoings. Drag the slider to test loan size variations.</p>
                     <div className="space-y-2 pt-2">
-                      <div className="flex justify-between text-[10px] font-bold text-slate-600">
+                      <div className="flex justify-between text-[10px] font-bold text-slate-700">
                         <span>Principal Amount</span>
                         <span>₹{(miniEmiPrincipal / 100000).toFixed(0)} Lakh</span>
                       </div>
@@ -920,77 +928,77 @@ export default function HomePage() {
                         type="range" min="1000000" max="15000000" step="500000"
                         value={miniEmiPrincipal}
                         onChange={(e) => setMiniEmiPrincipal(parseInt(e.target.value, 10))}
-                        className="w-full h-1.5 bg-slate-200 accent-trust-blue rounded-lg cursor-pointer"
+                        className="w-full h-1.5 bg-slate-200 accent-blue-600 rounded-lg cursor-pointer"
                       />
-                      <div className="p-2 bg-white rounded-lg border border-slate-200 text-center shadow-xs">
-                        <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block">Estimated Outflow</span>
-                        <span className="text-sm font-extrabold text-trust-blue">₹{calculateMiniEMI().toLocaleString()}/mo</span>
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-200/70 text-center shadow-2xs">
+                        <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold block">Estimated Outflow</span>
+                        <span className="text-sm font-extrabold text-blue-600">₹{animatedEmiResult.toLocaleString()}/mo</span>
                       </div>
                     </div>
                   </div>
-                  <Link href="/tools?tab=emi" className="text-[11px] text-trust-blue font-bold flex items-center gap-1 hover:underline pt-2">
+                  <Link href="/tools?tab=emi" className="text-[11px] text-blue-600 font-bold flex items-center gap-1 hover:underline pt-2">
                     <span>Configure Advanced Parameters</span><ArrowRight size={12} />
                   </Link>
                 </div>
 
-                <div className="border border-slate-200 p-6 rounded-[24px] bg-slate-50 flex flex-col justify-between shadow-premium hover:shadow-premium-hover transition-all text-left relative overflow-hidden space-y-4">
+                <div className="border border-slate-200/70 p-6 rounded-[24px] bg-white/80 backdrop-blur-xl flex flex-col justify-between shadow-sm hover:shadow-md transition-all text-left relative overflow-hidden space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-emerald-50 text-soft-green rounded-lg"><Percent size={18} /></div>
+                      <div className="p-2 bg-green-50 text-green-600 rounded-lg"><Percent size={18} /></div>
                       <h3 className="font-extrabold text-slate-900 text-sm">Rental Yield Estimator</h3>
                     </div>
-                    <p className="text-[11px] text-slate-500">Determine yield outcomes based on neighborhood monthly lease rates.</p>
+                    <p className="text-[11px] text-slate-600">Determine yield outcomes based on neighborhood monthly lease rates.</p>
                     <div className="space-y-2 pt-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="text-[8px] font-black text-slate-400 uppercase">Cost (Lakh)</label>
+                          <label className="text-[8px] font-black text-slate-500 uppercase">Cost (Lakh)</label>
                           <input
                             type="number"
                             value={miniYieldPrice / 100000}
                             onChange={(e) => setMiniYieldPrice((parseFloat(e.target.value) || 0) * 100000)}
-                            className="w-full bg-white border border-slate-200 p-1.5 rounded text-xs text-slate-700 font-bold outline-none"
+                            className="w-full bg-slate-50 border border-slate-200/70 p-1.5 rounded text-xs text-slate-700 font-bold outline-none"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] font-black text-slate-400 uppercase">Rent/mo</label>
+                          <label className="text-[8px] font-black text-slate-500 uppercase">Rent/mo</label>
                           <input
                             type="number"
                             value={miniYieldRent}
                             onChange={(e) => setMiniYieldRent(parseInt(e.target.value, 10) || 0)}
-                            className="w-full bg-white border border-slate-200 p-1.5 rounded text-xs text-slate-700 font-bold outline-none"
+                            className="w-full bg-slate-50 border border-slate-200/70 p-1.5 rounded text-xs text-slate-700 font-bold outline-none"
                           />
                         </div>
                       </div>
-                      <div className="p-2 bg-white rounded-lg border border-slate-200 text-center shadow-xs">
-                        <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block">Gross Return Yield</span>
-                        <span className="text-sm font-extrabold text-soft-green">{calculateMiniYield()}% Yield</span>
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-200/70 text-center shadow-2xs">
+                        <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold block">Gross Return Yield</span>
+                        <span className="text-sm font-extrabold text-green-600">{calculateMiniYield()}% Yield</span>
                       </div>
                     </div>
                   </div>
-                  <Link href="/tools?tab=yield" className="text-[11px] text-trust-blue font-bold flex items-center gap-1 hover:underline pt-2">
+                  <Link href="/tools?tab=yield" className="text-[11px] text-blue-600 font-bold flex items-center gap-1 hover:underline pt-2">
                     <span>Configure Annual Expenses</span><ArrowRight size={12} />
                   </Link>
                 </div>
 
-                <div className="border border-slate-200 p-6 rounded-[24px] bg-slate-50 flex flex-col justify-between shadow-premium hover:shadow-premium-hover transition-all text-left relative overflow-hidden space-y-4">
+                <div className="border border-slate-200/70 p-6 rounded-[24px] bg-white/80 backdrop-blur-xl flex flex-col justify-between shadow-sm hover:shadow-md transition-all text-left relative overflow-hidden space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Layers size={18} /></div>
+                      <div className="p-2 bg-violet-50 text-violet-600 rounded-lg"><Layers size={18} /></div>
                       <h3 className="font-extrabold text-slate-900 text-sm">Comparison Portal</h3>
                     </div>
-                    <p className="text-[11px] text-slate-500">Direct comparison index comparing up to 3 selected properties side-by-side.</p>
-                    <div className="space-y-2 pt-1 text-[11px] text-slate-600 font-medium">
-                      <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-200 shadow-2xs">
-                        <Check size={12} className="text-soft-green shrink-0" />
+                    <p className="text-[11px] text-slate-600">Direct comparison index comparing up to 3 selected properties side-by-side.</p>
+                    <div className="space-y-2 pt-1 text-[11px] text-slate-650 font-medium">
+                      <div className="flex items-center gap-2 bg-slate-50 p-2 rounded border border-slate-200/70 shadow-2xs">
+                        <Check size={12} className="text-green-600 shrink-0" />
                         <span className="truncate">Compare Square Yards to Bigha / Gaj</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-200 shadow-2xs">
-                        <Check size={12} className="text-soft-green shrink-0" />
+                      <div className="flex items-center gap-2 bg-slate-50 p-2 rounded border border-slate-200/70 shadow-2xs">
+                        <Check size={12} className="text-green-600 shrink-0" />
                         <span className="truncate">Assess Locality Scores dynamically</span>
                       </div>
                     </div>
                   </div>
-                  <Link href="/tools?tab=compare" className="text-[11px] text-trust-blue font-bold flex items-center gap-1 hover:underline pt-2">
+                  <Link href="/tools?tab=compare" className="text-[11px] text-blue-600 font-bold flex items-center gap-1 hover:underline pt-2">
                     <span>Launch Compare Matrix</span><ArrowRight size={12} />
                   </Link>
                 </div>
@@ -1000,24 +1008,25 @@ export default function HomePage() {
         );
 
       case 'featured':
+        const imageUrl = spotlightProperty.images ? spotlightProperty.images.split(',')[0] : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&auto=format&fit=crop&q=80';
         return (
-          <section key="featured" className="py-24 border-b border-slate-100 bg-slate-50">
+          <section key="featured" className="py-28 border-b border-slate-200/60 bg-white">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="space-y-2 text-left">
-                <span className="text-soft-green text-xs font-bold uppercase tracking-widest block">High Conviction Picks</span>
+                <span className="text-green-600 text-xs font-bold uppercase tracking-widest block">High Conviction Picks</span>
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Editor's Verification Picks</h2>
               </div>
 
-              {/* Property Intelligence Card structure */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 bg-white rounded-[32px] border border-slate-200 shadow-premium overflow-hidden items-stretch text-left">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 bg-white/80 backdrop-blur-xl rounded-[32px] border border-slate-200/70 shadow-sm overflow-hidden items-stretch text-left">
                 <div className="lg:col-span-7 relative min-h-[300px]">
-                  <img
-                    src={spotlightProperty.images ? spotlightProperty.images.split(',')[0] : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&auto=format&fit=crop&q=80'}
+                  <Image
+                    src={imageUrl}
                     alt={spotlightProperty.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => handleImageError(e, spotlightProperty.type)}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 58vw"
                   />
-                  <div className="absolute top-4 left-4 bg-trust-blue text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md flex items-center gap-1">
+                  <div className="absolute top-4 left-4 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md flex items-center gap-1">
                     <CheckCircle2 size={12} />
                     High Conviction
                   </div>
@@ -1025,39 +1034,39 @@ export default function HomePage() {
 
                 <div className="lg:col-span-5 p-8 flex flex-col justify-between space-y-6">
                   <div className="space-y-3">
-                    <span className="text-[9px] uppercase font-black tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                    <span className="text-[9px] uppercase font-black tracking-widest text-slate-500 bg-slate-200/50 px-2 py-1 rounded">
                       {spotlightProperty.type} Report
                     </span>
                     <h3 className="text-2xl font-black text-slate-900 tracking-tight">{spotlightProperty.name}</h3>
-                    <div className="flex items-center text-xs text-slate-500 gap-1">
+                    <div className="flex items-center text-xs text-slate-650 gap-1">
                       <MapPin size={14} className="text-slate-400" />
                       <span>{spotlightProperty.location}</span>
                     </div>
                   </div>
 
-                  <div className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                  <div className="divide-y divide-slate-200/60 text-xs font-semibold text-slate-700">
                     <div className="flex justify-between py-2.5">
-                      <span className="text-slate-400 font-normal">Indexed Price</span>
-                      <span className="font-bold text-trust-blue">{formatPrice(spotlightProperty.price)}</span>
+                      <span className="text-slate-500 font-normal">Indexed Price</span>
+                      <span className="font-bold text-blue-600">{formatPrice(spotlightProperty.price)}</span>
                     </div>
                     <div className="flex justify-between py-2.5">
-                      <span className="text-slate-400 font-normal">Boundary Checked Size</span>
+                      <span className="text-slate-500 font-normal">Boundary Checked Size</span>
                       <span>{spotlightProperty.area} {spotlightProperty.areaUnit || 'Sq Ft'}</span>
                     </div>
                     <div className="flex justify-between py-2.5">
-                      <span className="text-slate-400 font-normal">Expected Yield</span>
-                      <span className="text-soft-green font-bold">4.2% - 4.8% Yield</span>
+                      <span className="text-slate-500 font-normal">Expected Yield</span>
+                      <span className="text-green-600 font-bold">4.2% - 4.8% Yield</span>
                     </div>
                     <div className="flex justify-between py-2.5">
-                      <span className="text-slate-400 font-normal">Locality Score</span>
-                      <span className="text-trust-blue font-bold">A+ Stable</span>
+                      <span className="text-slate-500 font-normal">Locality Score</span>
+                      <span className="text-blue-600 font-bold">A+ Stable</span>
                     </div>
                   </div>
 
                   <div className="pt-4">
                     <Link
                       href={`/properties/${spotlightProperty.id}`}
-                      className="w-full py-3 bg-trust-blue hover:bg-trust-blue-hover text-white text-xs font-bold uppercase tracking-wider rounded-xl text-center shadow transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl text-center shadow-lg shadow-blue-600/15 hover:shadow-blue-600/20 transition-all flex items-center justify-center gap-1.5"
                     >
                       <span>Open Investment Prospectus</span>
                       <ArrowUpRight size={14} />
@@ -1066,27 +1075,26 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Carousel properties as Intelligence Cards */}
               <div className="space-y-4 text-left">
-                <h3 className="text-xs uppercase tracking-widest font-black text-slate-400">Additional Verified Opportunities</h3>
+                <h3 className="text-xs uppercase tracking-widest font-black text-slate-500">Additional Verified Opportunities</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {carouselProperties.map((prop) => (
-                    <Link 
-                      href={`/properties/${prop.id}`} 
+                    <Link
+                      href={`/properties/${prop.id}`}
                       key={prop.id}
-                      className="bg-white border border-slate-200 p-5 rounded-[24px] shadow-premium hover:shadow-premium-hover transition-all flex flex-col justify-between h-48 hover:border-slate-300"
+                      className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-5 rounded-[24px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-48 hover:border-slate-300/80"
                     >
                       <div>
-                        <div className="flex justify-between items-center text-[9px] uppercase font-bold text-slate-400">
+                        <div className="flex justify-between items-center text-[9px] uppercase font-bold text-slate-500">
                           <span>{prop.type}</span>
-                          <span className="text-soft-green font-extrabold">Verified</span>
+                          <span className="text-green-600 font-extrabold">Verified</span>
                         </div>
                         <h4 className="font-bold text-slate-900 text-sm mt-3 line-clamp-1">{prop.name}</h4>
                         <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">{prop.location}</p>
                       </div>
                       <div className="flex justify-between items-center border-t border-slate-100 pt-3 text-xs font-bold mt-4">
-                        <span className="text-trust-blue">{formatPrice(prop.price)}</span>
-                        <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">{prop.area} Sq Ft</span>
+                        <span className="text-blue-600">{formatPrice(prop.price)}</span>
+                        <span className="text-[10px] bg-slate-200/40 px-2 py-0.5 rounded text-slate-600">{prop.area} Sq Ft</span>
                       </div>
                     </Link>
                   ))}
@@ -1098,28 +1106,28 @@ export default function HomePage() {
 
       case 'localities':
         return (
-          <section key="localities" className="py-24 border-b border-slate-100 bg-white">
+          <section key="localities" className="py-28 border-b border-slate-200/60 bg-[#F8FAFC]">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
-              <div className="flex flex-col lg:flex-row lg:items-end justify-between border-b border-slate-100 pb-4 text-left">
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between border-b border-slate-200/60 pb-4 text-left">
                 <div>
-                  <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Locality Scoreboards</span>
+                  <span className="text-blue-600 text-xs font-bold uppercase tracking-widest block">Locality Scoreboards</span>
                   <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">Locality Decision Index</h2>
                 </div>
-                <Link href="/investment-intelligence" className="text-xs font-bold text-trust-blue hover:underline">
+                <Link href="/investment-intelligence" className="text-xs font-bold text-blue-600 hover:underline">
                   Compare Lucknow Neighborhoods
                 </Link>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
                 {getLocalitiesScorecards().map((loc: any) => (
-                  <Link 
+                  <Link
                     href={`/areas/${loc.areaName.toLowerCase().replace(/ /g, '-')}`}
                     key={loc.id}
-                    className="bg-white border border-slate-200 p-6 rounded-[24px] shadow-premium hover:shadow-premium-hover transition-all space-y-4 block"
+                    className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-6 rounded-[24px] shadow-sm hover:shadow-md transition-all space-y-4 block"
                   >
                     <div className="flex justify-between items-start">
                       <h3 className="font-extrabold text-slate-900 text-base">{loc.areaName}</h3>
-                      <span className="text-xs font-black text-soft-green">{loc.investmentRating} Rating</span>
+                      <span className="text-xs font-black text-green-600">{loc.investmentRating} Rating</span>
                     </div>
                     <div className="space-y-2.5 text-xs font-semibold text-slate-500">
                       <div className="flex justify-between">
@@ -1135,7 +1143,7 @@ export default function HomePage() {
                         <span className="text-slate-800 font-bold">{loc.yieldPct ? `${loc.yieldPct}%` : '4.2%'}</span>
                       </div>
                     </div>
-                    <span className="text-[10px] text-trust-blue font-bold block pt-2 border-t border-slate-50">View Area Audit Report →</span>
+                    <span className="text-[10px] text-blue-600 font-bold block pt-2 border-t border-slate-200/60">View Area Audit Report →</span>
                   </Link>
                 ))}
               </div>
@@ -1145,14 +1153,13 @@ export default function HomePage() {
 
       case 'testimonials':
         return (
-          <section key="testimonials" className="py-24 border-b border-slate-100 bg-slate-50">
+          <section key="testimonials" className="py-28 border-b border-slate-200/60 bg-[#F8FAFC]">
             <div className="max-w-4xl mx-auto px-6 text-center space-y-12">
               <div className="space-y-2">
-                <span className="text-trust-blue text-xs font-bold uppercase tracking-widest block">Real Buyer feedback</span>
+                <span className="text-blue-600 text-xs font-bold uppercase tracking-widest block">Real Buyer feedback</span>
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Verified Buyer Testimonials</h2>
               </div>
 
-              {/* Segment selection tabs */}
               <div className="flex justify-center border-b border-slate-200 pb-2 gap-2">
                 {[
                   { id: 'family', label: 'Family Buyers' },
@@ -1162,16 +1169,15 @@ export default function HomePage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTestimonialTab(tab.id as any)}
-                    className={`px-4 py-2 text-xs uppercase tracking-wider font-bold rounded-lg transition-all ${
-                      activeTestimonialTab === tab.id ? 'bg-trust-blue text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                    }`}
+                    className={`px-4 py-2 text-xs uppercase tracking-wider font-bold rounded-lg transition-all ${activeTestimonialTab === tab.id ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                      }`}
                   >
                     {tab.label}
                   </button>
                 ))}
               </div>
 
-              <div className="bg-white border border-slate-200 p-8 rounded-[24px] shadow-premium min-h-[220px] flex flex-col justify-between text-left">
+              <div className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-8 rounded-[24px] shadow-sm min-h-[220px] flex flex-col justify-between text-left">
                 <AnimatePresence mode="wait">
                   {filteredTestimonials.length > 0 ? (
                     <motion.div
@@ -1181,13 +1187,13 @@ export default function HomePage() {
                       exit={{ opacity: 0, y: -5 }}
                       className="space-y-4"
                     >
-                      <div className="flex text-amber-400">
+                      <div className="flex text-amber-500">
                         {[...Array(filteredTestimonials[0].rating || 5)].map((_, i) => <Star key={i} size={15} fill="currentColor" />)}
                       </div>
-                      <blockquote className="text-sm md:text-base text-slate-600 italic leading-relaxed font-normal">
+                      <blockquote className="text-sm md:text-base text-slate-700 italic leading-relaxed font-normal">
                         "{filteredTestimonials[0].review}"
                       </blockquote>
-                      <cite className="block text-xs font-bold text-slate-700 not-italic border-t border-slate-100 pt-3 mt-4">
+                      <cite className="block text-xs font-bold text-slate-800 not-italic border-t border-slate-200/60 pt-3 mt-4">
                         — {filteredTestimonials[0].name} ({filteredTestimonials[0].location})
                       </cite>
                     </motion.div>
@@ -1202,77 +1208,76 @@ export default function HomePage() {
 
       case 'research':
         return (
-          <section key="research" className="py-24 border-b border-slate-100 bg-white">
+          <section key="research" className="py-28 border-b border-slate-200/60 bg-[#F8FAFC]">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="space-y-2 text-center">
-                <span className="text-soft-green text-xs font-bold uppercase tracking-widest block">Prop-Tech Journal</span>
+                <span className="text-green-600 text-xs font-bold uppercase tracking-widest block">Prop-Tech Journal</span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Independent Research & Guides</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-left">
                 {cmsData?.articles && cmsData.articles.length > 0 ? (
                   cmsData.articles.slice(0, 4).map((art: any) => (
-                    <div key={art.id} className="bg-slate-50 border border-slate-200 p-5 rounded-[24px] shadow-premium hover:shadow-premium-hover transition-all flex flex-col justify-between h-64">
+                    <div key={art.id} className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-5 rounded-[24px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-64">
                       <div className="space-y-2">
-                        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold bg-white px-2 py-0.5 border rounded">
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold bg-slate-50 px-2 py-0.5 border border-slate-200/70 rounded">
                           {art.author || 'Research Team'}
                         </span>
                         <h4 className="font-bold text-slate-900 text-xs line-clamp-2">{art.title}</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-3 font-normal">
+                        <p className="text-[11px] text-slate-650 leading-relaxed line-clamp-3 font-normal">
                           {art.content.replace(/[#*`_-]/g, '').slice(0, 120)}...
                         </p>
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold pt-4 border-t border-slate-200/40">
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold pt-4 border-t border-slate-200/60">
                         <span>{new Date(art.publishedDate).toLocaleDateString()}</span>
-                        <Link href="/about" className="text-trust-blue hover:underline">Read Guide →</Link>
+                        <Link href="/about" className="text-blue-600 hover:underline">Read Guide →</Link>
                       </div>
                     </div>
                   ))
                 ) : (
-                  // Static Fallbacks
                   <>
-                    <div className="bg-slate-50 border border-slate-200 p-5 rounded-[24px] shadow-premium hover:shadow-premium-hover transition-all flex flex-col justify-between h-64">
+                    <div className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-5 rounded-[24px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-64">
                       <div className="space-y-2">
-                        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold bg-white px-2 py-0.5 border rounded">Buying Checklist</span>
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold bg-slate-50 px-2 py-0.5 border border-slate-200/70 rounded">Buying Checklist</span>
                         <h4 className="font-bold text-slate-900 text-xs">Top 5 Areas for First-Time Home Buyers</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-3 font-normal">Safety, proximity to transit nodes, and low down-payment support areas analyzed for new buyers.</p>
+                        <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3 font-normal">Safety, proximity to transit nodes, and low down-payment support areas analyzed for new buyers.</p>
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold pt-4 border-t border-slate-200/40">
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold pt-4 border-t border-slate-200/60">
                         <span>PDF Available</span>
-                        <Link href="/about?guide=first-time" className="text-trust-blue hover:underline">Read Guide →</Link>
+                        <Link href="/about?guide=first-time" className="text-blue-600 hover:underline">Read Guide →</Link>
                       </div>
                     </div>
-                    <div className="bg-slate-50 border border-slate-200 p-5 rounded-[24px] shadow-premium hover:shadow-premium-hover transition-all flex flex-col justify-between h-64">
+                    <div className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-5 rounded-[24px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-64">
                       <div className="space-y-2">
-                        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold bg-white px-2 py-0.5 border rounded">Yield Report</span>
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold bg-slate-50 px-2 py-0.5 border border-slate-200/70 rounded">Yield Report</span>
                         <h4 className="font-bold text-slate-900 text-xs">Best Rental Yield Locations in Lucknow</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-3 font-normal">Check out areas offering high rental multipliers from corporate hubs and major shopping avenues.</p>
+                        <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3 font-normal">Check out areas offering high rental multipliers from corporate hubs and major shopping avenues.</p>
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold pt-4 border-t border-slate-200/40">
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold pt-4 border-t border-slate-200/60">
                         <span>5 Min Read</span>
-                        <Link href="/about?guide=buying" className="text-trust-blue hover:underline">Read Guide →</Link>
+                        <Link href="/about?guide=buying" className="text-blue-600 hover:underline">Read Guide →</Link>
                       </div>
                     </div>
-                    <div className="bg-slate-50 border border-slate-200 p-5 rounded-[24px] shadow-premium hover:shadow-premium-hover transition-all flex flex-col justify-between h-64">
+                    <div className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-5 rounded-[24px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-64">
                       <div className="space-y-2">
-                        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold bg-white px-2 py-0.5 border rounded">Market Pulse</span>
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold bg-slate-50 px-2 py-0.5 border border-slate-200/70 rounded">Market Pulse</span>
                         <h4 className="font-bold text-slate-900 text-xs">Emerging Growth Corridors for 2026</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-3 font-normal">Infrastructure shifts like new roads and highways are bringing massive appreciation opportunities.</p>
+                        <p className="text-[11px] text-slate-650 leading-relaxed line-clamp-3 font-normal">Infrastructure shifts like new roads and highways are bringing massive appreciation opportunities.</p>
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold pt-4 border-t border-slate-200/40">
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold pt-4 border-t border-slate-200/60">
                         <span>Download Report</span>
-                        <Link href="/about?guide=buying" className="text-trust-blue hover:underline">Read Guide →</Link>
+                        <Link href="/about?guide=buying" className="text-blue-600 hover:underline">Read Guide →</Link>
                       </div>
                     </div>
-                    <div className="bg-slate-50 border border-slate-200 p-5 rounded-[24px] shadow-premium hover:shadow-premium-hover transition-all flex flex-col justify-between h-64">
+                    <div className="bg-white/80 backdrop-blur-xl border border-slate-200/70 p-5 rounded-[24px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-64">
                       <div className="space-y-2">
-                        <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold bg-white px-2 py-0.5 border rounded">Comparison Study</span>
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold bg-slate-50 px-2 py-0.5 border border-slate-200/70 rounded">Comparison Study</span>
                         <h4 className="font-bold text-slate-900 text-xs">Plot vs Apartment Investment Comparison</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-3 font-normal">Evaluating liquidity, average maintenance costs, boundary safety factors, and ROI trends.</p>
+                        <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3 font-normal">Evaluating liquidity, average maintenance costs, boundary safety factors, and ROI trends.</p>
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold pt-4 border-t border-slate-200/40">
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold pt-4 border-t border-slate-200/60">
                         <span>Academic Grade</span>
-                        <Link href="/about" className="text-trust-blue hover:underline">Read Guide →</Link>
+                        <Link href="/about" className="text-blue-600 hover:underline">Read Guide →</Link>
                       </div>
                     </div>
                   </>
@@ -1286,12 +1291,29 @@ export default function HomePage() {
         const companyInfo = cmsData?.footer?.companyInfo || "Lucid property search meets independent market intelligence. Making verified real estate data accessible to families and investors.";
         const contactPhone = cmsData?.footer?.contactPhone || "+91 (522) 400-AURA";
         const contactEmail = cmsData?.footer?.contactEmail || "support@auraestates.com";
-        const socials = typeof cmsData?.footer?.socialsJson === 'string' ? JSON.parse(cmsData.footer.socialsJson) : cmsData?.footer?.socialsJson || {};
         const parsedLinks = typeof cmsData?.footer?.linksJson === 'string' ? JSON.parse(cmsData.footer.linksJson) : cmsData?.footer?.linksJson || {};
 
         return (
-          <footer key="footer" className="bg-[#0F172A] text-slate-400 py-16 border-t border-slate-800 text-left">
-            <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-5 gap-12">
+          <footer key="footer" className="bg-[#0F172A] text-slate-450 border-t border-slate-800 text-left">
+            {/* Final CTA block */}
+            <div className="bg-[#1E293B] text-white py-20 border-b border-slate-800">
+              <div className="max-w-4xl mx-auto px-6 text-center space-y-6">
+                <h2 className="text-3xl font-extrabold tracking-tight">Find a place that feels like home.</h2>
+                <p className="text-slate-350 max-w-xl mx-auto text-sm leading-relaxed">
+                  Whether you are buying your first home, searching for your family space, or exploring investment opportunities, Aura Estates helps you move forward with confidence.
+                </p>
+                <div className="flex justify-center gap-4 pt-2">
+                  <Link href="/properties" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-blue-600/15">
+                    Explore Properties
+                  </Link>
+                  <Link href="/contact" className="px-6 py-3 bg-transparent border border-slate-600 text-slate-200 hover:bg-slate-700 text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm">
+                    Talk To Our Team
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-2 md:grid-cols-5 gap-12">
               <div className="col-span-2 space-y-6">
                 <h3 className="text-xl font-bold text-white tracking-tight">Aura Estates</h3>
                 <p className="text-xs text-slate-400 max-w-sm leading-relaxed">{companyInfo}</p>
@@ -1415,25 +1437,24 @@ export default function HomePage() {
   const homepageSections = cmsData?.sections && cmsData.sections.length > 0
     ? cmsData.sections.filter((s: any) => s.visible === true)
     : [
-        { id: 'hero' },
-        { id: 'trust-bar' },
-        { id: 'categories' },
-        { id: 'how-we-help' },
-        { id: 'why-trust' },
-        { id: 'featured' },
-        { id: 'localities' },
-        { id: 'investment' },
-        { id: 'tools' },
-        { id: 'testimonials' },
-        { id: 'research' },
-        { id: 'footer' }
-      ];
+      { id: 'hero' },
+      { id: 'trust-bar' },
+      { id: 'categories' },
+      { id: 'how-we-help' },
+      { id: 'why-trust' },
+      { id: 'featured' },
+      { id: 'localities' },
+      { id: 'investment' },
+      { id: 'tools' },
+      { id: 'testimonials' },
+      { id: 'research' },
+      { id: 'footer' }
+    ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased overflow-x-hidden selection:bg-trust-blue/10 selection:text-trust-blue text-center">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased overflow-x-hidden selection:bg-trust-blue/10 selection:text-trust-blue text-center">
       <Navbar />
 
-      {/* Dynamic Announcement Banner */}
       {cmsData?.banner?.visible && (
         <div className="bg-trust-blue text-white text-xs py-2 px-4 text-center font-bold tracking-wider relative z-50 mt-16">
           <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] mr-2 uppercase">{cmsData.banner.title}</span>
@@ -1446,7 +1467,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Render layout segments */}
       {homepageSections.map((sect: any) => renderCmsSection(sect.id))}
     </div>
   );
