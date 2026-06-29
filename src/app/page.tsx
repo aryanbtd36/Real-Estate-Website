@@ -437,8 +437,8 @@ export default function HomePage() {
                   objectFit: 'cover',
                   transform: 'translate(-50%, -50%) scale(1.35)',
                   transformOrigin: 'center center',
-                  opacity: 0.42,
-                  filter: 'saturate(0.55) contrast(1.15) brightness(1.02) drop-shadow(0 0 32px rgba(37,99,235,0.1))',
+                  opacity: 0.48,
+                  filter: 'saturate(0.4) contrast(1.3) brightness(0.98) drop-shadow(0 0 32px rgba(37,99,235,0.08))',
                   display: 'block',
                 }}
               />
@@ -447,7 +447,7 @@ export default function HomePage() {
             {/* ══ Z-2: Light colour wash — tints map to match hero bg, keeps it elegant ══ */}
             <div
               className="absolute inset-0 pointer-events-none"
-              style={{ zIndex: 2, background: 'rgba(248,250,252,0.28)' }}
+              style={{ zIndex: 2, background: 'rgba(248,250,252,0.20)' }}
             />
 
             {/* ══ Z-3: Soft edge vignette — gentle fade at perimeter only ══ */}

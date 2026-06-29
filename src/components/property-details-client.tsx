@@ -65,6 +65,8 @@ interface Property {
   brochureUrl?: string | null;
   virtualTourUrl?: string | null;
   floorPlan?: string | null;
+  templateId?: string | null;
+  templateFields?: any;
 }
 
 interface ClientProps {
@@ -294,11 +296,11 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
             {/* Spec grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
               {[
-                { label: 'Bedrooms', val: property.bedrooms > 0 ? `${property.bedrooms} BHK` : 'Land Plot', icon: BedDouble },
-                { label: 'Bathrooms', val: property.bathrooms > 0 ? `${property.bathrooms} Baths` : 'Zoned Land', icon: Activity },
+                property.bedrooms > 0 && { label: 'Bedrooms', val: `${property.bedrooms} BHK`, icon: BedDouble },
+                property.bathrooms > 0 && { label: 'Bathrooms', val: `${property.bathrooms} Baths`, icon: Activity },
                 { label: 'Area Size', val: `${property.area.toLocaleString()} ${property.areaUnit || 'Sq Ft'}`, icon: Maximize2 },
-                { label: 'Floor Level', val: property.floor > 0 ? `Floor ${property.floor}` : 'Ground level', icon: Compass }
-              ].map((spec, idx) => (
+                property.floor > 0 && { label: 'Floor Level', val: `Floor ${property.floor}`, icon: Compass }
+              ].filter(Boolean).map((spec: any, idx) => (
                 <div key={idx} className="border border-slate-200/60 p-4 rounded-xl space-y-2 bg-white shadow-xs">
                   <spec.icon size={18} className="text-trust-blue" />
                   <div>
@@ -319,6 +321,40 @@ export default function PropertyDetailsClient({ property, nearby, sessionUser }:
                 {property.description || 'Verified property description is compiling from RERA filings.'}
               </p>
             </div>
+
+            {/* Template-driven Specifications Detail */}
+            {property.templateFields && Object.keys(property.templateFields as object).filter(k => k !== 'pricingMode' && k !== 'pricePerUnit').length > 0 && (
+              <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] space-y-4 shadow-premium text-left">
+                <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-trust-blue" />
+                  Technical Specifications
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                  {Object.entries(property.templateFields as object)
+                    .filter(([key]) => key !== 'pricingMode' && key !== 'pricePerUnit')
+                    .map(([key, val]: [string, any]) => {
+                      // Format key to start-case label
+                      const label = key
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, (str) => str.toUpperCase());
+                      
+                      // Format value
+                      let displayVal = '';
+                      if (val === true) displayVal = 'Yes';
+                      else if (val === false) displayVal = 'No';
+                      else if (Array.isArray(val)) displayVal = val.join(', ');
+                      else displayVal = val?.toString() || 'N/A';
+
+                      return (
+                        <div key={key} className="border-b border-slate-100 pb-2">
+                          <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">{label}</span>
+                          <span className="text-slate-800 font-bold mt-0.5 block">{displayVal}</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
 
             {/* Media & Documents Catalog */}
             {(property.videoUrl || property.brochureUrl || property.floorPlan) && (

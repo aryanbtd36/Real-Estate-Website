@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       floorPlan
     } = body;
 
-    if (!name || !price || !area || !bedrooms) {
+    if (!name || !price || !area || (bedrooms === undefined || bedrooms === null || bedrooms === '')) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
@@ -176,7 +176,7 @@ export async function PUT(req: Request) {
       floorPlan
     } = body;
 
-    if (!id || !name || !price || !area || !bedrooms) {
+    if (!id || !name || !price || !area || (bedrooms === undefined || bedrooms === null || bedrooms === '')) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 

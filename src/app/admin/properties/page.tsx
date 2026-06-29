@@ -56,6 +56,57 @@ const ProgressBar = ({ value, max, label, color = 'bg-[#0B4C8C]' }: { value: num
   );
 };
 
+const getFieldGroup = (field: any) => {
+  if (field.group) return field.group;
+  const name = field.name.toLowerCase();
+  if (
+    name.includes('area') ||
+    name.includes('size') ||
+    name.includes('width') ||
+    name.includes('length') ||
+    name.includes('dimension') ||
+    name.includes('height') ||
+    name.includes('capacity')
+  ) {
+    return 'Dimensions';
+  }
+  if (
+    name.includes('registry') ||
+    name.includes('ownership') ||
+    name.includes('age') ||
+    name.includes('status')
+  ) {
+    return 'Ownership';
+  }
+  if (
+    name.includes('power') ||
+    name.includes('water') ||
+    name.includes('electricity') ||
+    name.includes('irrigation') ||
+    name.includes('source')
+  ) {
+    return 'Utilities';
+  }
+  if (
+    name.includes('bhk') ||
+    name.includes('bedroom') ||
+    name.includes('bathroom') ||
+    name.includes('floor') ||
+    name.includes('balcony') ||
+    name.includes('balconies') ||
+    name.includes('washroom') ||
+    name.includes('cabin') ||
+    name.includes('conference') ||
+    name.includes('office') ||
+    name.includes('shed') ||
+    name.includes('door') ||
+    name.includes('tower')
+  ) {
+    return 'Building Details';
+  }
+  return 'Additional Features';
+};
+
 export default function AdminPropertiesPage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +162,24 @@ export default function AdminPropertiesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [templateFields, setTemplateFields] = useState<any>({});
+
+  // Plot Pricing states
+  const [pricingMode, setPricingMode] = useState<'total' | 'per_unit'>('total');
+  const [pricePerUnit, setPricePerUnit] = useState('');
+
+  // Auto-calculate Total Price when Area or Price Per Unit changes
+  useEffect(() => {
+    const selectedT = templates.find(t => t.id === templateId);
+    const isLandTemplate = selectedT?.type === 'PLOT' || selectedT?.type === 'AGRICULTURAL_LAND' || type === 'Plot' || type === 'Lot';
+    
+    if (isLandTemplate && pricingMode === 'per_unit') {
+      const areaVal = parseFloat(area);
+      const perUnitVal = parseFloat(pricePerUnit);
+      if (!isNaN(areaVal) && !isNaN(perUnitVal)) {
+        setPrice((areaVal * perUnitVal).toString());
+      }
+    }
+  }, [area, pricePerUnit, pricingMode, templateId, templates, type]);
 
   // Amenities checklist
   const availableAmenities = ['Parking', 'Swimming Pool', 'Security', 'Power Backup', 'Garden', 'Gym', 'Wine Cellar', 'Spa', 'Private Dock'];
@@ -558,6 +627,8 @@ export default function AdminPropertiesPage() {
     const t = templates.find(temp => temp.type === 'APARTMENT');
     setTemplateId(t ? t.id : null);
     setTemplateFields({});
+    setPricingMode('total');
+    setPricePerUnit('');
     setShowForm(true);
   };
 
@@ -609,7 +680,10 @@ export default function AdminPropertiesPage() {
     setFloorPlan(prop.floorPlan || '');
     setSelectedAmenities(prop.amenities || []);
     setTemplateId(prop.templateId || null);
-    setTemplateFields(prop.templateFields || {});
+    const tFields = prop.templateFields || {};
+    setTemplateFields(tFields);
+    setPricingMode(tFields.pricingMode || 'total');
+    setPricePerUnit(tFields.pricePerUnit ? tFields.pricePerUnit.toString() : '');
 
     // Load related images
     const initialImages = prop.imagesRelation ? prop.imagesRelation.map((img: any) => ({
@@ -710,7 +784,60 @@ export default function AdminPropertiesPage() {
     e.preventDefault();
     setFormLoading(true);
 
+    // 1. Dynamic Validation based on active template
+    if (templateId) {
+      const selectedT = templates.find(t => t.id === templateId);
+      if (selectedT && selectedT.fields) {
+        for (const field of selectedT.fields) {
+          if (field.required) {
+            const val = templateFields[field.name];
+            if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) {
+              alert(`Please fill in the required field: ${field.label}`);
+              setFormLoading(false);
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Dynamic mapping for backward-compatible standard DB columns
+    let mappedBedrooms = 0;
+    if (templateFields.bedrooms !== undefined) {
+      mappedBedrooms = parseInt(templateFields.bedrooms) || 0;
+    } else if (templateFields.bhk !== undefined) {
+      const match = templateFields.bhk.toString().match(/\d+/);
+      mappedBedrooms = match ? parseInt(match[0]) : 0;
+    } else {
+      mappedBedrooms = parseInt(bedrooms) || 0;
+    }
+
+    let mappedBathrooms = 1;
+    if (templateFields.bathrooms !== undefined) {
+      mappedBathrooms = parseInt(templateFields.bathrooms) || 1;
+    } else if (templateFields.washrooms !== undefined) {
+      mappedBathrooms = parseInt(templateFields.washrooms) || 1;
+    } else if (templateFields.washroom !== undefined) {
+      mappedBathrooms = templateFields.washroom === true ? 1 : (parseInt(templateFields.washroom) || 1);
+    } else {
+      mappedBathrooms = parseInt(bathrooms) || 1;
+    }
+
+    let mappedFloor = 1;
+    if (templateFields.floor !== undefined) {
+      mappedFloor = parseInt(templateFields.floor) || 1;
+    } else {
+      mappedFloor = parseInt(floor) || 1;
+    }
+
     const locationText = `${address}${city ? `, ${city}` : ''}${state ? `, ${state}` : ''}${postalCode ? `, ${postalCode}` : ''}${country ? `, ${country}` : ''}`;
+
+    // 3. Save land pricing configuration details inside templateFields for edit preservation
+    const finalTemplateFields = {
+      ...templateFields,
+      pricingMode,
+      pricePerUnit: pricePerUnit ? parseFloat(pricePerUnit) : undefined
+    };
 
     const payload = {
       id: editingId,
@@ -719,11 +846,11 @@ export default function AdminPropertiesPage() {
       type,
       category,
       price: parseFloat(price),
-      bedrooms: parseInt(bedrooms),
-      bathrooms: parseInt(bathrooms),
+      bedrooms: mappedBedrooms,
+      bathrooms: mappedBathrooms,
       area: parseFloat(area),
       areaUnit,
-      floor: parseInt(floor),
+      floor: mappedFloor,
       location: locationText,
       address,
       city,
@@ -741,7 +868,7 @@ export default function AdminPropertiesPage() {
       virtualTourUrl,
       floorPlan: floorPlansList.map(f => f.url).join(','),
       templateId,
-      templateFields
+      templateFields: finalTemplateFields
     };
 
     try {
@@ -1071,17 +1198,101 @@ export default function AdminPropertiesPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Price (₹)</label>
-                    <input
-                      type="number"
-                      required
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 transition-colors h-12"
-                      placeholder="5000000"
-                    />
-                  </div>
+                  {(() => {
+                    const selectedT = templates.find(t => t.id === templateId);
+                    const isLand = selectedT?.type === 'PLOT' || selectedT?.type === 'AGRICULTURAL_LAND' || type === 'Plot' || type === 'Lot';
+                    
+                    if (isLand) {
+                      return (
+                        <div className="space-y-4 sm:col-span-2 bg-slate-50 border border-slate-200/80 p-4 rounded-xl">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Pricing Mode</label>
+                              <select
+                                value={pricingMode}
+                                onChange={(e) => {
+                                  const mode = e.target.value as 'total' | 'per_unit';
+                                  setPricingMode(mode);
+                                  if (mode === 'total') {
+                                    setPricePerUnit('');
+                                  }
+                                }}
+                                className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-800 text-sm outline-none focus:border-[#0B4C8C] h-12"
+                              >
+                                <option value="total">Total Price</option>
+                                <option value="per_unit">Price Per Unit</option>
+                              </select>
+                            </div>
+
+                            {pricingMode === 'per_unit' ? (
+                              <div className="space-y-2">
+                                <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">
+                                  Price Per {areaUnit || 'Unit'} (₹)
+                                </label>
+                                <input
+                                  type="number"
+                                  required
+                                  value={pricePerUnit}
+                                  onChange={(e) => setPricePerUnit(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 transition-colors h-12"
+                                  placeholder="3500"
+                                />
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Price (₹)</label>
+                                <input
+                                  type="number"
+                                  required
+                                  value={price}
+                                  onChange={(e) => setPrice(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 transition-colors h-12"
+                                  placeholder="5000000"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {pricingMode === 'per_unit' && area && pricePerUnit && (
+                            <div className="text-xs text-slate-650 bg-white p-3 rounded-lg border border-slate-200 shadow-3xs flex justify-between items-center font-semibold mt-2">
+                              <span>Live Land Valuation Calculation:</span>
+                              <span className="text-trust-blue text-sm font-bold">
+                                {parseFloat(area).toLocaleString()} {areaUnit} × ₹{parseFloat(pricePerUnit).toLocaleString()} = ₹{parseFloat(price).toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+
+                          {pricingMode === 'per_unit' && (
+                            <div className="space-y-2">
+                              <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Calculated Total Price (₹)</label>
+                              <input
+                                type="number"
+                                readOnly
+                                value={price}
+                                className="w-full bg-slate-100 border border-slate-200 p-3 rounded-xl text-slate-500 text-sm outline-none h-12 cursor-not-allowed"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Default Pricing input for non-land properties
+                    return (
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Price (₹)</label>
+                        <input
+                          type="number"
+                          required
+                          value={price}
+                          onChange={(e) => setPrice(e.target.value)}
+                          className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] focus:ring-[#0B4C8C]/20 transition-colors h-12"
+                          placeholder="5000000"
+                        />
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex items-center gap-3 pt-6">
                     <input
                       type="checkbox"
@@ -1090,177 +1301,180 @@ export default function AdminPropertiesPage() {
                       onChange={(e) => setFeatured(e.target.checked)}
                       className="w-5 h-5 accent-[#0B4C8C] bg-white border-slate-200 rounded cursor-pointer"
                     />
-                    <label htmlFor="featured" className="text-xs text-slate-600 cursor-pointer select-none font-semibold">Mark this property as Featured Portfolio Item</label>
+                    <label htmlFor="featured" className="text-xs text-slate-650 cursor-pointer select-none font-semibold">Mark this property as Featured Portfolio Item</label>
                   </div>
                 </div>
               </div>
 
-              {/* Specifications */}
-              <div className="space-y-4">
-                <h4 className="text-xs font-extrabold uppercase tracking-widest text-[#0B4C8C] border-l-2 border-[#0B4C8C] pl-2">Specifications</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Area</label>
-                    <input
-                      type="number"
-                      required
-                      value={area}
-                      onChange={(e) => setArea(e.target.value)}
-                      className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] h-12"
-                      placeholder="5400"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Area Unit</label>
-                    <select
-                      value={areaUnit}
-                      onChange={(e) => setAreaUnit(e.target.value)}
-                      className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-800 text-sm outline-none focus:border-[#0B4C8C] h-12"
-                    >
-                      <option value="Sq Ft">Sq Ft</option>
-                      <option value="Sq Yard">Sq Yard</option>
-                      <option value="Acre">Acre</option>
-                      <option value="Hectare">Hectare</option>
-                      <option value="Bigha">Bigha</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Bedrooms</label>
-                    <input
-                      type="number"
-                      required
-                      value={bedrooms}
-                      onChange={(e) => setBedrooms(e.target.value)}
-                      className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] h-12"
-                      placeholder="4"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Bathrooms</label>
-                    <input
-                      type="number"
-                      required
-                      value={bathrooms}
-                      onChange={(e) => setBathrooms(e.target.value)}
-                      className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] h-12"
-                      placeholder="5"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Floor level</label>
-                    <input
-                      type="number"
-                      required
-                      value={floor}
-                      onChange={(e) => setFloor(e.target.value)}
-                      className="w-full bg-white border border-slate-200 p-3 rounded-xl text-slate-900 text-sm outline-none focus:border-[#0B4C8C] h-12"
-                      placeholder="1"
-                    />
-                  </div>
-                </div>
+              {/* Property Specifications Card */}
+              <div className="space-y-4 bg-slate-50/50 p-6 rounded-2xl border border-slate-200">
+                <h4 className="text-xs font-extrabold uppercase tracking-widest text-[#0B4C8C] border-l-2 border-[#0B4C8C] pl-2">Property Specifications</h4>
+                
+                {(() => {
+                  const selectedT = templates.find(t => t.id === templateId);
+                  
+                  // Collect all fields
+                  const allFields: any[] = [
+                    { name: 'universal_area', label: 'Area', type: 'number', required: true, group: 'Dimensions', isUniversal: true },
+                    { name: 'universal_areaUnit', label: 'Area Unit', type: 'dropdown', required: true, options: ['Sq Ft', 'Sq Yard', 'Acre', 'Hectare', 'Bigha'], group: 'Dimensions', isUniversal: true }
+                  ];
+
+                  if (selectedT && selectedT.fields) {
+                    allFields.push(...selectedT.fields);
+                  }
+
+                  // Group fields
+                  const groupsOrder = ['Dimensions', 'Ownership', 'Utilities', 'Building Details', 'Additional Features'];
+                  const grouped: { [key: string]: any[] } = {};
+                  groupsOrder.forEach(g => { grouped[g] = []; });
+
+                  allFields.forEach(field => {
+                    const g = getFieldGroup(field);
+                    if (grouped[g]) {
+                      grouped[g].push(field);
+                    } else {
+                      grouped['Additional Features'].push(field);
+                    }
+                  });
+
+                  // Render non-empty groups
+                  return groupsOrder.map(groupName => {
+                    const fieldsInGroup = grouped[groupName];
+                    if (fieldsInGroup.length === 0) return null;
+
+                    return (
+                      <div key={groupName} className="space-y-3 pt-3 border-t border-slate-200/60 first:border-t-0 first:pt-0">
+                        <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400 block">{groupName}</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                          {fieldsInGroup.map(field => {
+                            if (field.isUniversal) {
+                              if (field.name === 'universal_area') {
+                                return (
+                                  <div key={field.name} className="space-y-2">
+                                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Area <span className="text-red-500">*</span></label>
+                                    <input
+                                      type="number"
+                                      required
+                                      value={area}
+                                      onChange={(e) => setArea(e.target.value)}
+                                      className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none focus:border-[#0B4C8C] h-10"
+                                      placeholder="5400"
+                                    />
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div key={field.name} className="space-y-2">
+                                    <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Area Unit <span className="text-red-500">*</span></label>
+                                    <select
+                                      value={areaUnit}
+                                      onChange={(e) => setAreaUnit(e.target.value)}
+                                      className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-800 text-xs outline-none focus:border-[#0B4C8C] h-10"
+                                    >
+                                      <option value="Sq Ft">Sq Ft</option>
+                                      <option value="Sq Yard">Sq Yard</option>
+                                      <option value="Acre">Acre</option>
+                                      <option value="Hectare">Hectare</option>
+                                      <option value="Bigha">Bigha</option>
+                                    </select>
+                                  </div>
+                                );
+                              }
+                            }
+
+                            // Dynamic fields
+                            const val = templateFields[field.name] !== undefined ? templateFields[field.name] : '';
+                            const handleFieldChange = (newValue: any) => {
+                              setTemplateFields((prev: any) => ({
+                                ...prev,
+                                [field.name]: newValue
+                              }));
+                            };
+
+                            return (
+                              <div key={field.name} className="space-y-2">
+                                <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">
+                                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                                </label>
+                                {field.type === 'checkbox' ? (
+                                  <div className="flex items-center gap-2 pt-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(val)}
+                                      onChange={(e) => handleFieldChange(e.target.checked)}
+                                      className="w-4 h-4 accent-[#0B4C8C] bg-white border-slate-200 rounded cursor-pointer"
+                                    />
+                                    <span className="text-xs text-slate-600 font-semibold">Yes / Enabled</span>
+                                  </div>
+                                ) : field.type === 'dropdown' ? (
+                                  <select
+                                    value={val}
+                                    required={field.required}
+                                    onChange={(e) => handleFieldChange(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-800 text-xs outline-none focus:border-[#0B4C8C] h-10"
+                                  >
+                                    <option value="">-- Choose Option --</option>
+                                    {(field.options || []).map((opt: string) => (
+                                      <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                ) : field.type === 'multiselect' ? (
+                                  <div className="flex flex-wrap gap-2 p-2 bg-white border border-slate-200 rounded-lg min-h-[40px]">
+                                    {(field.options || []).map((opt: string) => {
+                                      const list = Array.isArray(val) ? val : [];
+                                      const checked = list.includes(opt);
+                                      const handleToggle = () => {
+                                        const next = checked ? list.filter((x: any) => x !== opt) : [...list, opt];
+                                        handleFieldChange(next);
+                                      };
+                                      return (
+                                        <label key={opt} className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-700 font-semibold select-none">
+                                          <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={handleToggle}
+                                            className="w-3.5 h-3.5 accent-[#0B4C8C]"
+                                          />
+                                          <span>{opt}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                ) : field.type === 'textarea' ? (
+                                  <textarea
+                                    value={val}
+                                    required={field.required}
+                                    onChange={(e) => handleFieldChange(e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-white border border-slate-200 p-2 rounded-lg text-slate-900 text-xs outline-none focus:border-[#0B4C8C] resize-none"
+                                  />
+                                ) : field.type === 'date' ? (
+                                  <input
+                                    type="date"
+                                    value={val}
+                                    required={field.required}
+                                    onChange={(e) => handleFieldChange(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 p-2 rounded-lg text-slate-900 text-xs outline-none focus:border-[#0B4C8C] h-10"
+                                  />
+                                ) : (
+                                  <input
+                                    type={field.type === 'number' ? 'number' : 'text'}
+                                    value={val}
+                                    required={field.required}
+                                    onChange={(e) => handleFieldChange(field.type === 'number' ? (e.target.value === '' ? '' : parseFloat(e.target.value)) : e.target.value)}
+                                    className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none focus:border-[#0B4C8C] h-10"
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  });
+                                })()}
               </div>
 
-              {/* Dynamic Template Fields */}
-              {templateId && (
-                <div className="space-y-4">
-                  <h4 className="text-xs font-extrabold uppercase tracking-widest text-[#0B4C8C] border-l-2 border-[#0B4C8C] pl-2">Dynamic Template Attributes</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                    {(() => {
-                      const selectedT = templates.find(t => t.id === templateId);
-                      if (!selectedT || !selectedT.fields || selectedT.fields.length === 0) {
-                        return <p className="text-xs text-slate-400 col-span-2 italic">This template has no attributes configured.</p>;
-                      }
-                      return selectedT.fields.map((field: any) => {
-                        const val = templateFields[field.name] !== undefined ? templateFields[field.name] : '';
-                        
-                        const handleFieldChange = (newValue: any) => {
-                          setTemplateFields((prev: any) => ({
-                            ...prev,
-                            [field.name]: newValue
-                          }));
-                        };
-
-                        return (
-                          <div key={field.name} className="space-y-2">
-                            <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">
-                              {field.label} {field.required && <span className="text-red-500">*</span>}
-                            </label>
-                            {field.type === 'checkbox' ? (
-                              <div className="flex items-center gap-2 pt-2">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(val)}
-                                  onChange={(e) => handleFieldChange(e.target.checked)}
-                                  className="w-4 h-4 accent-[#0B4C8C] bg-white border-slate-200 rounded cursor-pointer"
-                                />
-                                <span className="text-xs text-slate-600 font-semibold">Yes / Enabled</span>
-                              </div>
-                            ) : field.type === 'dropdown' ? (
-                              <select
-                                value={val}
-                                required={field.required}
-                                onChange={(e) => handleFieldChange(e.target.value)}
-                                className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-800 text-xs outline-none focus:border-[#0B4C8C]"
-                              >
-                                <option value="">-- Choose Option --</option>
-                                {(field.options || []).map((opt: string) => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            ) : field.type === 'multiselect' ? (
-                              <div className="flex flex-wrap gap-3 p-2.5 bg-white border border-slate-200 rounded-lg">
-                                {(field.options || []).map((opt: string) => {
-                                  const list = Array.isArray(val) ? val : [];
-                                  const checked = list.includes(opt);
-                                  const handleToggle = () => {
-                                    const next = checked ? list.filter((x: any) => x !== opt) : [...list, opt];
-                                    handleFieldChange(next);
-                                  };
-                                  return (
-                                    <label key={opt} className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-700 font-semibold select-none">
-                                      <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={handleToggle}
-                                        className="w-3.5 h-3.5 accent-[#0B4C8C]"
-                                      />
-                                      <span>{opt}</span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                            ) : field.type === 'textarea' ? (
-                              <textarea
-                                value={val}
-                                required={field.required}
-                                onChange={(e) => handleFieldChange(e.target.value)}
-                                rows={3}
-                                className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none focus:border-[#0B4C8C] resize-none"
-                              />
-                            ) : field.type === 'date' ? (
-                              <input
-                                type="date"
-                                value={val}
-                                required={field.required}
-                                onChange={(e) => handleFieldChange(e.target.value)}
-                                className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none focus:border-[#0B4C8C]"
-                              />
-                            ) : (
-                              <input
-                                type={field.type === 'number' ? 'number' : 'text'}
-                                value={val}
-                                required={field.required}
-                                onChange={(e) => handleFieldChange(field.type === 'number' ? (e.target.value === '' ? '' : parseFloat(e.target.value)) : e.target.value)}
-                                className="w-full bg-white border border-slate-200 p-2.5 rounded-lg text-slate-900 text-xs outline-none focus:border-[#0B4C8C]"
-                              />
-                            )}
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
-              )}
 
               {/* Media Enhancements */}
               <div className="space-y-4">
